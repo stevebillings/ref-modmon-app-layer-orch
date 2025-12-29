@@ -28,40 +28,55 @@ Follow best practices for good separation of concerns in this type of applicatio
 - **id** (Primary Key)
 - **interval_count** (integer) - Number of intervals in the workout
 - **work_phase_meters** (integer) - Length of each work phase in meters (same for all intervals)
-- **rest_phase_minutes** (float) - Duration of each rest phase in minutes (same for all intervals)
+- **rest_phase_minutes** (integer) - Duration of each rest phase in whole minutes (same for all intervals)
 - **created_at** (timestamp)
 - **Note**: Name is not stored. Backend generates a display name at read time (e.g., "5 x 500m / 2min rest") and includes it in API responses.
+- **Uniqueness constraint**: The combination of (interval_count, work_phase_meters, rest_phase_minutes) must be unique. Attempting to create a duplicate returns an error.
+- **Validation**:
+  - interval_count: 1–100 inclusive
+  - work_phase_meters: 1–100,000 inclusive
+  - rest_phase_minutes: 1–10 inclusive
 
 #### PerformedWorkout
 - **id** (Primary Key)
 - **workout_structure_id** (Foreign Key to WorkoutStructure)
 - **performed_date** (date) - The date the workout was performed (user-entered)
 - **created_at** (timestamp)
+- **Cascade delete**: When a WorkoutStructure is deleted, all associated PerformedWorkouts are also deleted.
+- **Validation**:
+  - performed_date: Must not be more than one day in the future (up to and including tomorrow)
 
 #### WorkoutInterval
 - **id** (Primary Key)
 - **performed_workout_id** (Foreign Key to PerformedWorkout)
 - **interval_number** (integer) - The interval number (1, 2, 3, etc.)
 - **time_seconds** (integer) - Total time for the work phase in seconds
-- **Note**: Frontend handles conversion between seconds (for API/DB) and mm:ss format (for user display/entry)
+- **Validation**:
+  - time_seconds: Must be positive (> 0)
+- **Note**: Frontend handles conversion between seconds (for API/DB) and h:mm:ss format (for user display/entry)
 
 ### Backend APIs
 
 #### WorkoutStructure Endpoints
 - **GET /api/workout-structures/** - List all workout structures
   - Response: Array of WorkoutStructure objects (each includes generated `name` field for display)
+  - Ordering: Descending by created_at (newest first)
 - **POST /api/workout-structures/** - Create a new workout structure
   - Request body: `{ interval_count, work_phase_meters, rest_phase_minutes }`
   - Response: Created WorkoutStructure object (includes generated `name` field)
+  - Error: 400 if validation fails or if a workout structure with the same (interval_count, work_phase_meters, rest_phase_minutes) already exists
 - **DELETE /api/workout-structures/{id}/** - Delete a workout structure
   - Response: 204 No Content
+  - Note: Cascade deletes all associated PerformedWorkouts
 
 #### PerformedWorkout Endpoints
 - **GET /api/performed-workouts/** - List all performed workouts
   - Response: Array of PerformedWorkout objects (includes nested workout_structure details and intervals with time in seconds)
+  - Ordering: Descending by created_at (newest first)
 - **POST /api/performed-workouts/** - Create a new performed workout
   - Request body: `{ workout_structure_id, performed_date, intervals: [{ interval_number, time_seconds }] }`
   - Response: Created PerformedWorkout object with intervals
+  - Error: 400 if validation fails (invalid date, non-positive time_seconds, etc.)
 - **DELETE /api/performed-workouts/{id}/** - Delete a performed workout
   - Response: 204 No Content
 

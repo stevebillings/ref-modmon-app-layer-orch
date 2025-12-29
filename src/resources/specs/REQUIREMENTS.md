@@ -21,4 +21,6 @@ Each workout structure describes an interval workout performed on a Concept 2 ro
 - Frontend: Typescript/React
 - Keep this as simple as possible while meeting all requirements in this spec.
 - We only need to run in dev mode on localhost.
+- Single-user application with no authentication required.
+- No edit capability for now; users can only create and delete records.
 
