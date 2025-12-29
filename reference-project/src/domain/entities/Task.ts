@@ -66,12 +66,15 @@ export class Task {
     updatedAt: Date,
     completedAt: Date | null
   ): Task {
-    const task = new Task(id, title, description, assigneeEmail);
+    const task = Object.create(Task.prototype);
+    task.id = id;
+    task.title = title;
+    task.description = description;
     task.status = status;
+    task.assigneeEmail = assigneeEmail;
+    task.createdAt = createdAt;
     task.updatedAt = updatedAt;
     task.completedAt = completedAt;
-    // Override createdAt via reflection (private field)
-    (task as any).createdAt = createdAt;
     return task;
   }
 

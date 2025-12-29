@@ -3,6 +3,7 @@ import { CreateTaskUseCase } from '../../application/use-cases/CreateTaskUseCase
 import { GetTaskUseCase } from '../../application/use-cases/GetTaskUseCase';
 import { ListTasksUseCase } from '../../application/use-cases/ListTasksUseCase';
 import { CompleteTaskUseCase } from '../../application/use-cases/CompleteTaskUseCase';
+import { NotFoundError } from '../middleware/errorHandler';
 
 /**
  * Task Controller
@@ -59,11 +60,7 @@ export class TaskController {
       const taskDTO = await this.getTaskUseCase.execute(id);
 
       if (!taskDTO) {
-        res.status(404).json({
-          success: false,
-          error: 'Task not found',
-        });
-        return;
+        throw new NotFoundError('Task not found');
       }
 
       res.status(200).json({
