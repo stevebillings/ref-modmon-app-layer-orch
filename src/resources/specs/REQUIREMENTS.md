@@ -1,20 +1,46 @@
 # Project requirements
 
-We need to build a web application that lets a user (a) define one or more workout structures, and (b) enter the details of a workout (following one of those workout structures).
-
-Each workout structure describes an interval workout performed on a Concept 2 rowing ergometer (or equivalent rowing ergometer).
+A minimal e-commerce web application demonstrating cross-aggregate operations. When a user adds an item to their cart, stock must be reserved (Product aggregate) and the cart updated (Cart aggregate). When the cart is submitted, an immutable Order is created.
 
 ## Functional requirements
 
-- One page where the User can see all defined workout structues, and create a new one. A workout structure consists of:
-  - The number of intervals
-  - The length of each work phase in meters
-  - The duration of each rest phase in minutes
-- One page where the user can see all performed workouts already entered, and create/enter a new one. A performed workout consists of:
-  - The workout structure (selected from a pulldown list)
-  - The date the workout was performed (date picker, defaults to today)
-  - The time of each interval (entered sequentially in order: interval 1, 2, 3, etc.)
-- A landing page that lets the user navigate to the above pages.
+### Aggregates
+
+- **Product**: Represents an item for sale with available stock
+- **Cart**: The user's current shopping cart (single cart for single user)
+- **Order**: A submitted, immutable record of a purchase
+
+### Cross-Aggregate Operations
+
+| Action | Aggregates Affected |
+|--------|---------------------|
+| Add item to cart | Cart (add/update item), Product (reserve stock) |
+| Remove item from cart | Cart (remove item), Product (release stock) |
+| Submit cart | Cart (clear), Order (create from cart contents) |
+
+### Pages
+
+1. **Landing Page**
+   - Navigation to Product Catalog, Cart, and Order History pages
+   - Display current cart item count
+
+2. **Product Catalog Page**
+   - View all products showing name, price, and available stock
+   - Create new products (name, price, initial stock quantity)
+   - Delete products (only if not in cart and not referenced in any order)
+
+3. **Cart Page**
+   - View current cart with items, quantities, unit prices, subtotals, and total
+   - Add items to cart (select product, specify quantity) — reserves stock immediately
+   - Remove items from cart — releases reserved stock
+   - Adjust item quantity — adjusts stock reservation accordingly
+   - Submit Order button — creates an immutable Order and clears the cart
+   - Cannot add or increase quantity beyond available stock
+   - Cannot submit an empty cart
+
+4. **Order History Page**
+   - View all submitted orders showing date, items, quantities, prices, and total
+   - Orders are immutable and cannot be deleted
 
 ## Non Functional requirements
 
@@ -23,17 +49,12 @@ Each workout structure describes an interval workout performed on a Concept 2 ro
 - Keep this as simple as possible while meeting all requirements in this spec.
 - We only need to run in dev mode on localhost.
 - Single-user application with no authentication required.
-- No edit capability for now; users can only create and delete records.
+- Cart items can be added, removed, or have quantity adjusted. Orders are immutable once submitted.
 - Delete operations require confirmation dialogs.
-
-## Time Format
-
-- **Display**: `m:ss` for times under 1 hour (e.g., "1:45"), `h:mm:ss` for times of 1 hour or more (e.g., "1:02:30")
-- **Entry**: Single text field requiring colon format. Accepted formats: `m:ss`, `mm:ss`, or `h:mm:ss`
 
 ## Empty States
 
-- No workout structures: "No workout structures defined yet. Create one to get started."
-- No performed workouts: "No workouts recorded yet. Record your first workout!"
-- Creating a performed workout when no structures exist: Disable the form with a message prompting the user to create a structure first.
+- No products: "No products available. Add products to the catalog to get started."
+- Empty cart: "Your cart is empty. Browse the product catalog to add items."
+- No orders: "No orders yet. Submit your cart to create your first order."
 
