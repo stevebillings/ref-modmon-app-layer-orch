@@ -58,6 +58,92 @@ project-root/
 - The `infrastructure/` layer implements interfaces defined in `domain/`
 - One repository per aggregate root (no separate repository for WorkoutInterval)
 
+### Data flow pattern
+
+The backend uses a simplified pattern for returning data from API endpoints, keeping the Django layer thin and the domain logic framework-agnostic.
+
+#### Domain entities as frozen dataclasses
+
+Domain entities are defined as frozen (immutable) dataclasses in the domain layer:
+
+```python
+@dataclass(frozen=True)
+class WorkoutStructure:
+    id: UUID
+    interval_count: int
+    work_phase_meters: int
+    rest_phase_minutes: int
+    created_at: datetime
+
+@dataclass(frozen=True)
+class PerformedWorkout:
+    id: UUID
+    workout_structure: WorkoutStructure  # Nested dataclass
+    performed_date: date
+    created_at: datetime
+    intervals: List[WorkoutInterval]     # Nested list of dataclasses
+```
+
+#### Recursive `to_dict()` conversion
+
+A simple utility function recursively converts dataclasses to dictionaries at the infrastructure boundary:
+
+```python
+def to_dict(obj: Any) -> Any:
+    if obj is None:
+        return None
+    if hasattr(obj, "__dataclass_fields__"):
+        return {field.name: to_dict(getattr(obj, field.name)) for field in fields(obj)}
+    if isinstance(obj, list):
+        return [to_dict(item) for item in obj]
+    if isinstance(obj, (UUID, date, datetime)):
+        return str(obj)  # Convert to string for JSON serialization
+    return obj
+```
+
+#### Thin Django views
+
+Django views become simple pass-throughs:
+
+```python
+def list_workout_structures(request):
+    structures = application_service.get_all_workout_structures()
+    return Response({"results": [to_dict(s) for s in structures]})
+```
+
+#### Request → Response flow
+
+```
+HTTP Request
+    │
+    ▼
+Django View (infrastructure/)
+    │ Parse request, call application service
+    ▼
+Application Service (application/)
+    │ Orchestrate use case, call repositories
+    ▼
+Repository Interface (domain/) ◄── implemented by ──► Repository Impl (infrastructure/)
+    │                                                        │
+    │                                                        ▼
+    │                                                   Django ORM
+    ▼
+Domain Entity (frozen dataclass)
+    │
+    ▼
+to_dict() conversion
+    │
+    ▼
+Response(dict_data)
+```
+
+**Benefits of this approach**:
+- Type safety in domain/application layers via dataclasses
+- Framework-agnostic domain code (pure Python dataclasses)
+- Single conversion point at the boundary
+- Nested structures handled automatically
+- Thin infrastructure layer with minimal Django-specific code
+
 ## Design
 
 ### Data entities
@@ -118,3 +204,34 @@ project-root/
 - **DELETE /api/performed-workouts/{id}/** - Delete a performed workout
   - Response: 204 No Content
 
+## Future considerations
+
+The following topics are intentionally deferred to keep the initial implementation simple. They may be worth revisiting as the application grows:
+
+### Value objects
+
+Wrapping primitive types in domain-specific value objects (e.g., `Meters`, `Minutes`, `IntervalCount`) can provide:
+- Type safety (compiler catches mixing up meters vs. seconds)
+- Validation at construction time
+- Domain-specific behavior (e.g., formatting methods)
+
+Trade-off: Adds complexity and requires custom serialization in `to_dict()`.
+
+### API specification-driven development
+
+Generating backend API code from an OpenAPI/Swagger specification can provide:
+- Single source of truth for API contracts
+- Automatic client SDK generation
+- API documentation
+- Request/response validation
+
+Trade-off: Requires additional tooling and build steps.
+
+### Injectors / Dependency injection
+
+Using injector classes or a DI framework to wire up dependencies (repositories, services, unit of work) can provide:
+- Easier testing (swap implementations)
+- Cleaner separation of object construction from use
+- More explicit dependency graphs
+
+Trade-off: Adds indirection and may be overkill for small applications.
