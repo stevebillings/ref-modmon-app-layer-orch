@@ -240,3 +240,21 @@ Using injector classes or a DI framework to wire up dependencies (repositories, 
 - More explicit dependency graphs
 
 Trade-off: Adds indirection and may be overkill for small applications.
+
+### Django app structure: single app vs. one app per aggregate
+
+The current implementation uses a single Django app (`infrastructure/django_app/`) containing all models, views, and repositories. An alternative approach is to create one Django app per aggregate (e.g., `infrastructure/workout_structure/` and `infrastructure/performed_workout/`).
+
+**Single app (current approach):**
+- Simpler configuration (one entry in `INSTALLED_APPS`)
+- The domain layer already enforces aggregate boundaries
+- Fewer migration folders to manage
+- Well-suited for small teams and rapid prototyping
+
+**One app per aggregate:**
+- Mirrors the domain structure in the infrastructure layer
+- Each aggregate is independently deployable/extractable
+- Better for large teams where different teams own different aggregates
+- Clearer code ownership boundaries
+
+Trade-off: The single app approach is simpler but makes it harder to extract an aggregate into a separate service later. One app per aggregate adds boilerplate (multiple `apps.py`, migrations folders) and cross-aggregate foreign keys require cross-app imports, but provides better modularity for larger codebases (10+ aggregates) or teams planning microservices extraction.
