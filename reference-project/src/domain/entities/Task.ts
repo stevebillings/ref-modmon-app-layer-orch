@@ -16,7 +16,7 @@ import { TaskStatus } from '../value-objects/TaskStatus';
  */
 export class Task {
   private readonly id: TaskId;
-  private title: string;
+  private title!: string;  // Definite assignment assertion - set in constructor via setTitle()
   private description: string;
   private status: TaskStatus;
   private assigneeEmail: Email | null;
