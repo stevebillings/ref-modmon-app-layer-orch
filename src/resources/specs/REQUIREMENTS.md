@@ -28,14 +28,15 @@ A minimal e-commerce web application demonstrating cross-aggregate operations. W
    - View all products showing name, price, and available stock
    - Create new products (name, price, initial stock quantity)
    - Delete products (only if not in cart and not referenced in any order)
+   - Add to Cart button for each product (specify quantity) — reserves stock immediately
+   - Cannot add more than available stock
 
 3. **Cart Page**
    - View current cart with items, quantities, unit prices, subtotals, and total
-   - Add items to cart (select product, specify quantity) — reserves stock immediately
    - Remove items from cart — releases reserved stock
    - Adjust item quantity — adjusts stock reservation accordingly
    - Submit Order button — creates an immutable Order and clears the cart
-   - Cannot add or increase quantity beyond available stock
+   - Cannot increase quantity beyond available stock
    - Cannot submit an empty cart
 
 4. **Order History Page**
@@ -49,8 +50,14 @@ A minimal e-commerce web application demonstrating cross-aggregate operations. W
 - Keep this as simple as possible while meeting all requirements in this spec.
 - We only need to run in dev mode on localhost.
 - Single-user application with no authentication required.
-- Cart items can be added, removed, or have quantity adjusted. Orders are immutable once submitted.
+- Products are immutable once created (only stock quantity changes via cart operations). Orders are immutable once submitted.
+- Cart items can be added, removed, or have quantity adjusted.
 - Delete operations require confirmation dialogs.
+
+## Currency Format
+
+- **Display**: Always show dollar sign and two decimal places (e.g., "$12.99", "$5.00")
+- **Entry**: Accept numeric input; frontend formats for display
 
 ## Empty States
 

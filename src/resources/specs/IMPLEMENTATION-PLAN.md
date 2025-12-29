@@ -105,12 +105,11 @@ This document outlines the implementation plan for the e-commerce application.
     - ErrorAlert - Display API/validation errors
 
 23. **Product components**
-    - ProductList - Display list with delete buttons
+    - ProductList - Display list with delete buttons and Add to Cart controls
     - ProductForm - Create form with validation
 
 24. **Cart components**
     - CartView - Display cart items with quantity controls and remove buttons
-    - AddToCartForm - Product selector and quantity input
     - SubmitOrderButton - Submit cart as order
 
 25. **Order components**
@@ -123,8 +122,8 @@ This document outlines the implementation plan for the e-commerce application.
 
 27. **Page components**
     - Landing page with navigation and cart item count
-    - Product Catalog page (list + create form)
-    - Cart page (cart view + add to cart form + submit)
+    - Product Catalog page (list + create form + add to cart)
+    - Cart page (cart view + quantity adjustments + submit)
     - Order History page (order list)
 
 28. **Routing**

@@ -173,12 +173,14 @@ Response(dict_data)
   - name: 1–200 characters, non-empty
   - price: Greater than 0, max 2 decimal places
   - stock_quantity: 0 or greater
+- **Immutability**: Products cannot be edited after creation; only stock_quantity changes via cart operations
 - **Delete constraint**: Cannot delete if product is in any cart or referenced in any order
 
 #### Cart
 - **id** (Primary Key, UUID)
 - **created_at** (timestamp)
-- **Note**: Single cart for single-user application. Created lazily on first item add if none exists.
+- **Singleton**: Single cart for single-user application. One cart always exists; submitting an order clears its items but does not delete the cart.
+- **Computed total**: Cart total is computed from items on read, not stored.
 
 #### CartItem
 - **id** (Primary Key, UUID)
@@ -193,7 +195,8 @@ Response(dict_data)
 #### Order
 - **id** (Primary Key, UUID)
 - **submitted_at** (timestamp) - When the order was submitted
-- **Note**: Orders are immutable after creation. Cannot be edited or deleted.
+- **Immutability**: Orders cannot be edited or deleted after creation.
+- **Computed total**: Order total is computed from items on read, not stored.
 
 #### OrderItem
 - **id** (Primary Key, UUID)
@@ -202,7 +205,7 @@ Response(dict_data)
 - **product_name** (string) - Snapshot of product name at time of order
 - **unit_price** (decimal) - Snapshot of product price at time of order
 - **quantity** (integer) - Quantity ordered
-- **Note**: Product name and price are copied at order time to preserve order history even if product is later modified
+- **Note**: Product name and price are copied at order time to preserve order history even if product is later deleted
 
 ### Backend APIs
 
@@ -220,8 +223,8 @@ Response(dict_data)
 
 #### Cart Endpoints
 - **GET /api/cart/** - Get current cart
-  - Response: Cart object with nested items (each item includes product details, quantity, subtotal)
-  - Note: Returns empty cart structure if no cart exists
+  - Response: Cart object with nested items (each item includes product details, quantity, subtotal), plus computed total
+  - Note: Always returns the singleton cart (may have empty items array)
 - **POST /api/cart/items/** - Add item to cart (cross-aggregate operation)
   - Request body: `{ product_id, quantity }`
   - Response: Updated Cart object
@@ -238,13 +241,13 @@ Response(dict_data)
   - Side effects: Releases reserved stock (increments product's stock_quantity)
 - **POST /api/cart/submit/** - Submit cart as order (cross-aggregate operation)
   - Response: Created Order object
-  - Side effects: Creates Order with OrderItems, clears Cart
+  - Side effects: Creates Order with OrderItems, empties cart (deletes CartItems, cart itself remains)
   - Error: 400 if cart is empty
   - Note: Stock remains decremented (was reserved when added to cart)
 
 #### Order Endpoints
 - **GET /api/orders/** - List all orders
-  - Response: Array of Order objects with nested items
+  - Response: Array of Order objects with nested items and computed total
   - Ordering: Descending by submitted_at (newest first)
 
 ## Future considerations
