@@ -27,11 +27,14 @@ project-root/
 ├── backend/
 │   ├── domain/                    # Core business logic (NO Django dependencies)
 │   │   ├── aggregates/            # Organized by aggregate
-│   │   │   ├── workout_structure/
-│   │   │   │   ├── entity.py              # WorkoutStructure aggregate root
+│   │   │   ├── product/
+│   │   │   │   ├── entity.py              # Product aggregate root
 │   │   │   │   └── repository.py          # Repository interface (ABC)
-│   │   │   └── performed_workout/
-│   │   │       ├── entities.py            # PerformedWorkout (root) + WorkoutInterval
+│   │   │   ├── cart/
+│   │   │   │   ├── entities.py            # Cart (root) + CartItem
+│   │   │   │   └── repository.py          # Repository interface (ABC)
+│   │   │   └── order/
+│   │   │       ├── entities.py            # Order (root) + OrderItem
 │   │   │       └── repository.py          # Repository interface (ABC)
 │   │   └── services/              # Domain services (cross-aggregate business logic)
 │   ├── application/               # Application layer (use case orchestration)
@@ -42,8 +45,9 @@ project-root/
 │           ├── views.py           # API views
 │           ├── serializers.py     # DRF serializers
 │           ├── repositories/      # Repository implementations (Django ORM)
-│           │   ├── workout_structure_repository.py
-│           │   └── performed_workout_repository.py
+│           │   ├── product_repository.py
+│           │   ├── cart_repository.py
+│           │   └── order_repository.py
 │           └── unit_of_work.py    # Unit of Work implementation
 ├── frontend/
 │   └── src/
@@ -56,7 +60,7 @@ project-root/
 **Key separation principles**:
 - Code in `domain/` must never import from `infrastructure/` or Django
 - The `infrastructure/` layer implements interfaces defined in `domain/`
-- One repository per aggregate root (no separate repository for WorkoutInterval)
+- One repository per aggregate root (no separate repository for CartItem or OrderItem)
 
 ### Data flow pattern
 
@@ -68,20 +72,30 @@ Domain entities are defined as frozen (immutable) dataclasses in the domain laye
 
 ```python
 @dataclass(frozen=True)
-class WorkoutStructure:
+class Product:
     id: UUID
-    interval_count: int
-    work_phase_meters: int
-    rest_phase_minutes: int
+    name: str
+    price: Decimal
+    stock_quantity: int
     created_at: datetime
 
 @dataclass(frozen=True)
-class PerformedWorkout:
+class CartItem:
     id: UUID
-    workout_structure: WorkoutStructure  # Nested dataclass
-    performed_date: date
+    product: Product       # Nested dataclass
+    quantity: int
+
+@dataclass(frozen=True)
+class Cart:
+    id: UUID
+    items: List[CartItem]  # Nested list of dataclasses
     created_at: datetime
-    intervals: List[WorkoutInterval]     # Nested list of dataclasses
+
+@dataclass(frozen=True)
+class Order:
+    id: UUID
+    items: List[OrderItem] # Nested list of dataclasses
+    submitted_at: datetime
 ```
 
 #### Recursive `to_dict()` conversion
@@ -106,9 +120,9 @@ def to_dict(obj: Any) -> Any:
 Django views become simple pass-throughs:
 
 ```python
-def list_workout_structures(request):
-    structures = application_service.get_all_workout_structures()
-    return Response({"results": [to_dict(s) for s in structures]})
+def list_products(request):
+    products = application_service.get_all_products()
+    return Response({"results": [to_dict(p) for p in products]})
 ```
 
 #### Request → Response flow
@@ -148,66 +162,90 @@ Response(dict_data)
 
 ### Data entities
 
-#### WorkoutStructure
-- **id** (Primary Key)
-- **interval_count** (integer) - Number of intervals in the workout
-- **work_phase_meters** (integer) - Length of each work phase in meters (same for all intervals)
-- **rest_phase_minutes** (integer) - Duration of each rest phase in whole minutes (same for all intervals)
+#### Product
+- **id** (Primary Key, UUID)
+- **name** (string) - Product name
+- **price** (decimal) - Price in dollars, two decimal places
+- **stock_quantity** (integer) - Available stock (not reserved in any cart)
 - **created_at** (timestamp)
-- **Note**: Name is not stored. Backend generates a display name at read time (e.g., "5 x 500m / 2 min rest") and includes it in API responses. Always use singular "min" regardless of value.
-- **Uniqueness constraint**: The combination of (interval_count, work_phase_meters, rest_phase_minutes) must be unique. Attempting to create a duplicate returns an error.
+- **Uniqueness constraint**: Product name must be unique
 - **Validation**:
-  - interval_count: 1–100 inclusive
-  - work_phase_meters: 1–100,000 inclusive
-  - rest_phase_minutes: 1–10 inclusive
+  - name: 1–200 characters, non-empty
+  - price: Greater than 0, max 2 decimal places
+  - stock_quantity: 0 or greater
+- **Delete constraint**: Cannot delete if product is in any cart or referenced in any order
 
-#### PerformedWorkout
-- **id** (Primary Key)
-- **workout_structure_id** (Foreign Key to WorkoutStructure)
-- **performed_date** (date) - The date the workout was performed (user-entered, defaults to today in UI)
+#### Cart
+- **id** (Primary Key, UUID)
 - **created_at** (timestamp)
-- **Cascade delete**: When a WorkoutStructure is deleted, all associated PerformedWorkouts are also deleted.
-- **Validation**:
-  - performed_date: Must not be more than one day in the future (up to and including tomorrow)
-  - The number of intervals submitted must match the interval_count of the referenced WorkoutStructure
+- **Note**: Single cart for single-user application. Created lazily on first item add if none exists.
 
-#### WorkoutInterval
-- **id** (Primary Key)
-- **performed_workout_id** (Foreign Key to PerformedWorkout)
-- **interval_number** (integer) - The interval number (1, 2, 3, etc.)
-- **time_seconds** (integer) - Total time for the work phase in seconds
+#### CartItem
+- **id** (Primary Key, UUID)
+- **cart_id** (Foreign Key to Cart)
+- **product_id** (Foreign Key to Product)
+- **quantity** (integer) - Quantity of this product in the cart
 - **Validation**:
-  - time_seconds: Must be positive (> 0)
-- **Ordering**: Intervals are always displayed and entered in sequential order (1, 2, 3, etc.)
-- **Time format**:
-  - Display: `m:ss` for times under 1 hour (e.g., "1:45"), `h:mm:ss` for times ≥ 1 hour (e.g., "1:02:30")
-  - Entry: Single text field requiring colon format (`m:ss`, `mm:ss`, or `h:mm:ss`)
-  - Frontend handles conversion between seconds (API/DB) and formatted string (display/entry)
+  - quantity: Must be positive (> 0)
+  - quantity cannot exceed product's available stock_quantity
+- **Uniqueness constraint**: Only one CartItem per product per cart (adding same product increases quantity)
+
+#### Order
+- **id** (Primary Key, UUID)
+- **submitted_at** (timestamp) - When the order was submitted
+- **Note**: Orders are immutable after creation. Cannot be edited or deleted.
+
+#### OrderItem
+- **id** (Primary Key, UUID)
+- **order_id** (Foreign Key to Order)
+- **product_id** (Foreign Key to Product)
+- **product_name** (string) - Snapshot of product name at time of order
+- **unit_price** (decimal) - Snapshot of product price at time of order
+- **quantity** (integer) - Quantity ordered
+- **Note**: Product name and price are copied at order time to preserve order history even if product is later modified
 
 ### Backend APIs
 
-#### WorkoutStructure Endpoints
-- **GET /api/workout-structures/** - List all workout structures
-  - Response: Array of WorkoutStructure objects (each includes generated `name` field for display)
-  - Ordering: Descending by created_at (newest first)
-- **POST /api/workout-structures/** - Create a new workout structure
-  - Request body: `{ interval_count, work_phase_meters, rest_phase_minutes }`
-  - Response: Created WorkoutStructure object (includes generated `name` field)
-  - Error: 400 if validation fails or if a workout structure with the same (interval_count, work_phase_meters, rest_phase_minutes) already exists
-- **DELETE /api/workout-structures/{id}/** - Delete a workout structure
+#### Product Endpoints
+- **GET /api/products/** - List all products
+  - Response: Array of Product objects
+  - Ordering: Alphabetical by name
+- **POST /api/products/** - Create a new product
+  - Request body: `{ name, price, stock_quantity }`
+  - Response: Created Product object
+  - Error: 400 if validation fails or if product with same name already exists
+- **DELETE /api/products/{id}/** - Delete a product
   - Response: 204 No Content
-  - Note: Cascade deletes all associated PerformedWorkouts
+  - Error: 400 if product is in any cart or referenced in any order
 
-#### PerformedWorkout Endpoints
-- **GET /api/performed-workouts/** - List all performed workouts
-  - Response: Array of PerformedWorkout objects (includes nested workout_structure details and intervals with time in seconds)
-  - Ordering: Descending by created_at (newest first)
-- **POST /api/performed-workouts/** - Create a new performed workout
-  - Request body: `{ workout_structure_id, performed_date, intervals: [{ interval_number, time_seconds }] }`
-  - Response: Created PerformedWorkout object with intervals
-  - Error: 400 if validation fails (invalid date, non-positive time_seconds, interval count mismatch with WorkoutStructure, etc.)
-- **DELETE /api/performed-workouts/{id}/** - Delete a performed workout
-  - Response: 204 No Content
+#### Cart Endpoints
+- **GET /api/cart/** - Get current cart
+  - Response: Cart object with nested items (each item includes product details, quantity, subtotal)
+  - Note: Returns empty cart structure if no cart exists
+- **POST /api/cart/items/** - Add item to cart (cross-aggregate operation)
+  - Request body: `{ product_id, quantity }`
+  - Response: Updated Cart object
+  - Side effects: Reserves stock (decrements product's stock_quantity)
+  - Error: 400 if quantity exceeds available stock
+  - Note: If product already in cart, increases quantity (and reserves additional stock)
+- **PATCH /api/cart/items/{product_id}/** - Update item quantity (cross-aggregate operation)
+  - Request body: `{ quantity }`
+  - Response: Updated Cart object
+  - Side effects: Adjusts stock reservation (increases or decreases product's stock_quantity)
+  - Error: 400 if new quantity exceeds available stock
+- **DELETE /api/cart/items/{product_id}/** - Remove item from cart (cross-aggregate operation)
+  - Response: Updated Cart object
+  - Side effects: Releases reserved stock (increments product's stock_quantity)
+- **POST /api/cart/submit/** - Submit cart as order (cross-aggregate operation)
+  - Response: Created Order object
+  - Side effects: Creates Order with OrderItems, clears Cart
+  - Error: 400 if cart is empty
+  - Note: Stock remains decremented (was reserved when added to cart)
+
+#### Order Endpoints
+- **GET /api/orders/** - List all orders
+  - Response: Array of Order objects with nested items
+  - Ordering: Descending by submitted_at (newest first)
 
 ## Future considerations
 
@@ -215,10 +253,10 @@ The following topics are intentionally deferred to keep the initial implementati
 
 ### Value objects
 
-Wrapping primitive types in domain-specific value objects (e.g., `Meters`, `Minutes`, `IntervalCount`) can provide:
-- Type safety (compiler catches mixing up meters vs. seconds)
+Wrapping primitive types in domain-specific value objects (e.g., `Money`, `Quantity`, `ProductName`) can provide:
+- Type safety (compiler catches mixing up dollars vs. cents)
 - Validation at construction time
-- Domain-specific behavior (e.g., formatting methods)
+- Domain-specific behavior (e.g., currency formatting methods)
 
 Trade-off: Adds complexity and requires custom serialization in `to_dict()`.
 
@@ -243,7 +281,7 @@ Trade-off: Adds indirection and may be overkill for small applications.
 
 ### Django app structure: single app vs. one app per aggregate
 
-The current implementation uses a single Django app (`infrastructure/django_app/`) containing all models, views, and repositories. An alternative approach is to create one Django app per aggregate (e.g., `infrastructure/workout_structure/` and `infrastructure/performed_workout/`).
+The current implementation uses a single Django app (`infrastructure/django_app/`) containing all models, views, and repositories. An alternative approach is to create one Django app per aggregate (e.g., `infrastructure/product/`, `infrastructure/cart/`, and `infrastructure/order/`).
 
 **Single app (current approach):**
 - Simpler configuration (one entry in `INSTALLED_APPS`)

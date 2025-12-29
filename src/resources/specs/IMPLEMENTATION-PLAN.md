@@ -1,6 +1,6 @@
 # Implementation Plan
 
-This document outlines the implementation plan for the workout tracking application.
+This document outlines the implementation plan for the e-commerce application.
 
 ## Phase 1: Project Setup
 
@@ -17,31 +17,33 @@ This document outlines the implementation plan for the workout tracking applicat
 ## Phase 2: Backend Domain Layer (no Django dependencies)
 
 3. **Domain entities**
-   - `domain/aggregates/workout_structure/entity.py` - WorkoutStructure frozen dataclass with `generate_name()` method
-   - `domain/aggregates/performed_workout/entities.py` - PerformedWorkout and WorkoutInterval frozen dataclasses
+   - `domain/aggregates/product/entity.py` - Product frozen dataclass
+   - `domain/aggregates/cart/entities.py` - Cart and CartItem frozen dataclasses
+   - `domain/aggregates/order/entities.py` - Order and OrderItem frozen dataclasses
 
 4. **Repository interfaces**
-   - `domain/aggregates/workout_structure/repository.py` - Abstract base class defining CRUD operations
-   - `domain/aggregates/performed_workout/repository.py` - Abstract base class defining CRUD operations
+   - `domain/aggregates/product/repository.py` - Abstract base class defining CRUD operations
+   - `domain/aggregates/cart/repository.py` - Abstract base class defining CRUD operations
+   - `domain/aggregates/order/repository.py` - Abstract base class defining CRUD operations
 
 5. **Domain validation**
-   - Validation logic for each entity (interval_count ranges, date constraints, etc.)
-   - Custom domain exceptions (e.g., `DuplicateWorkoutStructureError`, `ValidationError`)
+   - Validation logic for each entity (price constraints, quantity limits, etc.)
+   - Custom domain exceptions (e.g., `DuplicateProductError`, `InsufficientStockError`, `ValidationError`)
 
 6. **Domain layer tests**
    - pytest tests for entity creation and validation
-   - pytest tests for `generate_name()` formatting
 
 ## Phase 3: Backend Infrastructure Layer
 
 7. **Django ORM models**
-   - `infrastructure/django_app/models.py` - WorkoutStructure, PerformedWorkout, WorkoutInterval models
-   - Unique constraint on WorkoutStructure (interval_count, work_phase_meters, rest_phase_minutes)
-   - Cascade delete from WorkoutStructure to PerformedWorkout
+   - `infrastructure/django_app/models.py` - Product, Cart, CartItem, Order, OrderItem models
+   - Unique constraint on Product name
+   - Foreign key relationships and constraints
 
 8. **Repository implementations**
-   - `infrastructure/django_app/repositories/workout_structure_repository.py` - Django ORM implementation
-   - `infrastructure/django_app/repositories/performed_workout_repository.py` - Django ORM implementation
+   - `infrastructure/django_app/repositories/product_repository.py` - Django ORM implementation
+   - `infrastructure/django_app/repositories/cart_repository.py` - Django ORM implementation
+   - `infrastructure/django_app/repositories/order_repository.py` - Django ORM implementation
    - Mapping between ORM models and domain entities
 
 9. **Unit of Work**
@@ -57,16 +59,18 @@ This document outlines the implementation plan for the workout tracking applicat
 ## Phase 4: Backend Application Layer
 
 12. **Application services**
-    - `application/services/workout_structure_service.py` - Create, list, delete workout structures
-    - `application/services/performed_workout_service.py` - Create, list, delete performed workouts (with interval count validation)
+    - `application/services/product_service.py` - Create, list, delete products
+    - `application/services/cart_service.py` - Add/remove/update cart items, submit cart (cross-aggregate orchestration)
+    - `application/services/order_service.py` - List orders
 
 13. **Application layer tests**
     - pytest tests for application services with mocked repositories
+    - Tests for cross-aggregate operations (stock reservation, cart submission)
 
 ## Phase 5: Backend API Layer
 
 14. **Django views**
-    - `infrastructure/django_app/views.py` - REST endpoints for all six API operations
+    - `infrastructure/django_app/views.py` - REST endpoints for all API operations
     - Request parsing and response formatting using `to_dict()`
 
 15. **URL routing**
@@ -76,23 +80,23 @@ This document outlines the implementation plan for the workout tracking applicat
     - Generate and apply initial migrations
 
 17. **API integration tests**
-    - pytest tests for all endpoints (create, list, delete for both entities)
+    - pytest tests for all endpoints
     - Tests for validation error responses
-    - Tests for cascade delete behavior
+    - Tests for cross-aggregate operation side effects (stock changes)
 
 ## Phase 6: Frontend Foundation
 
 18. **TypeScript types**
-    - `types/` - WorkoutStructure, PerformedWorkout, WorkoutInterval interfaces matching API responses
+    - `types/` - Product, Cart, CartItem, Order, OrderItem interfaces matching API responses
 
 19. **API service layer**
-    - `services/api.ts` - Functions for all API calls (list, create, delete for both entities)
+    - `services/api.ts` - Functions for all API calls
 
-20. **Time utilities**
-    - `services/timeUtils.ts` - Parse time string to seconds, format seconds to display string
+20. **Currency utilities**
+    - `services/currencyUtils.ts` - Format prices for display
 
 21. **Frontend utility tests**
-    - Jest tests for time parsing and formatting functions
+    - Jest tests for currency formatting functions
 
 ## Phase 7: Frontend Components
 
@@ -100,38 +104,43 @@ This document outlines the implementation plan for the workout tracking applicat
     - ConfirmationDialog - Chakra UI Modal wrapper for delete confirmations
     - ErrorAlert - Display API/validation errors
 
-23. **WorkoutStructure components**
-    - WorkoutStructureList - Display list with delete buttons
-    - WorkoutStructureForm - Create form with validation
+23. **Product components**
+    - ProductList - Display list with delete buttons
+    - ProductForm - Create form with validation
 
-24. **PerformedWorkout components**
-    - PerformedWorkoutList - Display list with delete buttons
-    - PerformedWorkoutForm - Create form with structure dropdown, date picker, dynamic interval inputs
+24. **Cart components**
+    - CartView - Display cart items with quantity controls and remove buttons
+    - AddToCartForm - Product selector and quantity input
+    - SubmitOrderButton - Submit cart as order
 
-25. **Component tests**
+25. **Order components**
+    - OrderList - Display order history with details
+
+26. **Component tests**
     - Jest + React Testing Library tests for key component behaviors
 
 ## Phase 8: Frontend Pages
 
-26. **Page components**
-    - Landing page with navigation
-    - Workout Structures page (list + create form)
-    - Performed Workouts page (list + create form)
+27. **Page components**
+    - Landing page with navigation and cart item count
+    - Product Catalog page (list + create form)
+    - Cart page (cart view + add to cart form + submit)
+    - Order History page (order list)
 
-27. **Routing**
+28. **Routing**
     - React Router configuration
 
-28. **Page tests**
+29. **Page tests**
     - Jest tests for page rendering and navigation
 
 ## Phase 9: Integration & Polish
 
-29. **End-to-end verification**
-    - Manual verification of all flows: create/delete structures, create/delete workouts
-    - Verify cascade delete behavior
+30. **End-to-end verification**
+    - Manual verification of all flows: create/delete products, add/remove/update cart items, submit orders
+    - Verify stock reservation and release behavior
     - Verify validation errors display correctly
 
-30. **Empty states and error handling**
+31. **Empty states and error handling**
     - Implement empty state messages
     - Handle API errors gracefully
 
