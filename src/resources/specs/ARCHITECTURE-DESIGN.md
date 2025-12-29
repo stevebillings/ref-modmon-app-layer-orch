@@ -20,6 +20,44 @@ The backend should use the Repository Pattern, and the Unit of Work Pattern, but
 
 Follow best practices for good separation of concerns in this type of application.
 
+### Directory structure
+
+```
+project-root/
+├── backend/
+│   ├── domain/                    # Core business logic (NO Django dependencies)
+│   │   ├── aggregates/            # Organized by aggregate
+│   │   │   ├── workout_structure/
+│   │   │   │   ├── entity.py              # WorkoutStructure aggregate root
+│   │   │   │   └── repository.py          # Repository interface (ABC)
+│   │   │   └── performed_workout/
+│   │   │       ├── entities.py            # PerformedWorkout (root) + WorkoutInterval
+│   │   │       └── repository.py          # Repository interface (ABC)
+│   │   └── services/              # Domain services (cross-aggregate business logic)
+│   ├── application/               # Application layer (use case orchestration)
+│   │   └── services/              # Application services
+│   └── infrastructure/            # Framework-dependent code
+│       └── django_app/            # Django project
+│           ├── models.py          # ORM models
+│           ├── views.py           # API views
+│           ├── serializers.py     # DRF serializers
+│           ├── repositories/      # Repository implementations (Django ORM)
+│           │   ├── workout_structure_repository.py
+│           │   └── performed_workout_repository.py
+│           └── unit_of_work.py    # Unit of Work implementation
+├── frontend/
+│   └── src/
+│       ├── components/            # Reusable UI components
+│       ├── pages/                 # Page-level components
+│       ├── services/              # API client functions
+│       └── types/                 # TypeScript type definitions
+```
+
+**Key separation principles**:
+- Code in `domain/` must never import from `infrastructure/` or Django
+- The `infrastructure/` layer implements interfaces defined in `domain/`
+- One repository per aggregate root (no separate repository for WorkoutInterval)
+
 ## Design
 
 ### Data entities
