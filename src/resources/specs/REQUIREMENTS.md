@@ -12,7 +12,8 @@ Each workout structure describes an interval workout performed on a Concept 2 ro
   - The duration of each rest phase in minutes
 - One page where the user can see all performed workouts already entered, and create/enter a new one. A performed workout consists of:
   - The workout structure (selected from a pulldown list)
-  - The time (minutes:seconds) of each of the workout phases
+  - The date the workout was performed (date picker, defaults to today)
+  - The time of each interval (entered sequentially in order: interval 1, 2, 3, etc.)
 - A landing page that lets the user navigate to the above pages.
 
 ## Non Functional requirements
@@ -23,4 +24,16 @@ Each workout structure describes an interval workout performed on a Concept 2 ro
 - We only need to run in dev mode on localhost.
 - Single-user application with no authentication required.
 - No edit capability for now; users can only create and delete records.
+- Delete operations require confirmation dialogs.
+
+## Time Format
+
+- **Display**: `m:ss` for times under 1 hour (e.g., "1:45"), `h:mm:ss` for times of 1 hour or more (e.g., "1:02:30")
+- **Entry**: Single text field requiring colon format. Accepted formats: `m:ss`, `mm:ss`, or `h:mm:ss`
+
+## Empty States
+
+- No workout structures: "No workout structures defined yet. Create one to get started."
+- No performed workouts: "No workouts recorded yet. Record your first workout!"
+- Creating a performed workout when no structures exist: Disable the form with a message prompting the user to create a structure first.
 

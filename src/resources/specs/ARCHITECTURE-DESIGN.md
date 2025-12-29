@@ -154,7 +154,7 @@ Response(dict_data)
 - **work_phase_meters** (integer) - Length of each work phase in meters (same for all intervals)
 - **rest_phase_minutes** (integer) - Duration of each rest phase in whole minutes (same for all intervals)
 - **created_at** (timestamp)
-- **Note**: Name is not stored. Backend generates a display name at read time (e.g., "5 x 500m / 2min rest") and includes it in API responses.
+- **Note**: Name is not stored. Backend generates a display name at read time (e.g., "5 x 500m / 2 min rest") and includes it in API responses. Always use singular "min" regardless of value.
 - **Uniqueness constraint**: The combination of (interval_count, work_phase_meters, rest_phase_minutes) must be unique. Attempting to create a duplicate returns an error.
 - **Validation**:
   - interval_count: 1–100 inclusive
@@ -164,11 +164,12 @@ Response(dict_data)
 #### PerformedWorkout
 - **id** (Primary Key)
 - **workout_structure_id** (Foreign Key to WorkoutStructure)
-- **performed_date** (date) - The date the workout was performed (user-entered)
+- **performed_date** (date) - The date the workout was performed (user-entered, defaults to today in UI)
 - **created_at** (timestamp)
 - **Cascade delete**: When a WorkoutStructure is deleted, all associated PerformedWorkouts are also deleted.
 - **Validation**:
   - performed_date: Must not be more than one day in the future (up to and including tomorrow)
+  - The number of intervals submitted must match the interval_count of the referenced WorkoutStructure
 
 #### WorkoutInterval
 - **id** (Primary Key)
@@ -177,7 +178,11 @@ Response(dict_data)
 - **time_seconds** (integer) - Total time for the work phase in seconds
 - **Validation**:
   - time_seconds: Must be positive (> 0)
-- **Note**: Frontend handles conversion between seconds (for API/DB) and h:mm:ss format (for user display/entry)
+- **Ordering**: Intervals are always displayed and entered in sequential order (1, 2, 3, etc.)
+- **Time format**:
+  - Display: `m:ss` for times under 1 hour (e.g., "1:45"), `h:mm:ss` for times ≥ 1 hour (e.g., "1:02:30")
+  - Entry: Single text field requiring colon format (`m:ss`, `mm:ss`, or `h:mm:ss`)
+  - Frontend handles conversion between seconds (API/DB) and formatted string (display/entry)
 
 ### Backend APIs
 
@@ -200,7 +205,7 @@ Response(dict_data)
 - **POST /api/performed-workouts/** - Create a new performed workout
   - Request body: `{ workout_structure_id, performed_date, intervals: [{ interval_number, time_seconds }] }`
   - Response: Created PerformedWorkout object with intervals
-  - Error: 400 if validation fails (invalid date, non-positive time_seconds, etc.)
+  - Error: 400 if validation fails (invalid date, non-positive time_seconds, interval count mismatch with WorkoutStructure, etc.)
 - **DELETE /api/performed-workouts/{id}/** - Delete a performed workout
   - Response: 204 No Content
 
