@@ -14,7 +14,7 @@ The core business logic should have no dependencies on Django, and be clearly se
 
 The backend architecture should follow Domain Driven Design. We'll choose some simplifications noted below to reduce complexity.
 
-The backend should use the Repository Pattern, and the Unit of Work Pattern, but rather than using events for eventual consistency across aggregates, the backend should achieve strong consistency across aggregate by using (a) a single database transaction per request that includes all database activity within that request, and (b) an application layer to orchistrate actions that span aggregates.
+The backend should be a modular monolith that uses an application layer to achieve strong consistency by orchestrating operations that make changes across multiple aggregates (as opposed to using events for eventual consistency). It should use the Repository Pattern and the Unit of Work Pattern to keep the core business logic free of dependencies on low level concerns like the database. It should use a single database transaction per request that includes all database activity within that request (which may span multiple aggregates).
 
 ### Frontend architecture
 
@@ -61,6 +61,7 @@ project-root/
 - Code in `domain/` must never import from `infrastructure/` or Django
 - The `infrastructure/` layer implements interfaces defined in `domain/`
 - One repository per aggregate root (no separate repository for CartItem or OrderItem)
+- **Aggregate isolation**: An aggregate must never import or embed entities from another aggregate. References to other aggregates must be by ID only. Any data needed from another aggregate should be passed in as snapshots (copied values) by the application layer at the time of the operation. This keeps aggregates independently evolvable and testable.
 
 ### Data flow pattern
 
@@ -82,13 +83,15 @@ class Product:
 @dataclass(frozen=True)
 class CartItem:
     id: UUID
-    product: Product       # Nested dataclass
+    product_id: UUID       # Reference by ID only (not the Product entity)
+    product_name: str      # Snapshot of product name when added to cart
+    unit_price: Decimal    # Snapshot of product price when added to cart
     quantity: int
 
 @dataclass(frozen=True)
 class Cart:
     id: UUID
-    items: List[CartItem]  # Nested list of dataclasses
+    items: List[CartItem]  # CartItems contain snapshots, not Product references
     created_at: datetime
 
 @dataclass(frozen=True)
@@ -185,12 +188,15 @@ Response(dict_data)
 #### CartItem
 - **id** (Primary Key, UUID)
 - **cart_id** (Foreign Key to Cart)
-- **product_id** (Foreign Key to Product)
+- **product_id** (UUID) - Reference to Product by ID only (not a foreign key constraint, to maintain aggregate isolation)
+- **product_name** (string) - Snapshot of product name when added to cart
+- **unit_price** (decimal) - Snapshot of product price when added to cart
 - **quantity** (integer) - Quantity of this product in the cart
 - **Validation**:
   - quantity: Must be positive (> 0)
-  - quantity cannot exceed product's available stock_quantity
+  - quantity cannot exceed product's available stock_quantity (validated by application layer)
 - **Uniqueness constraint**: Only one CartItem per product per cart (adding same product increases quantity)
+- **Note**: Product name and price are snapshotted when the item is added to the cart. This maintains aggregate isolation (Cart does not depend on Product entity) and preserves the price the user saw when adding the item.
 
 #### Order
 - **id** (Primary Key, UUID)
