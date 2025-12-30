@@ -26,7 +26,7 @@ class UnitOfWork:
     the same UnitOfWork instance to ensure transactional consistency.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._product_repository: ProductRepository | None = None
         self._cart_repository: CartRepository | None = None
         self._order_repository: OrderRepository | None = None

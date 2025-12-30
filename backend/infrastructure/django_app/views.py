@@ -1,7 +1,6 @@
-import json
-
 from rest_framework import status
 from rest_framework.decorators import api_view
+from rest_framework.request import Request
 from rest_framework.response import Response
 
 from application.services.cart_service import CartService
@@ -69,7 +68,7 @@ def handle_domain_error(error: DomainError) -> Response:
 
 
 @api_view(["GET", "POST"])
-def products_list_create(request):
+def products_list_create(request: Request) -> Response:
     """List all products or create a new product."""
     with unit_of_work() as uow:
         service = ProductService(uow)
@@ -97,7 +96,7 @@ def products_list_create(request):
 
 
 @api_view(["DELETE"])
-def product_delete(request, product_id):
+def product_delete(request: Request, product_id: str) -> Response:
     """Delete a product."""
     with unit_of_work() as uow:
         service = ProductService(uow)
@@ -112,7 +111,7 @@ def product_delete(request, product_id):
 
 
 @api_view(["GET"])
-def cart_get(request):
+def cart_get(request: Request) -> Response:
     """Get the current cart."""
     with unit_of_work() as uow:
         service = CartService(uow)
@@ -124,7 +123,7 @@ def cart_get(request):
 
 
 @api_view(["POST"])
-def cart_add_item(request):
+def cart_add_item(request: Request) -> Response:
     """Add an item to the cart."""
     with unit_of_work() as uow:
         service = CartService(uow)
@@ -148,7 +147,7 @@ def cart_add_item(request):
 
 
 @api_view(["PATCH"])
-def cart_update_item(request, product_id):
+def cart_update_item(request: Request, product_id: str) -> Response:
     """Update the quantity of an item in the cart."""
     with unit_of_work() as uow:
         service = CartService(uow)
@@ -172,7 +171,7 @@ def cart_update_item(request, product_id):
 
 
 @api_view(["DELETE"])
-def cart_remove_item(request, product_id):
+def cart_remove_item(request: Request, product_id: str) -> Response:
     """Remove an item from the cart."""
     with unit_of_work() as uow:
         service = CartService(uow)
@@ -187,7 +186,7 @@ def cart_remove_item(request, product_id):
 
 
 @api_view(["POST"])
-def cart_submit(request):
+def cart_submit(request: Request) -> Response:
     """Submit the cart as an order."""
     with unit_of_work() as uow:
         service = CartService(uow)
@@ -204,7 +203,7 @@ def cart_submit(request):
 
 
 @api_view(["GET"])
-def orders_list(request):
+def orders_list(request: Request) -> Response:
     """List all orders."""
     with unit_of_work() as uow:
         service = OrderService(uow)

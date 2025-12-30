@@ -23,7 +23,7 @@ class OrderItem:
 class Order:
     id: UUID
     items: List[OrderItem]
-    submitted_at: datetime
+    submitted_at: datetime | None
 
     @property
     def total(self) -> Decimal:

@@ -29,7 +29,8 @@ def validate_product_price(price: Decimal | str | float) -> Decimal:
         raise ValidationError("Price must be greater than 0", field="price")
 
     # Check decimal places
-    if price.as_tuple().exponent < -2:
+    exponent = price.as_tuple().exponent
+    if isinstance(exponent, int) and exponent < -2:
         raise ValidationError("Price cannot have more than 2 decimal places", field="price")
 
     return price

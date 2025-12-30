@@ -1,4 +1,5 @@
 from typing import List
+from uuid import UUID
 
 from domain.aggregates.order.entities import Order, OrderItem
 from domain.aggregates.order.repository import OrderRepository
@@ -38,7 +39,7 @@ class DjangoOrderRepository(OrderRepository):
         )
 
     @staticmethod
-    def _item_to_domain(model: OrderItemModel, order_id) -> OrderItem:
+    def _item_to_domain(model: OrderItemModel, order_id: UUID) -> OrderItem:
         """Convert ORM order item to domain entity."""
         return OrderItem(
             id=model.id,

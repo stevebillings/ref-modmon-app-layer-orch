@@ -14,7 +14,7 @@ class ProductModel(models.Model):
         db_table = "product"
         ordering = ["name"]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
 
 
@@ -25,7 +25,7 @@ class CartModel(models.Model):
     class Meta:
         db_table = "cart"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"Cart {self.id}"
 
 
@@ -48,7 +48,7 @@ class CartItemModel(models.Model):
             )
         ]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.product_name} x {self.quantity}"
 
 
@@ -60,7 +60,7 @@ class OrderModel(models.Model):
         db_table = "order"
         ordering = ["-submitted_at"]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"Order {self.id}"
 
 
@@ -77,5 +77,5 @@ class OrderItemModel(models.Model):
     class Meta:
         db_table = "order_item"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.product_name} x {self.quantity}"

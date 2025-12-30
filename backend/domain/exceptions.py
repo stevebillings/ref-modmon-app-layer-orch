@@ -7,7 +7,7 @@ class DomainError(Exception):
 class ValidationError(DomainError):
     """Raised when validation fails."""
 
-    def __init__(self, message: str, field: str | None = None):
+    def __init__(self, message: str, field: str | None = None) -> None:
         self.message = message
         self.field = field
         super().__init__(message)
@@ -16,7 +16,7 @@ class ValidationError(DomainError):
 class DuplicateProductError(DomainError):
     """Raised when attempting to create a product with a name that already exists."""
 
-    def __init__(self, name: str):
+    def __init__(self, name: str) -> None:
         self.name = name
         super().__init__(f"A product with name '{name}' already exists")
 
@@ -24,7 +24,7 @@ class DuplicateProductError(DomainError):
 class InsufficientStockError(DomainError):
     """Raised when there isn't enough stock for an operation."""
 
-    def __init__(self, product_name: str, available: int, requested: int):
+    def __init__(self, product_name: str, available: int, requested: int) -> None:
         self.product_name = product_name
         self.available = available
         self.requested = requested
@@ -37,7 +37,7 @@ class InsufficientStockError(DomainError):
 class ProductNotFoundError(DomainError):
     """Raised when a product is not found."""
 
-    def __init__(self, product_id: str):
+    def __init__(self, product_id: str) -> None:
         self.product_id = product_id
         super().__init__(f"Product with ID '{product_id}' not found")
 
@@ -45,7 +45,7 @@ class ProductNotFoundError(DomainError):
 class ProductInUseError(DomainError):
     """Raised when attempting to delete a product that is in use."""
 
-    def __init__(self, product_id: str, reason: str):
+    def __init__(self, product_id: str, reason: str) -> None:
         self.product_id = product_id
         self.reason = reason
         super().__init__(f"Cannot delete product: {reason}")
@@ -54,7 +54,7 @@ class ProductInUseError(DomainError):
 class CartItemNotFoundError(DomainError):
     """Raised when a cart item is not found."""
 
-    def __init__(self, product_id: str):
+    def __init__(self, product_id: str) -> None:
         self.product_id = product_id
         super().__init__(f"Cart item for product '{product_id}' not found")
 
@@ -62,5 +62,5 @@ class CartItemNotFoundError(DomainError):
 class EmptyCartError(DomainError):
     """Raised when attempting to submit an empty cart."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__("Cannot submit an empty cart")
