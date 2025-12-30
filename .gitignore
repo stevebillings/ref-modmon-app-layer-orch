@@ -1,4 +1,10 @@
+.vscode/
 __pycache__/
 .claude/
 node_modules/
 frontend/dist/
+*.sqlite3
+.venv/
+.pytest_cache/
+.mypy_cache/
+*.pyc
