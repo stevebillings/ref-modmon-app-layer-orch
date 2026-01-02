@@ -17,6 +17,17 @@ class ProductRepository(ABC):
         pass
 
     @abstractmethod
+    def get_by_id_for_update(self, product_id: UUID) -> Product | None:
+        """
+        Get a product by its ID with a row-level lock for update.
+
+        Use this method when you need to read a product and then modify it
+        (e.g., stock updates) to prevent race conditions from concurrent requests.
+        The lock is held until the current transaction commits.
+        """
+        pass
+
+    @abstractmethod
     def save(self, product: Product) -> Product:
         """Save a product (create or update)."""
         pass

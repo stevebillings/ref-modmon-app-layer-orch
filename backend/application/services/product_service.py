@@ -3,6 +3,8 @@ from decimal import Decimal
 from typing import List
 from uuid import uuid4
 
+from django.db import IntegrityError
+
 from domain.aggregates.product.entity import Product
 from domain.exceptions import (
     DuplicateProductError,
@@ -40,7 +42,7 @@ class ProductService:
         validated_price = validate_product_price(price)
         validated_quantity = validate_stock_quantity(stock_quantity)
 
-        # Check for duplicate name
+        # Check for duplicate name (fast path for common case)
         if self.uow.products.exists_by_name(validated_name):
             raise DuplicateProductError(validated_name)
 
@@ -53,7 +55,12 @@ class ProductService:
             created_at=datetime.now(),
         )
 
-        return self.uow.products.save(product)
+        try:
+            return self.uow.products.save(product)
+        except IntegrityError:
+            # Handle race condition: another request created the product
+            # after our exists_by_name check but before our save
+            raise DuplicateProductError(validated_name)
 
     def delete_product(self, product_id: str) -> None:
         """
@@ -70,7 +77,10 @@ class ProductService:
         except ValueError:
             raise ProductNotFoundError(product_id)
 
-        product = self.uow.products.get_by_id(pid)
+        # Use get_by_id_for_update to acquire a row-level lock, preventing
+        # race conditions where another request adds this product to cart
+        # while we're checking and deleting (add_item also uses this lock)
+        product = self.uow.products.get_by_id_for_update(pid)
         if product is None:
             raise ProductNotFoundError(product_id)
 

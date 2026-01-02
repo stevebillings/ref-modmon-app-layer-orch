@@ -25,6 +25,20 @@ class DjangoProductRepository(ProductRepository):
         except ProductModel.DoesNotExist:
             return None
 
+    def get_by_id_for_update(self, product_id: UUID) -> Product | None:
+        """
+        Get a product by its ID with a row-level lock for update.
+
+        Uses SELECT ... FOR UPDATE to acquire an exclusive lock on the row,
+        preventing concurrent transactions from modifying it until this
+        transaction commits.
+        """
+        try:
+            model = ProductModel.objects.select_for_update().get(id=product_id)
+            return self._to_domain(model)
+        except ProductModel.DoesNotExist:
+            return None
+
     def save(self, product: Product) -> Product:
         """Save a product (create or update)."""
         model, _ = ProductModel.objects.update_or_create(

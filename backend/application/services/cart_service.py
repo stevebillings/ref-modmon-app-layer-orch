@@ -40,7 +40,9 @@ class CartService:
         except ValueError:
             raise ProductNotFoundError(product_id)
 
-        product = self.uow.products.get_by_id(pid)
+        # Use get_by_id_for_update to acquire a row-level lock, preventing
+        # race conditions when multiple requests try to reserve stock concurrently
+        product = self.uow.products.get_by_id_for_update(pid)
         if product is None:
             raise ProductNotFoundError(product_id)
 
@@ -115,7 +117,9 @@ class CartService:
         if item is None:
             raise CartItemNotFoundError(product_id)
 
-        product = self.uow.products.get_by_id(pid)
+        # Use get_by_id_for_update to acquire a row-level lock, preventing
+        # race conditions when multiple requests try to modify stock concurrently
+        product = self.uow.products.get_by_id_for_update(pid)
         if product is None:
             raise ProductNotFoundError(product_id)
 
@@ -159,8 +163,9 @@ class CartService:
         if item is None:
             raise CartItemNotFoundError(product_id)
 
-        # Release stock
-        product = self.uow.products.get_by_id(pid)
+        # Release stock - use get_by_id_for_update to acquire a row-level lock,
+        # preventing race conditions when multiple requests try to release stock
+        product = self.uow.products.get_by_id_for_update(pid)
         if product:
             updated_product = product.with_stock_quantity(
                 product.stock_quantity + item.quantity

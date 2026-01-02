@@ -156,6 +156,95 @@ Response(dict_data)
 - Nested structures handled automatically
 - Thin infrastructure layer with minimal Django-specific code
 
+## Concurrency control
+
+The application must handle concurrent requests safely to prevent race conditions that could corrupt data (e.g., overselling stock, duplicate records). This section documents the patterns used to prevent race conditions.
+
+### Non-functional requirement
+
+All operations that read-then-modify shared state must be protected against concurrent access. The system must prevent:
+- Stock going negative due to concurrent reservations
+- Duplicate records bypassing uniqueness checks
+- Lost updates when multiple requests modify the same data
+
+### Patterns and approaches
+
+Choose the appropriate pattern based on the type of operation:
+
+| Scenario | Pattern | Implementation |
+|----------|---------|----------------|
+| Read-then-modify (e.g., stock updates) | Row-level locking | `select_for_update()` before reading |
+| Check-then-create singletons | Atomic get-or-create | `get_or_create()` with fixed identifier |
+| Uniqueness validation | DB constraint + fallback | Unique constraint + catch `IntegrityError` |
+| Multiple operations on same resource | Lock ordering | Acquire locks in consistent order |
+
+### Row-level locking for read-then-modify
+
+When an operation reads a value, makes a decision based on it, and then writes an update, use `select_for_update()` to acquire an exclusive lock on the row:
+
+```python
+# In repository interface (domain layer)
+@abstractmethod
+def get_by_id_for_update(self, entity_id: UUID) -> Entity | None:
+    """Get entity with row-level lock for update."""
+    pass
+
+# In repository implementation (infrastructure layer)
+def get_by_id_for_update(self, entity_id: UUID) -> Entity | None:
+    try:
+        model = EntityModel.objects.select_for_update().get(id=entity_id)
+        return self._to_domain(model)
+    except EntityModel.DoesNotExist:
+        return None
+
+# In application service
+def update_entity(self, entity_id: str, new_value: int) -> Entity:
+    entity = self.uow.entities.get_by_id_for_update(entity_id)  # Lock acquired
+    # Check business rules against locked data
+    if new_value > entity.available:
+        raise InsufficientResourceError(...)
+    # Update is safe - no other transaction can modify this row
+    updated = entity.with_value(new_value)
+    return self.uow.entities.save(updated)
+```
+
+The lock is held until the transaction commits, preventing other transactions from reading or modifying the row.
+
+### Atomic get-or-create for singletons
+
+When implementing singleton patterns (e.g., a single cart), use `get_or_create()` with a fixed identifier to prevent duplicate creation:
+
+```python
+SINGLETON_ID = UUID("00000000-0000-0000-0000-000000000001")
+
+def get_singleton(self) -> Entity:
+    model, _ = EntityModel.objects.get_or_create(id=SINGLETON_ID)
+    return self._to_domain(model)
+```
+
+This is atomic at the database level - if two requests try to create simultaneously, only one succeeds and the other returns the existing record.
+
+### Database constraints with application fallback
+
+For uniqueness validation, rely on database constraints as the ultimate enforcement, with application-level checks for better error messages:
+
+```python
+def create_entity(self, name: str) -> Entity:
+    # Fast path: application-level check for common case
+    if self.uow.entities.exists_by_name(name):
+        raise DuplicateEntityError(name)
+
+    entity = Entity(id=uuid4(), name=name)
+
+    try:
+        return self.uow.entities.save(entity)
+    except IntegrityError:
+        # Handle race condition: another request created it after our check
+        raise DuplicateEntityError(name)
+```
+
+This provides both good user experience (fast error response) and correctness (database enforces constraint atomically).
+
 ## Future considerations
 
 The following topics are intentionally deferred to keep the initial implementation simple. They may be worth revisiting as the application grows:
