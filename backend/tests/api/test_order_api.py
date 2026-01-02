@@ -1,30 +1,34 @@
+from typing import Any, cast
+
 import pytest
 from rest_framework.test import APIClient
 
 
 @pytest.fixture
-def api_client():
+def api_client() -> APIClient:
     return APIClient()
 
 
 @pytest.fixture
-def product(api_client):
+def product(api_client: APIClient) -> dict[str, Any]:
     response = api_client.post(
         "/api/products/",
         {"name": "Test Product", "price": "10.00", "stock_quantity": 100},
         format="json",
     )
-    return response.json()
+    return cast(dict[str, Any], response.json())
 
 
 @pytest.mark.django_db
 class TestOrderList:
-    def test_list_orders_empty(self, api_client):
+    def test_list_orders_empty(self, api_client: APIClient) -> None:
         response = api_client.get("/api/orders/")
         assert response.status_code == 200
         assert response.json() == {"results": []}
 
-    def test_list_orders(self, api_client, product):
+    def test_list_orders(
+        self, api_client: APIClient, product: dict[str, Any]
+    ) -> None:
         # Create orders
         for _ in range(3):
             api_client.post(
@@ -39,7 +43,9 @@ class TestOrderList:
         results = response.json()["results"]
         assert len(results) == 3
 
-    def test_orders_include_total(self, api_client, product):
+    def test_orders_include_total(
+        self, api_client: APIClient, product: dict[str, Any]
+    ) -> None:
         api_client.post(
             "/api/cart/items/",
             {"product_id": product["id"], "quantity": 5},
@@ -51,7 +57,9 @@ class TestOrderList:
         order = response.json()["results"][0]
         assert order["total"] == "50.00"
 
-    def test_orders_newest_first(self, api_client, product):
+    def test_orders_newest_first(
+        self, api_client: APIClient, product: dict[str, Any]
+    ) -> None:
         for _ in range(3):
             api_client.post(
                 "/api/cart/items/",
@@ -70,7 +78,7 @@ class TestOrderList:
 
 @pytest.mark.django_db
 class TestFullWorkflow:
-    def test_complete_order_workflow(self, api_client):
+    def test_complete_order_workflow(self, api_client: APIClient) -> None:
         # 1. Create products
         product1 = api_client.post(
             "/api/products/",

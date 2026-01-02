@@ -10,7 +10,7 @@ from domain.aggregates.order.entities import Order, OrderItem
 
 
 class TestProduct:
-    def test_create_product(self):
+    def test_create_product(self) -> None:
         product_id = uuid4()
         now = datetime.now()
         product = Product(
@@ -27,7 +27,7 @@ class TestProduct:
         assert product.stock_quantity == 100
         assert product.created_at == now
 
-    def test_product_is_frozen(self):
+    def test_product_is_frozen(self) -> None:
         product = Product(
             id=uuid4(),
             name="Test",
@@ -37,9 +37,9 @@ class TestProduct:
         )
 
         with pytest.raises(AttributeError):
-            product.name = "New Name"
+            product.name = "New Name"  # type: ignore[misc]
 
-    def test_with_stock_quantity(self):
+    def test_with_stock_quantity(self) -> None:
         product = Product(
             id=uuid4(),
             name="Test",
@@ -58,7 +58,7 @@ class TestProduct:
 
 
 class TestCartItem:
-    def test_create_cart_item(self):
+    def test_create_cart_item(self) -> None:
         item_id = uuid4()
         product_id = uuid4()
         item = CartItem(
@@ -75,7 +75,7 @@ class TestCartItem:
         assert item.unit_price == Decimal("9.99")
         assert item.quantity == 3
 
-    def test_subtotal(self):
+    def test_subtotal(self) -> None:
         item = CartItem(
             id=uuid4(),
             product_id=uuid4(),
@@ -86,7 +86,7 @@ class TestCartItem:
 
         assert item.subtotal == Decimal("29.97")
 
-    def test_with_quantity(self):
+    def test_with_quantity(self) -> None:
         item = CartItem(
             id=uuid4(),
             product_id=uuid4(),
@@ -103,7 +103,7 @@ class TestCartItem:
 
 
 class TestCart:
-    def test_create_cart(self):
+    def test_create_cart(self) -> None:
         cart_id = uuid4()
         now = datetime.now()
         cart = Cart(id=cart_id, items=[], created_at=now)
@@ -112,11 +112,11 @@ class TestCart:
         assert cart.items == []
         assert cart.created_at == now
 
-    def test_total_empty_cart(self):
+    def test_total_empty_cart(self) -> None:
         cart = Cart(id=uuid4(), items=[], created_at=datetime.now())
         assert cart.total == Decimal("0")
 
-    def test_total_with_items(self):
+    def test_total_with_items(self) -> None:
         items = [
             CartItem(
                 id=uuid4(),
@@ -138,7 +138,7 @@ class TestCart:
         # 10*2 + 5.50*3 = 20 + 16.50 = 36.50
         assert cart.total == Decimal("36.50")
 
-    def test_item_count(self):
+    def test_item_count(self) -> None:
         items = [
             CartItem(
                 id=uuid4(),
@@ -159,7 +159,7 @@ class TestCart:
 
         assert cart.item_count == 5
 
-    def test_get_item_by_product_id(self):
+    def test_get_item_by_product_id(self) -> None:
         product_id = uuid4()
         items = [
             CartItem(
@@ -183,11 +183,11 @@ class TestCart:
         assert item is not None
         assert item.product_name == "Target Product"
 
-    def test_get_item_by_product_id_not_found(self):
+    def test_get_item_by_product_id_not_found(self) -> None:
         cart = Cart(id=uuid4(), items=[], created_at=datetime.now())
         assert cart.get_item_by_product_id(uuid4()) is None
 
-    def test_with_items(self):
+    def test_with_items(self) -> None:
         cart = Cart(id=uuid4(), items=[], created_at=datetime.now())
         new_items = [
             CartItem(
@@ -207,7 +207,7 @@ class TestCart:
 
 
 class TestOrderItem:
-    def test_create_order_item(self):
+    def test_create_order_item(self) -> None:
         item_id = uuid4()
         order_id = uuid4()
         product_id = uuid4()
@@ -227,7 +227,7 @@ class TestOrderItem:
         assert item.unit_price == Decimal("12.99")
         assert item.quantity == 2
 
-    def test_subtotal(self):
+    def test_subtotal(self) -> None:
         item = OrderItem(
             id=uuid4(),
             order_id=uuid4(),
@@ -241,7 +241,7 @@ class TestOrderItem:
 
 
 class TestOrder:
-    def test_create_order(self):
+    def test_create_order(self) -> None:
         order_id = uuid4()
         now = datetime.now()
         order = Order(id=order_id, items=[], submitted_at=now)
@@ -250,7 +250,7 @@ class TestOrder:
         assert order.items == []
         assert order.submitted_at == now
 
-    def test_total(self):
+    def test_total(self) -> None:
         order_id = uuid4()
         items = [
             OrderItem(

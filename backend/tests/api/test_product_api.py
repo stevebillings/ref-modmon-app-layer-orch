@@ -1,20 +1,22 @@
+from typing import Any
+
 import pytest
 from rest_framework.test import APIClient
 
 
 @pytest.fixture
-def api_client():
+def api_client() -> APIClient:
     return APIClient()
 
 
 @pytest.mark.django_db
 class TestProductListCreate:
-    def test_list_products_empty(self, api_client):
+    def test_list_products_empty(self, api_client: APIClient) -> None:
         response = api_client.get("/api/products/")
         assert response.status_code == 200
         assert response.json() == {"results": []}
 
-    def test_create_product(self, api_client):
+    def test_create_product(self, api_client: APIClient) -> None:
         response = api_client.post(
             "/api/products/",
             {"name": "Test Product", "price": "19.99", "stock_quantity": 100},
@@ -29,7 +31,7 @@ class TestProductListCreate:
         assert "id" in data
         assert "created_at" in data
 
-    def test_create_product_validation_error(self, api_client):
+    def test_create_product_validation_error(self, api_client: APIClient) -> None:
         response = api_client.post(
             "/api/products/",
             {"name": "", "price": "10.00", "stock_quantity": 10},
@@ -39,7 +41,7 @@ class TestProductListCreate:
         assert response.status_code == 400
         assert "error" in response.json()
 
-    def test_create_product_duplicate_name(self, api_client):
+    def test_create_product_duplicate_name(self, api_client: APIClient) -> None:
         api_client.post(
             "/api/products/",
             {"name": "Unique", "price": "10.00", "stock_quantity": 10},
@@ -54,7 +56,7 @@ class TestProductListCreate:
 
         assert response.status_code == 400
 
-    def test_list_products(self, api_client):
+    def test_list_products(self, api_client: APIClient) -> None:
         api_client.post(
             "/api/products/",
             {"name": "Zebra", "price": "10.00", "stock_quantity": 10},
@@ -77,7 +79,7 @@ class TestProductListCreate:
 
 @pytest.mark.django_db
 class TestProductDelete:
-    def test_delete_product(self, api_client):
+    def test_delete_product(self, api_client: APIClient) -> None:
         response = api_client.post(
             "/api/products/",
             {"name": "To Delete", "price": "10.00", "stock_quantity": 10},
@@ -92,13 +94,13 @@ class TestProductDelete:
         response = api_client.get("/api/products/")
         assert len(response.json()["results"]) == 0
 
-    def test_delete_nonexistent_product(self, api_client):
+    def test_delete_nonexistent_product(self, api_client: APIClient) -> None:
         response = api_client.delete(
             "/api/products/00000000-0000-0000-0000-000000000000/"
         )
         assert response.status_code == 404
 
-    def test_delete_product_in_cart(self, api_client):
+    def test_delete_product_in_cart(self, api_client: APIClient) -> None:
         # Create product
         response = api_client.post(
             "/api/products/",

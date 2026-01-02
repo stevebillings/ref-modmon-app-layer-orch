@@ -16,7 +16,7 @@ from infrastructure.django_app.unit_of_work import UnitOfWork
 
 @pytest.mark.django_db
 class TestCartService:
-    def test_get_empty_cart(self):
+    def test_get_empty_cart(self) -> None:
         uow = UnitOfWork()
         service = CartService(uow)
 
@@ -26,7 +26,7 @@ class TestCartService:
         assert cart.items == []
         assert cart.total == Decimal("0")
 
-    def test_add_item_to_cart(self):
+    def test_add_item_to_cart(self) -> None:
         uow = UnitOfWork()
         product_service = ProductService(uow)
         cart_service = CartService(uow)
@@ -43,7 +43,7 @@ class TestCartService:
         assert cart.items[0].unit_price == Decimal("15.00")
         assert cart.total == Decimal("30.00")
 
-    def test_add_item_reserves_stock(self):
+    def test_add_item_reserves_stock(self) -> None:
         uow = UnitOfWork()
         product_service = ProductService(uow)
         cart_service = CartService(uow)
@@ -58,7 +58,7 @@ class TestCartService:
         updated_product = next(p for p in products if p.id == product.id)
         assert updated_product.stock_quantity == 75
 
-    def test_add_same_product_increases_quantity(self):
+    def test_add_same_product_increases_quantity(self) -> None:
         uow = UnitOfWork()
         product_service = ProductService(uow)
         cart_service = CartService(uow)
@@ -78,7 +78,7 @@ class TestCartService:
         updated_product = next(p for p in products if p.id == product.id)
         assert updated_product.stock_quantity == 95
 
-    def test_add_item_insufficient_stock_raises(self):
+    def test_add_item_insufficient_stock_raises(self) -> None:
         uow = UnitOfWork()
         product_service = ProductService(uow)
         cart_service = CartService(uow)
@@ -93,7 +93,7 @@ class TestCartService:
         assert exc_info.value.available == 5
         assert exc_info.value.requested == 10
 
-    def test_add_item_invalid_quantity_raises(self):
+    def test_add_item_invalid_quantity_raises(self) -> None:
         uow = UnitOfWork()
         product_service = ProductService(uow)
         cart_service = CartService(uow)
@@ -105,7 +105,7 @@ class TestCartService:
         with pytest.raises(ValidationError):
             cart_service.add_item(str(product.id), quantity=0)
 
-    def test_add_nonexistent_product_raises(self):
+    def test_add_nonexistent_product_raises(self) -> None:
         uow = UnitOfWork()
         cart_service = CartService(uow)
 
@@ -117,7 +117,7 @@ class TestCartService:
 
 @pytest.mark.django_db
 class TestUpdateItemQuantity:
-    def test_update_item_quantity(self):
+    def test_update_item_quantity(self) -> None:
         uow = UnitOfWork()
         product_service = ProductService(uow)
         cart_service = CartService(uow)
@@ -131,7 +131,7 @@ class TestUpdateItemQuantity:
 
         assert cart.items[0].quantity == 8
 
-    def test_update_adjusts_stock_increase(self):
+    def test_update_adjusts_stock_increase(self) -> None:
         uow = UnitOfWork()
         product_service = ProductService(uow)
         cart_service = CartService(uow)
@@ -147,7 +147,7 @@ class TestUpdateItemQuantity:
         updated_product = next(p for p in products if p.id == product.id)
         assert updated_product.stock_quantity == 85
 
-    def test_update_adjusts_stock_decrease(self):
+    def test_update_adjusts_stock_decrease(self) -> None:
         uow = UnitOfWork()
         product_service = ProductService(uow)
         cart_service = CartService(uow)
@@ -163,7 +163,7 @@ class TestUpdateItemQuantity:
         updated_product = next(p for p in products if p.id == product.id)
         assert updated_product.stock_quantity == 97
 
-    def test_update_insufficient_stock_raises(self):
+    def test_update_insufficient_stock_raises(self) -> None:
         uow = UnitOfWork()
         product_service = ProductService(uow)
         cart_service = CartService(uow)
@@ -177,7 +177,7 @@ class TestUpdateItemQuantity:
         with pytest.raises(InsufficientStockError):
             cart_service.update_item_quantity(str(product.id), quantity=20)
 
-    def test_update_nonexistent_item_raises(self):
+    def test_update_nonexistent_item_raises(self) -> None:
         uow = UnitOfWork()
         cart_service = CartService(uow)
 
@@ -189,7 +189,7 @@ class TestUpdateItemQuantity:
 
 @pytest.mark.django_db
 class TestRemoveItem:
-    def test_remove_item(self):
+    def test_remove_item(self) -> None:
         uow = UnitOfWork()
         product_service = ProductService(uow)
         cart_service = CartService(uow)
@@ -203,7 +203,7 @@ class TestRemoveItem:
 
         assert len(cart.items) == 0
 
-    def test_remove_releases_stock(self):
+    def test_remove_releases_stock(self) -> None:
         uow = UnitOfWork()
         product_service = ProductService(uow)
         cart_service = CartService(uow)
@@ -219,7 +219,7 @@ class TestRemoveItem:
         updated_product = next(p for p in products if p.id == product.id)
         assert updated_product.stock_quantity == 100
 
-    def test_remove_nonexistent_item_raises(self):
+    def test_remove_nonexistent_item_raises(self) -> None:
         uow = UnitOfWork()
         cart_service = CartService(uow)
 
@@ -229,7 +229,7 @@ class TestRemoveItem:
 
 @pytest.mark.django_db
 class TestSubmitCart:
-    def test_submit_cart_creates_order(self):
+    def test_submit_cart_creates_order(self) -> None:
         uow = UnitOfWork()
         product_service = ProductService(uow)
         cart_service = CartService(uow)
@@ -247,7 +247,7 @@ class TestSubmitCart:
         assert order.items[0].quantity == 3
         assert order.total == Decimal("30.00")
 
-    def test_submit_clears_cart(self):
+    def test_submit_clears_cart(self) -> None:
         uow = UnitOfWork()
         product_service = ProductService(uow)
         cart_service = CartService(uow)
@@ -262,7 +262,7 @@ class TestSubmitCart:
         cart = cart_service.get_cart()
         assert len(cart.items) == 0
 
-    def test_submit_stock_remains_decremented(self):
+    def test_submit_stock_remains_decremented(self) -> None:
         uow = UnitOfWork()
         product_service = ProductService(uow)
         cart_service = CartService(uow)
@@ -278,7 +278,7 @@ class TestSubmitCart:
         updated_product = next(p for p in products if p.id == product.id)
         assert updated_product.stock_quantity == 80
 
-    def test_submit_empty_cart_raises(self):
+    def test_submit_empty_cart_raises(self) -> None:
         uow = UnitOfWork()
         cart_service = CartService(uow)
 
@@ -289,7 +289,7 @@ class TestSubmitCart:
         with pytest.raises(EmptyCartError):
             cart_service.submit_cart()
 
-    def test_submit_with_multiple_items(self):
+    def test_submit_with_multiple_items(self) -> None:
         uow = UnitOfWork()
         product_service = ProductService(uow)
         cart_service = CartService(uow)

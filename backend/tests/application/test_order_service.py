@@ -8,7 +8,7 @@ from infrastructure.django_app.unit_of_work import UnitOfWork
 
 @pytest.mark.django_db
 class TestOrderService:
-    def test_get_all_orders_empty(self):
+    def test_get_all_orders_empty(self) -> None:
         uow = UnitOfWork()
         service = OrderService(uow)
 
@@ -16,7 +16,7 @@ class TestOrderService:
 
         assert orders == []
 
-    def test_get_all_orders(self):
+    def test_get_all_orders(self) -> None:
         uow = UnitOfWork()
         product_service = ProductService(uow)
         cart_service = CartService(uow)
@@ -35,7 +35,7 @@ class TestOrderService:
 
         assert len(orders) == 3
 
-    def test_orders_newest_first(self):
+    def test_orders_newest_first(self) -> None:
         uow = UnitOfWork()
         product_service = ProductService(uow)
         cart_service = CartService(uow)
@@ -54,4 +54,8 @@ class TestOrderService:
 
         # Verify descending order by submitted_at
         for i in range(len(orders) - 1):
-            assert orders[i].submitted_at >= orders[i + 1].submitted_at
+            current_time = orders[i].submitted_at
+            next_time = orders[i + 1].submitted_at
+            assert current_time is not None
+            assert next_time is not None
+            assert current_time >= next_time

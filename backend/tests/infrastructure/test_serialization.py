@@ -11,36 +11,36 @@ from infrastructure.django_app.serialization import to_dict
 
 
 class TestToDict:
-    def test_none_returns_none(self):
+    def test_none_returns_none(self) -> None:
         assert to_dict(None) is None
 
-    def test_primitive_types_unchanged(self):
+    def test_primitive_types_unchanged(self) -> None:
         assert to_dict("hello") == "hello"
         assert to_dict(42) == 42
         assert to_dict(3.14) == 3.14
         assert to_dict(True) is True
 
-    def test_uuid_to_string(self):
+    def test_uuid_to_string(self) -> None:
         uid = UUID("12345678-1234-5678-1234-567812345678")
         assert to_dict(uid) == "12345678-1234-5678-1234-567812345678"
 
-    def test_datetime_to_isoformat(self):
+    def test_datetime_to_isoformat(self) -> None:
         dt = datetime(2024, 1, 15, 10, 30, 0)
         assert to_dict(dt) == "2024-01-15T10:30:00"
 
-    def test_decimal_to_string(self):
+    def test_decimal_to_string(self) -> None:
         d = Decimal("19.99")
         assert to_dict(d) == "19.99"
 
-    def test_list_of_primitives(self):
+    def test_list_of_primitives(self) -> None:
         assert to_dict([1, 2, 3]) == [1, 2, 3]
 
-    def test_list_of_uuids(self):
+    def test_list_of_uuids(self) -> None:
         uuids = [uuid4(), uuid4()]
         result = to_dict(uuids)
         assert all(isinstance(r, str) for r in result)
 
-    def test_product_entity(self):
+    def test_product_entity(self) -> None:
         product_id = uuid4()
         now = datetime(2024, 1, 15, 10, 0, 0)
         product = Product(
@@ -61,7 +61,7 @@ class TestToDict:
             "created_at": "2024-01-15T10:00:00",
         }
 
-    def test_cart_with_items(self):
+    def test_cart_with_items(self) -> None:
         cart_id = uuid4()
         item_id = uuid4()
         product_id = uuid4()
@@ -90,7 +90,7 @@ class TestToDict:
         assert result["items"][0]["unit_price"] == "10.00"
         assert result["items"][0]["quantity"] == 2
 
-    def test_order_with_items(self):
+    def test_order_with_items(self) -> None:
         order_id = uuid4()
         item_id = uuid4()
         product_id = uuid4()
@@ -118,7 +118,7 @@ class TestToDict:
         assert len(result["items"]) == 1
         assert result["items"][0]["product_name"] == "Test Product"
 
-    def test_empty_cart(self):
+    def test_empty_cart(self) -> None:
         cart = Cart(
             id=uuid4(),
             items=[],

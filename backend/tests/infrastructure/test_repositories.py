@@ -20,7 +20,7 @@ from infrastructure.django_app.repositories.order_repository import (
 
 @pytest.mark.django_db
 class TestProductRepository:
-    def test_save_and_get_product(self):
+    def test_save_and_get_product(self) -> None:
         repo = DjangoProductRepository()
         product_id = uuid4()
         product = Product(
@@ -38,7 +38,7 @@ class TestProductRepository:
         assert saved.price == Decimal("19.99")
         assert saved.stock_quantity == 100
 
-    def test_get_by_id(self):
+    def test_get_by_id(self) -> None:
         repo = DjangoProductRepository()
         product_id = uuid4()
         product = Product(
@@ -55,11 +55,11 @@ class TestProductRepository:
         assert found is not None
         assert found.name == "Findable Product"
 
-    def test_get_by_id_not_found(self):
+    def test_get_by_id_not_found(self) -> None:
         repo = DjangoProductRepository()
         assert repo.get_by_id(uuid4()) is None
 
-    def test_get_all_ordered_by_name(self):
+    def test_get_all_ordered_by_name(self) -> None:
         repo = DjangoProductRepository()
         repo.save(Product(
             id=uuid4(), name="Zebra", price=Decimal("10.00"),
@@ -78,7 +78,7 @@ class TestProductRepository:
 
         assert [p.name for p in products] == ["Apple", "Mango", "Zebra"]
 
-    def test_delete_product(self):
+    def test_delete_product(self) -> None:
         repo = DjangoProductRepository()
         product_id = uuid4()
         repo.save(Product(
@@ -90,7 +90,7 @@ class TestProductRepository:
 
         assert repo.get_by_id(product_id) is None
 
-    def test_exists_by_name(self):
+    def test_exists_by_name(self) -> None:
         repo = DjangoProductRepository()
         repo.save(Product(
             id=uuid4(), name="Exists Product", price=Decimal("10.00"),
@@ -100,7 +100,7 @@ class TestProductRepository:
         assert repo.exists_by_name("Exists Product") is True
         assert repo.exists_by_name("Nonexistent") is False
 
-    def test_update_stock_quantity(self):
+    def test_update_stock_quantity(self) -> None:
         repo = DjangoProductRepository()
         product_id = uuid4()
         original = Product(
@@ -113,12 +113,13 @@ class TestProductRepository:
         repo.save(updated)
 
         found = repo.get_by_id(product_id)
+        assert found is not None
         assert found.stock_quantity == 50
 
 
 @pytest.mark.django_db
 class TestCartRepository:
-    def test_get_cart_creates_if_not_exists(self):
+    def test_get_cart_creates_if_not_exists(self) -> None:
         repo = DjangoCartRepository()
 
         cart = repo.get_cart()
@@ -126,14 +127,14 @@ class TestCartRepository:
         assert cart is not None
         assert cart.items == []
 
-    def test_get_cart_returns_same_cart(self):
+    def test_get_cart_returns_same_cart(self) -> None:
         repo = DjangoCartRepository()
         cart1 = repo.get_cart()
         cart2 = repo.get_cart()
 
         assert cart1.id == cart2.id
 
-    def test_add_item(self):
+    def test_add_item(self) -> None:
         repo = DjangoCartRepository()
         cart = repo.get_cart()
         item = CartItem(
@@ -153,7 +154,7 @@ class TestCartRepository:
         updated_cart = repo.get_cart()
         assert len(updated_cart.items) == 1
 
-    def test_update_item_quantity(self):
+    def test_update_item_quantity(self) -> None:
         repo = DjangoCartRepository()
         cart = repo.get_cart()
         item = CartItem(
@@ -171,7 +172,7 @@ class TestCartRepository:
         updated_cart = repo.get_cart()
         assert updated_cart.items[0].quantity == 5
 
-    def test_delete_item(self):
+    def test_delete_item(self) -> None:
         repo = DjangoCartRepository()
         cart = repo.get_cart()
         item = CartItem(
@@ -188,7 +189,7 @@ class TestCartRepository:
         updated_cart = repo.get_cart()
         assert len(updated_cart.items) == 0
 
-    def test_clear_items(self):
+    def test_clear_items(self) -> None:
         repo = DjangoCartRepository()
         cart = repo.get_cart()
 
@@ -211,7 +212,7 @@ class TestCartRepository:
 
 @pytest.mark.django_db
 class TestOrderRepository:
-    def test_save_and_get_orders(self):
+    def test_save_and_get_orders(self) -> None:
         repo = DjangoOrderRepository()
         order_id = uuid4()
         order = Order(
@@ -235,7 +236,7 @@ class TestOrderRepository:
         assert len(saved.items) == 1
         assert saved.items[0].product_name == "Test Product"
 
-    def test_get_all_orders_newest_first(self):
+    def test_get_all_orders_newest_first(self) -> None:
         repo = DjangoOrderRepository()
 
         # Create orders
@@ -261,12 +262,16 @@ class TestOrderRepository:
         assert len(orders) == 3
         # Newest first means descending order by submitted_at
         for i in range(len(orders) - 1):
-            assert orders[i].submitted_at >= orders[i + 1].submitted_at
+            current_time = orders[i].submitted_at
+            next_time = orders[i + 1].submitted_at
+            assert current_time is not None
+            assert next_time is not None
+            assert current_time >= next_time
 
 
 @pytest.mark.django_db
 class TestProductInCartAndOrder:
-    def test_is_in_any_cart(self):
+    def test_is_in_any_cart(self) -> None:
         product_repo = DjangoProductRepository()
         cart_repo = DjangoCartRepository()
 
@@ -287,7 +292,7 @@ class TestProductInCartAndOrder:
 
         assert product_repo.is_in_any_cart(product_id) is True
 
-    def test_is_in_any_order(self):
+    def test_is_in_any_order(self) -> None:
         product_repo = DjangoProductRepository()
         order_repo = DjangoOrderRepository()
 

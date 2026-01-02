@@ -14,7 +14,7 @@ from infrastructure.django_app.unit_of_work import UnitOfWork
 
 @pytest.mark.django_db
 class TestProductService:
-    def test_create_product(self):
+    def test_create_product(self) -> None:
         uow = UnitOfWork()
         service = ProductService(uow)
 
@@ -28,7 +28,7 @@ class TestProductService:
         assert product.price == Decimal("19.99")
         assert product.stock_quantity == 100
 
-    def test_create_product_with_decimal_price(self):
+    def test_create_product_with_decimal_price(self) -> None:
         uow = UnitOfWork()
         service = ProductService(uow)
 
@@ -40,7 +40,7 @@ class TestProductService:
 
         assert product.price == Decimal("25.50")
 
-    def test_create_product_validates_name(self):
+    def test_create_product_validates_name(self) -> None:
         uow = UnitOfWork()
         service = ProductService(uow)
 
@@ -49,7 +49,7 @@ class TestProductService:
 
         assert exc_info.value.field == "name"
 
-    def test_create_product_validates_price(self):
+    def test_create_product_validates_price(self) -> None:
         uow = UnitOfWork()
         service = ProductService(uow)
 
@@ -60,7 +60,7 @@ class TestProductService:
 
         assert exc_info.value.field == "price"
 
-    def test_create_product_validates_stock_quantity(self):
+    def test_create_product_validates_stock_quantity(self) -> None:
         uow = UnitOfWork()
         service = ProductService(uow)
 
@@ -71,7 +71,7 @@ class TestProductService:
 
         assert exc_info.value.field == "stock_quantity"
 
-    def test_create_product_duplicate_name_raises(self):
+    def test_create_product_duplicate_name_raises(self) -> None:
         uow = UnitOfWork()
         service = ProductService(uow)
 
@@ -86,7 +86,7 @@ class TestProductService:
 
         assert "Unique Product" in str(exc_info.value)
 
-    def test_get_all_products(self):
+    def test_get_all_products(self) -> None:
         uow = UnitOfWork()
         service = ProductService(uow)
 
@@ -100,7 +100,7 @@ class TestProductService:
         # Should be alphabetically ordered
         assert names.index("Apple") < names.index("Zebra")
 
-    def test_delete_product(self):
+    def test_delete_product(self) -> None:
         uow = UnitOfWork()
         service = ProductService(uow)
 
@@ -113,14 +113,14 @@ class TestProductService:
         products = service.get_all_products()
         assert not any(p.id == product.id for p in products)
 
-    def test_delete_nonexistent_product_raises(self):
+    def test_delete_nonexistent_product_raises(self) -> None:
         uow = UnitOfWork()
         service = ProductService(uow)
 
         with pytest.raises(ProductNotFoundError):
             service.delete_product("00000000-0000-0000-0000-000000000000")
 
-    def test_delete_product_invalid_uuid_raises(self):
+    def test_delete_product_invalid_uuid_raises(self) -> None:
         uow = UnitOfWork()
         service = ProductService(uow)
 
@@ -130,7 +130,7 @@ class TestProductService:
 
 @pytest.mark.django_db
 class TestProductDeletionConstraints:
-    def test_delete_product_in_cart_raises(self):
+    def test_delete_product_in_cart_raises(self) -> None:
         from application.services.cart_service import CartService
 
         uow = UnitOfWork()
@@ -148,7 +148,7 @@ class TestProductDeletionConstraints:
 
         assert "cart" in str(exc_info.value).lower()
 
-    def test_delete_product_in_order_raises(self):
+    def test_delete_product_in_order_raises(self) -> None:
         from application.services.cart_service import CartService
 
         uow = UnitOfWork()
