@@ -6,6 +6,8 @@ This document specifies the architecture and design (primary data entities, back
 
 ### Backend architecture
 
+#### Description and patterns
+
 Architecture goals:
 1. Separation of concerns
 1. Fairly minimal dependence on the Django framework. We want to benefit from the way Django (like other modern framworks) makes it easy to receive a request and respond to it, but we don't want to over-rely on Django. In particular, we don't want to rely on Django capabilities that might not be provided by other frameworks (like Flask and FastAPI). We'll accomplish this by choosing to implement some things that Django might be able to do for us, and by using software patterns like the Repository Pattern.
@@ -15,6 +17,15 @@ The core business logic should have no dependencies on Django, and be clearly se
 The backend architecture should follow Domain Driven Design. We'll choose some simplifications noted below to reduce complexity.
 
 The backend should be a modular monolith that uses an application layer to achieve strong consistency by orchestrating operations that make changes across multiple aggregates (as opposed to using events for eventual consistency). It should use the Repository Pattern and the Unit of Work Pattern to keep the core business logic free of dependencies on low level concerns like the database. It should use a single database transaction per request that includes all database activity within that request (which may span multiple aggregates).
+
+#### Division of responsibilities
+
+| Operation | Application Service | Aggregate | Repository |
+|-----------|---------------------|-----------|------------|
+| Create | Orchestrates creation, coordinates cross-aggregate side effects | Validates data, enforces business rules | Persists new entity |
+| Read | Coordinates retrieval, may enrich with data from other aggregates | N/A (data returned directly) | Loads entity from storage |
+| Update | Orchestrates update, handles cross-aggregate consistency | Validates changes, enforces invariants | Persists updated entity |
+| Delete | Validates deletion is allowed, handles cross-aggregate constraints | N/A (or validates own deletion rules) | Removes entity from storage |
 
 ### Frontend architecture
 
