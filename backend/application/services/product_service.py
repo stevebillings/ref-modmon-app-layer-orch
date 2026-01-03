@@ -9,7 +9,7 @@ from domain.exceptions import (
     ProductInUseError,
     ProductNotFoundError,
 )
-from domain.validation import validate_product_name
+from domain.aggregates.product.validation import validate_product_name
 from infrastructure.django_app.unit_of_work import UnitOfWork
 
 

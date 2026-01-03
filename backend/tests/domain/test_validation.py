@@ -2,13 +2,13 @@ from decimal import Decimal
 
 import pytest
 
-from domain.exceptions import ValidationError
-from domain.validation import (
+from domain.aggregates.product.validation import (
     validate_product_name,
     validate_product_price,
     validate_stock_quantity,
-    validate_cart_item_quantity,
 )
+from domain.exceptions import ValidationError
+from domain.validation import validate_positive_quantity
 
 
 class TestValidateProductName:
@@ -92,19 +92,19 @@ class TestValidateStockQuantity:
         assert exc_info.value.field == "stock_quantity"
 
 
-class TestValidateCartItemQuantity:
+class TestValidatePositiveQuantity:
     def test_valid_positive(self) -> None:
-        assert validate_cart_item_quantity(5) == 5
+        assert validate_positive_quantity(5) == 5
 
     def test_one_is_valid(self) -> None:
-        assert validate_cart_item_quantity(1) == 1
+        assert validate_positive_quantity(1) == 1
 
     def test_zero_raises(self) -> None:
         with pytest.raises(ValidationError) as exc_info:
-            validate_cart_item_quantity(0)
+            validate_positive_quantity(0)
         assert exc_info.value.field == "quantity"
 
     def test_negative_raises(self) -> None:
         with pytest.raises(ValidationError) as exc_info:
-            validate_cart_item_quantity(-1)
+            validate_positive_quantity(-1)
         assert exc_info.value.field == "quantity"

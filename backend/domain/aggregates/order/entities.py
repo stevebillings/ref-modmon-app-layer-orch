@@ -4,7 +4,7 @@ from decimal import Decimal
 from typing import List
 from uuid import UUID, uuid4
 
-from domain.validation import validate_cart_item_quantity
+from domain.validation import validate_positive_quantity
 
 
 @dataclass(frozen=True)
@@ -37,7 +37,7 @@ class OrderItem:
             product_id=product_id,
             product_name=product_name,
             unit_price=unit_price,
-            quantity=validate_cart_item_quantity(quantity),
+            quantity=validate_positive_quantity(quantity),
         )
 
     @property

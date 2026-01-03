@@ -6,7 +6,7 @@ from uuid import UUID, uuid4
 
 from domain.aggregates.order.entities import Order, OrderItem
 from domain.exceptions import CartItemNotFoundError, EmptyCartError
-from domain.validation import validate_cart_item_quantity
+from domain.validation import validate_positive_quantity
 
 
 @dataclass(frozen=True)
@@ -42,7 +42,7 @@ class CartItem:
             product_id=product_id,
             product_name=product_name,
             unit_price=unit_price,
-            quantity=validate_cart_item_quantity(quantity),
+            quantity=validate_positive_quantity(quantity),
         )
 
     @property
@@ -61,7 +61,7 @@ class CartItem:
             product_id=self.product_id,
             product_name=self.product_name,
             unit_price=self.unit_price,
-            quantity=validate_cart_item_quantity(new_quantity),
+            quantity=validate_positive_quantity(new_quantity),
         )
 
 
@@ -115,7 +115,7 @@ class Cart:
         Raises:
             ValidationError: If quantity is invalid
         """
-        validate_cart_item_quantity(quantity)
+        validate_positive_quantity(quantity)
         existing = self.get_item_by_product_id(product_id)
 
         if existing:
@@ -143,7 +143,7 @@ class Cart:
             CartItemNotFoundError: If item not in cart
             ValidationError: If quantity is invalid
         """
-        validate_cart_item_quantity(quantity)
+        validate_positive_quantity(quantity)
         item = self.get_item_by_product_id(product_id)
 
         if item is None:

@@ -3,12 +3,12 @@ from datetime import datetime
 from decimal import Decimal
 from uuid import UUID, uuid4
 
-from domain.exceptions import InsufficientStockError
-from domain.validation import (
+from domain.aggregates.product.validation import (
     validate_product_name,
     validate_product_price,
     validate_stock_quantity,
 )
+from domain.exceptions import InsufficientStockError
 
 
 @dataclass
