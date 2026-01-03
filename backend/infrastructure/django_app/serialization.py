@@ -23,6 +23,7 @@ def to_dict(obj: Any) -> Any:
         return {
             field.name: to_dict(getattr(obj, field.name))
             for field in fields(obj)
+            if not field.name.startswith("_")  # Exclude private fields
         }
 
     if isinstance(obj, list):

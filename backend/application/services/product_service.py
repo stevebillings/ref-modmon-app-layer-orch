@@ -14,6 +14,12 @@ from infrastructure.django_app.unit_of_work import UnitOfWork
 
 
 class ProductService:
+    """
+    Application service for product operations.
+
+    Handles product CRUD operations with validation and event collection.
+    """
+
     def __init__(self, uow: UnitOfWork):
         self.uow = uow
 
@@ -46,7 +52,9 @@ class ProductService:
         )
 
         try:
-            return self.uow.get_product_repository().save(product)
+            saved_product = self.uow.get_product_repository().save(product)
+            self.uow.collect_events_from(product)
+            return saved_product
         except IntegrityError:
             # Handle race condition: another request created the product
             # after our exists_by_name check but before our save

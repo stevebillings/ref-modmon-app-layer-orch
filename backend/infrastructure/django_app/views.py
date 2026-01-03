@@ -18,6 +18,7 @@ from domain.exceptions import (
 )
 from infrastructure.django_app.serialization import to_dict
 from infrastructure.django_app.unit_of_work import unit_of_work
+from infrastructure.events import get_event_dispatcher
 
 
 def handle_domain_error(error: DomainError) -> Response:
@@ -70,7 +71,7 @@ def handle_domain_error(error: DomainError) -> Response:
 @api_view(["GET", "POST"])
 def products_list_create(request: Request) -> Response:
     """List all products or create a new product."""
-    with unit_of_work() as uow:
+    with unit_of_work(get_event_dispatcher()) as uow:
         service = ProductService(uow)
 
         if request.method == "GET":
@@ -98,7 +99,7 @@ def products_list_create(request: Request) -> Response:
 @api_view(["DELETE"])
 def product_delete(request: Request, product_id: str) -> Response:
     """Delete a product."""
-    with unit_of_work() as uow:
+    with unit_of_work(get_event_dispatcher()) as uow:
         service = ProductService(uow)
         try:
             service.delete_product(product_id)
@@ -113,7 +114,7 @@ def product_delete(request: Request, product_id: str) -> Response:
 @api_view(["GET"])
 def cart_get(request: Request) -> Response:
     """Get the current cart."""
-    with unit_of_work() as uow:
+    with unit_of_work(get_event_dispatcher()) as uow:
         service = CartService(uow)
         cart = service.get_cart()
         cart_dict = to_dict(cart)
@@ -125,7 +126,7 @@ def cart_get(request: Request) -> Response:
 @api_view(["POST"])
 def cart_add_item(request: Request) -> Response:
     """Add an item to the cart."""
-    with unit_of_work() as uow:
+    with unit_of_work(get_event_dispatcher()) as uow:
         service = CartService(uow)
         try:
             data = request.data
@@ -149,7 +150,7 @@ def cart_add_item(request: Request) -> Response:
 @api_view(["PATCH"])
 def cart_update_item(request: Request, product_id: str) -> Response:
     """Update the quantity of an item in the cart."""
-    with unit_of_work() as uow:
+    with unit_of_work(get_event_dispatcher()) as uow:
         service = CartService(uow)
         try:
             data = request.data
@@ -173,7 +174,7 @@ def cart_update_item(request: Request, product_id: str) -> Response:
 @api_view(["DELETE"])
 def cart_remove_item(request: Request, product_id: str) -> Response:
     """Remove an item from the cart."""
-    with unit_of_work() as uow:
+    with unit_of_work(get_event_dispatcher()) as uow:
         service = CartService(uow)
         try:
             cart = service.remove_item(product_id=product_id)
@@ -188,7 +189,7 @@ def cart_remove_item(request: Request, product_id: str) -> Response:
 @api_view(["POST"])
 def cart_submit(request: Request) -> Response:
     """Submit the cart as an order."""
-    with unit_of_work() as uow:
+    with unit_of_work(get_event_dispatcher()) as uow:
         service = CartService(uow)
         try:
             order = service.submit_cart()
@@ -205,7 +206,7 @@ def cart_submit(request: Request) -> Response:
 @api_view(["GET"])
 def orders_list(request: Request) -> Response:
     """List all orders."""
-    with unit_of_work() as uow:
+    with unit_of_work(get_event_dispatcher()) as uow:
         service = OrderService(uow)
         orders = service.get_all_orders()
         results = []

@@ -1,12 +1,15 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
-from typing import List
+from typing import TYPE_CHECKING, List
 from uuid import UUID, uuid4
 
 from domain.aggregates.order.entities import Order, OrderItem
 from domain.exceptions import CartItemNotFoundError, EmptyCartError
 from domain.validation import validate_positive_quantity
+
+if TYPE_CHECKING:
+    from domain.events import DomainEvent
 
 
 @dataclass(frozen=True)
@@ -76,6 +79,9 @@ class Cart:
     id: UUID
     items: List[CartItem] = field(default_factory=list)
     created_at: datetime = field(default_factory=datetime.now)
+    _domain_events: List["DomainEvent"] = field(
+        default_factory=list, repr=False, compare=False
+    )
 
     @classmethod
     def create(cls) -> "Cart":
@@ -105,6 +111,7 @@ class Cart:
         product_name: str,
         unit_price: Decimal,
         quantity: int,
+        actor_id: str = "anonymous",
     ) -> None:
         """
         Add an item to the cart, or merge if product already exists.
@@ -112,6 +119,8 @@ class Cart:
         Raises:
             ValidationError: If quantity is invalid
         """
+        from domain.aggregates.cart.events import CartItemAdded
+
         validate_positive_quantity(quantity)
         existing = self.get_item_by_product_id(product_id)
 
@@ -129,7 +138,23 @@ class Cart:
             )
             self.items.append(new_item)
 
-    def update_item_quantity(self, product_id: UUID, quantity: int) -> int:
+        self._raise_event(
+            CartItemAdded(
+                cart_id=self.id,
+                product_id=product_id,
+                product_name=product_name,
+                quantity=quantity,
+                unit_price=unit_price,
+                actor_id=actor_id,
+            )
+        )
+
+    def update_item_quantity(
+        self,
+        product_id: UUID,
+        quantity: int,
+        actor_id: str = "anonymous",
+    ) -> int:
         """
         Update the quantity of an item in the cart.
 
@@ -140,19 +165,37 @@ class Cart:
             CartItemNotFoundError: If item not in cart
             ValidationError: If quantity is invalid
         """
+        from domain.aggregates.cart.events import CartItemQuantityUpdated
+
         validate_positive_quantity(quantity)
         item = self.get_item_by_product_id(product_id)
 
         if item is None:
             raise CartItemNotFoundError(str(product_id))
 
-        diff = quantity - item.quantity
+        old_quantity = item.quantity
+        diff = quantity - old_quantity
         new_item = item.with_quantity(quantity)
         self.items = [new_item if i.id == item.id else i for i in self.items]
 
+        self._raise_event(
+            CartItemQuantityUpdated(
+                cart_id=self.id,
+                product_id=product_id,
+                product_name=item.product_name,
+                old_quantity=old_quantity,
+                new_quantity=quantity,
+                actor_id=actor_id,
+            )
+        )
+
         return diff
 
-    def remove_item(self, product_id: UUID) -> CartItem:
+    def remove_item(
+        self,
+        product_id: UUID,
+        actor_id: str = "anonymous",
+    ) -> CartItem:
         """
         Remove an item from the cart.
 
@@ -162,15 +205,28 @@ class Cart:
         Raises:
             CartItemNotFoundError: If item not in cart
         """
+        from domain.aggregates.cart.events import CartItemRemoved
+
         item = self.get_item_by_product_id(product_id)
 
         if item is None:
             raise CartItemNotFoundError(str(product_id))
 
         self.items = [i for i in self.items if i.id != item.id]
+
+        self._raise_event(
+            CartItemRemoved(
+                cart_id=self.id,
+                product_id=product_id,
+                product_name=item.product_name,
+                quantity_removed=item.quantity,
+                actor_id=actor_id,
+            )
+        )
+
         return item
 
-    def submit(self) -> Order:
+    def submit(self, actor_id: str = "anonymous") -> Order:
         """
         Create an Order from cart contents and clear the cart.
 
@@ -180,10 +236,15 @@ class Cart:
         Raises:
             EmptyCartError: If cart has no items
         """
+        from domain.aggregates.cart.events import CartSubmitted
+
         if not self.items:
             raise EmptyCartError()
 
         order_id = uuid4()
+        total = self.get_total()
+        item_count = self.get_item_count()
+
         order_items = [
             OrderItem.create(
                 order_id=order_id,
@@ -198,4 +259,26 @@ class Cart:
         order = Order(id=order_id, items=order_items, submitted_at=None)
         self.items = []
 
+        self._raise_event(
+            CartSubmitted(
+                cart_id=self.id,
+                order_id=order_id,
+                total=total,
+                item_count=item_count,
+                actor_id=actor_id,
+            )
+        )
+
         return order
+
+    def _raise_event(self, event: "DomainEvent") -> None:
+        """Record a domain event."""
+        self._domain_events.append(event)
+
+    def get_domain_events(self) -> List["DomainEvent"]:
+        """Return all collected events."""
+        return list(self._domain_events)
+
+    def clear_domain_events(self) -> None:
+        """Clear collected events after dispatch."""
+        self._domain_events = []

@@ -19,6 +19,7 @@ class CartService:
     - Cross-aggregate coordination (stock availability checking)
     - Persistence via repositories
     - Concurrency control (pessimistic locking)
+    - Event collection for dispatch after commit
     """
 
     def __init__(self, uow: UnitOfWork):
@@ -64,6 +65,10 @@ class CartService:
         # Persist both aggregates
         self.uow.get_cart_repository().save(cart)
         self.uow.get_product_repository().save(product)
+
+        # Collect events from modified aggregates
+        self.uow.collect_events_from(cart)
+        self.uow.collect_events_from(product)
 
         return cart
 
@@ -113,6 +118,10 @@ class CartService:
         self.uow.get_cart_repository().save(cart)
         self.uow.get_product_repository().save(product)
 
+        # Collect events from modified aggregates
+        self.uow.collect_events_from(cart)
+        self.uow.collect_events_from(product)
+
         return cart
 
     def remove_item(self, product_id: str) -> Cart:
@@ -139,9 +148,11 @@ class CartService:
         if product:
             product.release_stock(removed_item.quantity)
             self.uow.get_product_repository().save(product)
+            self.uow.collect_events_from(product)
 
         # Persist cart
         self.uow.get_cart_repository().save(cart)
+        self.uow.collect_events_from(cart)
 
         return cart
 
@@ -163,5 +174,8 @@ class CartService:
         # Persist order and cleared cart
         saved_order = self.uow.get_order_repository().save(order)
         self.uow.get_cart_repository().save(cart)
+
+        # Collect events from cart (includes CartSubmitted event)
+        self.uow.collect_events_from(cart)
 
         return saved_order

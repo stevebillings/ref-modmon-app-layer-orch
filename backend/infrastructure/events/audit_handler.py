@@ -1,0 +1,67 @@
+"""
+Audit logging event handler.
+
+Persists domain events to the audit log table.
+"""
+
+import logging
+from typing import Dict, Tuple, Type
+
+from domain.events import DomainEvent
+from domain.aggregates.product.events import StockReserved, StockReleased
+from domain.aggregates.cart.events import (
+    CartItemAdded,
+    CartItemQuantityUpdated,
+    CartItemRemoved,
+    CartSubmitted,
+)
+from domain.aggregates.order.events import OrderCreated
+from infrastructure.django_app.models import AuditLogModel
+
+
+logger = logging.getLogger(__name__)
+
+
+# Map event types to (aggregate_type, aggregate_id_field)
+EVENT_AGGREGATE_MAP: Dict[Type[DomainEvent], Tuple[str, str]] = {
+    StockReserved: ("Product", "product_id"),
+    StockReleased: ("Product", "product_id"),
+    CartItemAdded: ("Cart", "cart_id"),
+    CartItemQuantityUpdated: ("Cart", "cart_id"),
+    CartItemRemoved: ("Cart", "cart_id"),
+    CartSubmitted: ("Cart", "cart_id"),
+    OrderCreated: ("Order", "order_id"),
+}
+
+
+def audit_log_handler(event: DomainEvent) -> None:
+    """
+    Event handler that persists domain events to the audit log.
+
+    Called after transaction commit for each domain event.
+    Failures are logged but don't break operations.
+    """
+    try:
+        aggregate_info = EVENT_AGGREGATE_MAP.get(type(event))
+        if aggregate_info:
+            aggregate_type, id_field = aggregate_info
+            aggregate_id = getattr(event, id_field)
+        else:
+            aggregate_type = "Unknown"
+            aggregate_id = None
+
+        AuditLogModel.objects.create(
+            event_type=event.get_event_type(),
+            event_id=event.event_id,
+            occurred_at=event.occurred_at,
+            actor_id=getattr(event, "actor_id", "unknown"),
+            aggregate_type=aggregate_type,
+            aggregate_id=aggregate_id,
+            event_data=event.to_dict(),
+        )
+    except Exception as e:
+        # Log but don't fail - audit logging shouldn't break operations
+        logger.error(
+            f"Failed to write audit log for {event.get_event_type()}: {e}",
+            exc_info=True,
+        )

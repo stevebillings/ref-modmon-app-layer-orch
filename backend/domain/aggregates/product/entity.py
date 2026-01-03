@@ -1,6 +1,7 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
+from typing import TYPE_CHECKING, List
 from uuid import UUID, uuid4
 
 from domain.aggregates.product.validation import (
@@ -9,6 +10,9 @@ from domain.aggregates.product.validation import (
     validate_stock_quantity,
 )
 from domain.exceptions import InsufficientStockError
+
+if TYPE_CHECKING:
+    from domain.events import DomainEvent
 
 
 @dataclass
@@ -26,6 +30,9 @@ class Product:
     price: Decimal
     stock_quantity: int
     created_at: datetime
+    _domain_events: List["DomainEvent"] = field(
+        default_factory=list, repr=False, compare=False
+    )
 
     @classmethod
     def create(
@@ -52,19 +59,55 @@ class Product:
         """Check if the requested quantity can be reserved."""
         return quantity <= self.stock_quantity
 
-    def reserve_stock(self, quantity: int) -> None:
+    def reserve_stock(self, quantity: int, actor_id: str = "anonymous") -> None:
         """
         Reserve stock by decrementing stock_quantity.
 
         Raises:
             InsufficientStockError: If not enough stock available
         """
+        from domain.aggregates.product.events import StockReserved
+
         if not self.has_sufficient_stock(quantity):
             raise InsufficientStockError(
                 self.name, self.stock_quantity, quantity
             )
         self.stock_quantity -= quantity
 
-    def release_stock(self, quantity: int) -> None:
+        self._raise_event(
+            StockReserved(
+                product_id=self.id,
+                product_name=self.name,
+                quantity_reserved=quantity,
+                remaining_stock=self.stock_quantity,
+                actor_id=actor_id,
+            )
+        )
+
+    def release_stock(self, quantity: int, actor_id: str = "anonymous") -> None:
         """Release previously reserved stock by incrementing stock_quantity."""
+        from domain.aggregates.product.events import StockReleased
+
         self.stock_quantity += quantity
+
+        self._raise_event(
+            StockReleased(
+                product_id=self.id,
+                product_name=self.name,
+                quantity_released=quantity,
+                new_stock=self.stock_quantity,
+                actor_id=actor_id,
+            )
+        )
+
+    def _raise_event(self, event: "DomainEvent") -> None:
+        """Record a domain event."""
+        self._domain_events.append(event)
+
+    def get_domain_events(self) -> List["DomainEvent"]:
+        """Return all collected events."""
+        return list(self._domain_events)
+
+    def clear_domain_events(self) -> None:
+        """Clear collected events after dispatch."""
+        self._domain_events = []

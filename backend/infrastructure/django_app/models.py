@@ -79,3 +79,32 @@ class OrderItemModel(models.Model):
 
     def __str__(self) -> str:
         return f"{self.product_name} x {self.quantity}"
+
+
+class AuditLogModel(models.Model):
+    """
+    Audit log for tracking domain events.
+
+    Stores all domain events as an immutable audit trail.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    event_type = models.CharField(max_length=100, db_index=True)
+    event_id = models.UUIDField()
+    occurred_at = models.DateTimeField(db_index=True)
+    actor_id = models.CharField(max_length=100, db_index=True)
+    aggregate_type = models.CharField(max_length=100)
+    aggregate_id = models.UUIDField(db_index=True)
+    event_data = models.JSONField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "audit_log"
+        ordering = ["-occurred_at"]
+        indexes = [
+            models.Index(fields=["aggregate_type", "aggregate_id"]),
+            models.Index(fields=["actor_id", "occurred_at"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.event_type} at {self.occurred_at}"

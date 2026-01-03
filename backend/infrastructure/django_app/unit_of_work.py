@@ -1,11 +1,13 @@
 from contextlib import contextmanager
-from typing import Generator
+from typing import Any, Generator, List
 
 from django.db import transaction
 
 from domain.aggregates.cart.repository import CartRepository
 from domain.aggregates.order.repository import OrderRepository
 from domain.aggregates.product.repository import ProductRepository
+from domain.event_dispatcher import EventDispatcher
+from domain.events import DomainEvent
 from infrastructure.django_app.repositories.cart_repository import (
     DjangoCartRepository,
 )
@@ -21,15 +23,20 @@ class UnitOfWork:
     """
     Unit of Work pattern implementation for Django.
 
-    Provides transaction management and repository access.
+    Provides transaction management, repository access, and event collection.
     All database operations within a single request should use
     the same UnitOfWork instance to ensure transactional consistency.
+
+    Events are collected from aggregates after saves and dispatched
+    after the transaction commits successfully.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, event_dispatcher: EventDispatcher | None = None) -> None:
         self._product_repository: ProductRepository | None = None
         self._cart_repository: CartRepository | None = None
         self._order_repository: OrderRepository | None = None
+        self._event_dispatcher = event_dispatcher
+        self._collected_events: List[DomainEvent] = []
 
     def get_product_repository(self) -> ProductRepository:
         if self._product_repository is None:
@@ -46,19 +53,47 @@ class UnitOfWork:
             self._order_repository = DjangoOrderRepository()
         return self._order_repository
 
+    def collect_events_from(self, aggregate: Any) -> None:
+        """
+        Collect domain events from an aggregate after saving.
+
+        Call this after saving each modified aggregate. Events are queued
+        for dispatch after the transaction commits.
+        """
+        if hasattr(aggregate, "get_domain_events"):
+            self._collected_events.extend(aggregate.get_domain_events())
+            aggregate.clear_domain_events()
+
+    def dispatch_events(self) -> None:
+        """
+        Dispatch all collected events to handlers.
+
+        Called after transaction commit. Clears the event queue after dispatch.
+        """
+        if self._event_dispatcher and self._collected_events:
+            self._event_dispatcher.dispatch(self._collected_events)
+        self._collected_events = []
+
 
 @contextmanager
-def unit_of_work() -> Generator[UnitOfWork, None, None]:
+def unit_of_work(
+    event_dispatcher: EventDispatcher | None = None,
+) -> Generator[UnitOfWork, None, None]:
     """
     Context manager that provides a UnitOfWork with transaction management.
 
     Usage:
-        with unit_of_work() as uow:
+        with unit_of_work(dispatcher) as uow:
             product = uow.get_product_repository().get_by_id(product_id)
             # ... perform operations
+            uow.collect_events_from(product)
 
     The transaction is committed on successful exit,
     or rolled back if an exception occurs.
+    Events are dispatched after successful commit.
     """
+    uow = UnitOfWork(event_dispatcher)
     with transaction.atomic():
-        yield UnitOfWork()
+        yield uow
+    # After successful commit, dispatch events
+    uow.dispatch_events()
