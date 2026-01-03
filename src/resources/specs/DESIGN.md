@@ -50,69 +50,6 @@ project-root/
 │       └── types/                 # TypeScript type definitions
 ```
 
-## Data entities
-
-### Product
-- **id** (Primary Key, UUID)
-- **name** (string) - Product name
-- **price** (decimal) - Price in dollars, two decimal places
-- **stock_quantity** (integer) - Available stock (not reserved in any cart)
-- **created_at** (timestamp)
-- **Uniqueness constraint**: Product name must be unique
-- **Validation**:
-  - name: 1–200 characters, non-empty
-  - price: Greater than 0, max 2 decimal places
-  - stock_quantity: 0 or greater
-- **Immutability**: Products cannot be edited after creation; only stock_quantity changes via cart operations
-- **Delete constraint**: Cannot delete if product is in any cart or referenced in any order
-
-### Cart
-- **id** (Primary Key, UUID)
-- **created_at** (timestamp)
-- **Singleton**: Single cart for single-user application. One cart always exists; submitting an order clears its items but does not delete the cart.
-- **Computed total**: Cart total is computed from items on read, not stored.
-
-### CartItem
-- **id** (Primary Key, UUID)
-- **cart_id** (Foreign Key to Cart)
-- **product_id** (UUID) - Reference to Product by ID only (not a foreign key constraint, to maintain aggregate isolation)
-- **product_name** (string) - Snapshot of product name when added to cart
-- **unit_price** (decimal) - Snapshot of product price when added to cart
-- **quantity** (integer) - Quantity of this product in the cart
-- **Validation**:
-  - quantity: Must be positive (> 0)
-  - quantity cannot exceed product's available stock_quantity (validated by application layer)
-- **Uniqueness constraint**: Only one CartItem per product per cart (adding same product increases quantity)
-- **Note**: Product name and price are snapshotted when the item is added to the cart. This maintains aggregate isolation (Cart does not depend on Product entity) and preserves the price the user saw when adding the item.
-
-### Order
-- **id** (Primary Key, UUID)
-- **submitted_at** (timestamp) - When the order was submitted
-- **Immutability**: Orders cannot be edited or deleted after creation.
-- **Computed total**: Order total is computed from items on read, not stored.
-
-### OrderItem
-- **id** (Primary Key, UUID)
-- **order_id** (Foreign Key to Order)
-- **product_id** (Foreign Key to Product)
-- **product_name** (string) - Snapshot of product name at time of order
-- **unit_price** (decimal) - Snapshot of product price at time of order
-- **quantity** (integer) - Quantity ordered
-- **Note**: Product name and price are copied at order time to preserve order history even if product is later deleted
-
-### AuditLog
-- **id** (Primary Key, UUID)
-- **event_type** (string) - Event class name (e.g., "StockReserved", "CartSubmitted")
-- **event_id** (UUID) - Unique identifier of the event instance
-- **occurred_at** (timestamp) - When the event occurred
-- **actor_id** (string) - Who performed the action (e.g., user ID or "anonymous")
-- **aggregate_type** (string) - Type of aggregate (e.g., "Product", "Cart", "Order")
-- **aggregate_id** (UUID) - ID of the affected aggregate
-- **event_data** (JSON) - Full event payload for audit trail
-- **created_at** (timestamp) - When the log entry was created
-- **Immutability**: Audit log entries cannot be edited or deleted
-- **Note**: Populated automatically by the audit log event handler when domain events are dispatched. See [features/DOMAIN-EVENTS-AND-AUDIT-LOGGING.md](features/DOMAIN-EVENTS-AND-AUDIT-LOGGING.md) for details.
-
 ## Backend APIs
 
 ### Product Endpoints
