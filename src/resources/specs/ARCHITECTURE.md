@@ -37,24 +37,32 @@ project-root/
 │   ├── domain/                    # Core business logic (NO Django dependencies)
 │   │   ├── validation.py          # Shared validation functions
 │   │   ├── exceptions.py          # Domain exceptions
+│   │   ├── events.py              # Base DomainEvent class
+│   │   ├── event_dispatcher.py    # Abstract dispatcher interface
 │   │   ├── aggregates/            # Organized by aggregate
 │   │   │   ├── <aggregate_a>/
 │   │   │   │   ├── entity.py              # Aggregate root (mutable, with behavior)
+│   │   │   │   ├── events.py              # Domain events for this aggregate
 │   │   │   │   ├── validation.py          # Aggregate-specific validations
 │   │   │   │   └── repository.py          # Repository interface (ABC)
 │   │   │   └── <aggregate_b>/
 │   │   │       ├── entities.py            # Aggregate root + child value objects
+│   │   │       ├── events.py              # Domain events for this aggregate
 │   │   │       └── repository.py          # Repository interface (ABC)
 │   │   └── services/              # Domain services (cross-aggregate business logic)
 │   ├── application/               # Application layer (use case orchestration)
 │   │   └── services/              # Application services (thin orchestration)
 │   └── infrastructure/            # Framework-dependent code
+│       ├── events/                # Event dispatcher infrastructure
+│       │   ├── __init__.py        # Dispatcher setup and configuration
+│       │   ├── dispatcher.py      # Sync/async event dispatcher
+│       │   └── audit_handler.py   # Audit logging handler
 │       └── django_app/            # Django project
-│           ├── models.py          # ORM models
+│           ├── models.py          # ORM models (including AuditLog)
 │           ├── views.py           # API views
 │           ├── serializers.py     # DRF serializers
 │           ├── repositories/      # Repository implementations (Django ORM)
-│           └── unit_of_work.py    # Unit of Work implementation
+│           └── unit_of_work.py    # Unit of Work with event dispatch
 ├── frontend/
 │   └── src/
 │       ├── components/            # Reusable UI components
@@ -345,6 +353,73 @@ def create_entity(self, name: str) -> Entity:
 ```
 
 This provides both good user experience (fast error response) and correctness (database enforces constraint atomically).
+
+## Domain events
+
+Domain events enable loose coupling between aggregates and support cross-cutting concerns (like audit logging) without polluting domain logic. Events are dispatched after the transaction commits, ensuring consistency.
+
+### Event collection pattern
+
+Aggregates collect events internally during business operations. The application layer retrieves and dispatches them after saving:
+
+```python
+@dataclass
+class Product:
+    # ... fields ...
+    _domain_events: List[DomainEvent] = field(default_factory=list, repr=False, compare=False)
+
+    def reserve_stock(self, quantity: int) -> None:
+        if quantity > self.stock_quantity:
+            raise InsufficientStockError(...)
+        self.stock_quantity -= quantity
+        self._raise_event(StockReserved(
+            product_id=self.id,
+            quantity_reserved=quantity,
+            remaining_stock=self.stock_quantity,
+            actor_id="anonymous",
+        ))
+
+    def _raise_event(self, event: DomainEvent) -> None:
+        self._domain_events.append(event)
+
+    def get_domain_events(self) -> List[DomainEvent]:
+        return list(self._domain_events)
+
+    def clear_domain_events(self) -> None:
+        self._domain_events = []
+```
+
+### Dispatch flow
+
+```
+Application Service saves aggregate
+    ↓
+Application Service collects events: uow.collect_events_from(aggregate)
+    ↓
+Transaction commits
+    ↓
+Unit of Work dispatches events: uow.dispatch_events()
+    ↓
+Handlers execute (sync first, then async)
+```
+
+### Sync vs async handlers
+
+The dispatcher supports both handler types:
+
+- **Sync handlers** (`register()`): Run immediately in the calling thread. Use for fast, critical handlers like audit logging.
+- **Async handlers** (`register_async()`): Run in a background thread pool. Use for slow operations like sending emails or calling external APIs.
+
+```python
+dispatcher.register(StockReserved, audit_log_handler)           # sync
+dispatcher.register_async(OrderCreated, send_confirmation_email) # async
+```
+
+Sync handlers complete before the response returns. Async handlers are submitted to a thread pool and run in the background.
+
+### Handler resilience
+
+Handler failures are logged but don't break operations or prevent other handlers from running. This ensures the business transaction succeeds even if a handler fails.
 
 ## Future considerations
 

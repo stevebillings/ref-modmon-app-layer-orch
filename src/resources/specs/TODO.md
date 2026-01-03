@@ -2,15 +2,17 @@
 
 This document tracks additional patterns and solutions typical of medium complexity web applications that we should consider added to this reference project.
 
+## Completed
+
+1. ~~**Domain Events**~~ - Implemented with sync/async handler support. See `features/DOMAIN-EVENTS-AND-AUDIT-LOGGING.md`.
+
+2. ~~**Audit Logging**~~ - Implemented as a domain event subscriber. See `features/DOMAIN-EVENTS-AND-AUDIT-LOGGING.md`.
+
 ## High Value Additions
 
-1. **Domain Events** - Decouple aggregates further. When an order is submitted, publish an `OrderSubmittedEvent` that other modules can react to (e.g., notifications, analytics). Demonstrates the pattern without requiring a message broker.
+3. **Authentication & Authorization** - Role-based access (e.g., admin can manage products, customers can only manage their own cart). Shows how auth concerns stay out of domain logic.
 
-2. **Authentication & Authorization** - Role-based access (e.g., admin can manage products, customers can only manage their own cart). Shows how auth concerns stay out of domain logic.
-
-3. **Pagination & Filtering** - Product catalog search, filtering by price range, paginated results. Common requirement that touches all layers.
-
-4. **Audit Logging** - Track who changed what and when. Demonstrates cross-cutting concerns without polluting domain logic.
+4. **Pagination & Filtering** - Product catalog search, filtering by price range, paginated results. Common requirement that touches all layers.
 
 5. **Soft Deletes** - Products shouldn't disappear from order history. Shows how to handle data retention while maintaining referential integrity.
 

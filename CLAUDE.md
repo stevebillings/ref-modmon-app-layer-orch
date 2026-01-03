@@ -4,9 +4,10 @@ This is a reference web application. It's purpose is to demonstrate an architect
 
 The goal is to keep the application simple enough to be easy to understand, while still solving (demonstrating how to solve) a variety of problems typical of a medium complexity web application. For example: it includes solutions for:
 
-1. Domain Driven Design Modular Monolith using Hexogonal architecture
-1. Cross-aggregate operations
-1. More to follow...
+1. Domain Driven Design Modular Monolith using Hexagonal architecture
+2. Cross-aggregate operations
+3. Domain events with sync/async handler support
+4. Audit logging via domain event subscription
 
 The specifications for the reference project are in src/resources/specs. These should always be considered, and as we change the application, we must also change the specs to keep them in sync.
 

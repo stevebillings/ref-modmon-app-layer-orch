@@ -10,29 +10,38 @@ This is the application-specific directory structure following the architecture 
 project-root/
 ├── backend/
 │   ├── domain/                    # Core business logic (NO Django dependencies)
+│   │   ├── events.py              # Base DomainEvent class
+│   │   ├── event_dispatcher.py    # Abstract dispatcher interface
 │   │   ├── aggregates/            # Organized by aggregate
 │   │   │   ├── product/
 │   │   │   │   ├── entity.py              # Product aggregate root
+│   │   │   │   ├── events.py              # Product domain events
 │   │   │   │   └── repository.py          # Repository interface (ABC)
 │   │   │   ├── cart/
 │   │   │   │   ├── entities.py            # Cart (root) + CartItem
+│   │   │   │   ├── events.py              # Cart domain events
 │   │   │   │   └── repository.py          # Repository interface (ABC)
 │   │   │   └── order/
 │   │   │       ├── entities.py            # Order (root) + OrderItem
+│   │   │       ├── events.py              # Order domain events
 │   │   │       └── repository.py          # Repository interface (ABC)
 │   │   └── services/              # Domain services (cross-aggregate business logic)
 │   ├── application/               # Application layer (use case orchestration)
 │   │   └── services/              # Application services
 │   └── infrastructure/            # Framework-dependent code
+│       ├── events/                # Event dispatcher infrastructure
+│       │   ├── __init__.py        # Dispatcher setup
+│       │   ├── dispatcher.py      # Sync/async event dispatcher
+│       │   └── audit_handler.py   # Audit logging handler
 │       └── django_app/            # Django project
-│           ├── models.py          # ORM models
+│           ├── models.py          # ORM models (including AuditLog)
 │           ├── views.py           # API views
 │           ├── serializers.py     # DRF serializers
 │           ├── repositories/      # Repository implementations (Django ORM)
 │           │   ├── product_repository.py
 │           │   ├── cart_repository.py
 │           │   └── order_repository.py
-│           └── unit_of_work.py    # Unit of Work implementation
+│           └── unit_of_work.py    # Unit of Work with event dispatch
 ├── frontend/
 │   └── src/
 │       ├── components/            # Reusable UI components
@@ -90,6 +99,19 @@ project-root/
 - **unit_price** (decimal) - Snapshot of product price at time of order
 - **quantity** (integer) - Quantity ordered
 - **Note**: Product name and price are copied at order time to preserve order history even if product is later deleted
+
+### AuditLog
+- **id** (Primary Key, UUID)
+- **event_type** (string) - Event class name (e.g., "StockReserved", "CartSubmitted")
+- **event_id** (UUID) - Unique identifier of the event instance
+- **occurred_at** (timestamp) - When the event occurred
+- **actor_id** (string) - Who performed the action (e.g., user ID or "anonymous")
+- **aggregate_type** (string) - Type of aggregate (e.g., "Product", "Cart", "Order")
+- **aggregate_id** (UUID) - ID of the affected aggregate
+- **event_data** (JSON) - Full event payload for audit trail
+- **created_at** (timestamp) - When the log entry was created
+- **Immutability**: Audit log entries cannot be edited or deleted
+- **Note**: Populated automatically by the audit log event handler when domain events are dispatched. See [features/DOMAIN-EVENTS-AND-AUDIT-LOGGING.md](features/DOMAIN-EVENTS-AND-AUDIT-LOGGING.md) for details.
 
 ## Backend APIs
 

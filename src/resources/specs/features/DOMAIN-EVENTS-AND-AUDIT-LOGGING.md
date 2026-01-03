@@ -30,11 +30,13 @@ Audit Handler Writes to Database
 
 2. **Actor ID**: Hardcoded as "anonymous" initially. When authentication is added, this will be replaced with the actual user ID.
 
-3. **Synchronous Dispatch**: Events are dispatched synchronously in-process. This can be upgraded to async/message queue later without changing the domain layer.
+3. **Sync/Async Handler Support**: The dispatcher supports both sync and async handlers:
+   - **Sync handlers** (`register()`): Run immediately in the calling thread. Use for fast, critical handlers like audit logging.
+   - **Async handlers** (`register_async()`): Run in a background thread pool. Use for slow handlers like sending emails or calling external APIs.
 
-4. **Post-Commit Dispatch**: Events are only dispatched after the transaction commits successfully, ensuring consistency between database state and published events.
+4. **Post-Commit Dispatch**: Events are only dispatched after the transaction commits successfully, ensuring consistency between database state and published events. Sync handlers run first, then async handlers are submitted to the thread pool.
 
-5. **Resilient Audit Logging**: Audit handler failures are logged but don't break operations. The business transaction succeeds even if audit logging fails.
+5. **Resilient Handlers**: Handler failures are logged but don't break operations or prevent other handlers from running. The business transaction succeeds even if a handler fails.
 
 ## Domain Layer
 
@@ -81,7 +83,19 @@ Methods that trigger business events (like `reserve_stock()`, `add_item()`) call
 
 Location: `backend/infrastructure/events/dispatcher.py`
 
-The `SyncEventDispatcher` maintains a registry of handlers per event type and dispatches events to all registered handlers.
+The `SyncEventDispatcher` supports both synchronous and asynchronous handlers:
+
+```python
+dispatcher = SyncEventDispatcher()
+
+# Sync handler - runs immediately, blocks until complete
+dispatcher.register(StockReserved, audit_log_handler)
+
+# Async handler - runs in background thread pool
+dispatcher.register_async(OrderCreated, send_confirmation_email)
+```
+
+Async handlers use a shared `ThreadPoolExecutor` with 4 worker threads. This provides non-blocking dispatch without requiring external infrastructure like message queues.
 
 ### Audit Log Model
 
@@ -135,6 +149,6 @@ def add_item(self, product_id: str, quantity: int) -> Cart:
 ## Future Enhancements
 
 1. **Authentication Integration**: Replace "anonymous" actor_id with real user IDs
-2. **Async Dispatch**: Move to message queue for high-volume scenarios
+2. **Message Queue**: For very high-volume scenarios or cross-service communication, replace thread pool with a message queue (e.g., Redis, RabbitMQ)
 3. **Event Sourcing**: Use events as the source of truth (if needed)
 4. **Additional Subscribers**: Notifications, analytics, external system sync
