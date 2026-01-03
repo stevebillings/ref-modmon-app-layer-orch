@@ -8,23 +8,40 @@ from domain.pagination import PaginatedResult, ProductFilter
 
 class ProductRepository(ABC):
     @abstractmethod
-    def get_all(self) -> List[Product]:
-        """Get all products ordered alphabetically by name."""
+    def get_all(self, include_deleted: bool = False) -> List[Product]:
+        """
+        Get all products ordered alphabetically by name.
+
+        Args:
+            include_deleted: If True, include soft-deleted products
+        """
         pass
 
     @abstractmethod
-    def get_by_id(self, product_id: UUID) -> Product | None:
-        """Get a product by its ID."""
+    def get_by_id(
+        self, product_id: UUID, include_deleted: bool = False
+    ) -> Product | None:
+        """
+        Get a product by its ID.
+
+        Args:
+            include_deleted: If True, return even if soft-deleted
+        """
         pass
 
     @abstractmethod
-    def get_by_id_for_update(self, product_id: UUID) -> Product | None:
+    def get_by_id_for_update(
+        self, product_id: UUID, include_deleted: bool = False
+    ) -> Product | None:
         """
         Get a product by its ID with a row-level lock for update.
 
         Use this method when you need to read a product and then modify it
         (e.g., stock updates) to prevent race conditions from concurrent requests.
         The lock is held until the current transaction commits.
+
+        Args:
+            include_deleted: If True, return even if soft-deleted
         """
         pass
 
@@ -64,6 +81,7 @@ class ProductRepository(ABC):
         page: int = 1,
         page_size: int = 20,
         filter: ProductFilter | None = None,
+        include_deleted: bool = False,
     ) -> PaginatedResult[Product]:
         """
         Find products with pagination and optional filtering.
@@ -72,6 +90,7 @@ class ProductRepository(ABC):
             page: Page number (1-indexed)
             page_size: Number of items per page
             filter: Optional filter criteria
+            include_deleted: If True, include soft-deleted products
 
         Returns:
             PaginatedResult containing the products and pagination metadata

@@ -8,7 +8,12 @@ import logging
 from typing import Dict, Tuple, Type
 
 from domain.events import DomainEvent
-from domain.aggregates.product.events import StockReserved, StockReleased
+from domain.aggregates.product.events import (
+    StockReserved,
+    StockReleased,
+    ProductDeleted,
+    ProductRestored,
+)
 from domain.aggregates.cart.events import (
     CartItemAdded,
     CartItemQuantityUpdated,
@@ -26,6 +31,8 @@ logger = logging.getLogger(__name__)
 EVENT_AGGREGATE_MAP: Dict[Type[DomainEvent], Tuple[str, str]] = {
     StockReserved: ("Product", "product_id"),
     StockReleased: ("Product", "product_id"),
+    ProductDeleted: ("Product", "product_id"),
+    ProductRestored: ("Product", "product_id"),
     CartItemAdded: ("Cart", "cart_id"),
     CartItemQuantityUpdated: ("Cart", "cart_id"),
     CartItemRemoved: ("Cart", "cart_id"),

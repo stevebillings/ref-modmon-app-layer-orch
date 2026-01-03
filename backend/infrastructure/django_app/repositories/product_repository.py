@@ -16,21 +16,32 @@ from infrastructure.django_app.models import (
 
 
 class DjangoProductRepository(ProductRepository):
-    def get_all(self) -> List[Product]:
+    def _base_queryset(self, include_deleted: bool = False) -> "QuerySet[ProductModel]":
+        """Get base queryset with optional soft-delete filtering."""
+        qs = ProductModel.objects.all()
+        if not include_deleted:
+            qs = qs.filter(deleted_at__isnull=True)
+        return qs
+
+    def get_all(self, include_deleted: bool = False) -> List[Product]:
         """Get all products ordered alphabetically by name."""
         return [
-            self._to_domain(model) for model in ProductModel.objects.all()
+            self._to_domain(model) for model in self._base_queryset(include_deleted)
         ]
 
-    def get_by_id(self, product_id: UUID) -> Product | None:
+    def get_by_id(
+        self, product_id: UUID, include_deleted: bool = False
+    ) -> Product | None:
         """Get a product by its ID."""
         try:
-            model = ProductModel.objects.get(id=product_id)
+            model = self._base_queryset(include_deleted).get(id=product_id)
             return self._to_domain(model)
         except ProductModel.DoesNotExist:
             return None
 
-    def get_by_id_for_update(self, product_id: UUID) -> Product | None:
+    def get_by_id_for_update(
+        self, product_id: UUID, include_deleted: bool = False
+    ) -> Product | None:
         """
         Get a product by its ID with a row-level lock for update.
 
@@ -39,7 +50,9 @@ class DjangoProductRepository(ProductRepository):
         transaction commits.
         """
         try:
-            model = ProductModel.objects.select_for_update().get(id=product_id)
+            model = self._base_queryset(include_deleted).select_for_update().get(
+                id=product_id
+            )
             return self._to_domain(model)
         except ProductModel.DoesNotExist:
             return None
@@ -58,6 +71,7 @@ class DjangoProductRepository(ProductRepository):
                     "name": product.name,
                     "price": product.price,
                     "stock_quantity": product.stock_quantity,
+                    "deleted_at": product.deleted_at,
                 },
             )
         except IntegrityError:
@@ -87,9 +101,10 @@ class DjangoProductRepository(ProductRepository):
         page: int = 1,
         page_size: int = 20,
         filter: ProductFilter | None = None,
+        include_deleted: bool = False,
     ) -> PaginatedResult[Product]:
         """Find products with pagination and optional filtering."""
-        queryset = ProductModel.objects.all()
+        queryset = self._base_queryset(include_deleted)
 
         # Apply filters
         if filter:
@@ -131,4 +146,5 @@ class DjangoProductRepository(ProductRepository):
             price=model.price,
             stock_quantity=model.stock_quantity,
             created_at=model.created_at,
+            deleted_at=model.deleted_at,
         )

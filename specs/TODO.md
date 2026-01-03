@@ -12,9 +12,9 @@ This document tracks additional patterns and solutions typical of medium complex
 
 4. ~~**Pagination & Filtering**~~ - Implemented with search, price range filtering, stock availability filtering, and paginated results. See `features/PAGINATION-AND-FILTERING.md`.
 
-## High Value Additions
+5. ~~**Soft Deletes**~~ - Products can be soft-deleted (hidden from catalog) while preserving order history. Includes restore functionality. See `features/SOFT-DELETE.md`.
 
-5. **Soft Deletes** - Products shouldn't disappear from order history. Shows how to handle data retention while maintaining referential integrity.
+## High Value Additions
 
 ## Medium Value Additions
 

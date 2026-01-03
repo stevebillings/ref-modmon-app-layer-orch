@@ -51,6 +51,22 @@ class ProductInUseError(DomainError):
         super().__init__(f"Cannot delete product: {reason}")
 
 
+class ProductAlreadyDeletedError(DomainError):
+    """Raised when attempting to soft-delete an already deleted product."""
+
+    def __init__(self, product_id: str) -> None:
+        self.product_id = product_id
+        super().__init__(f"Product '{product_id}' is already deleted")
+
+
+class ProductNotDeletedError(DomainError):
+    """Raised when attempting to restore a product that is not deleted."""
+
+    def __init__(self, product_id: str) -> None:
+        self.product_id = product_id
+        super().__init__(f"Product '{product_id}' is not deleted")
+
+
 class CartItemNotFoundError(DomainError):
     """Raised when a cart item is not found."""
 

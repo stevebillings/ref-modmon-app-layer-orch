@@ -11,6 +11,11 @@ urlpatterns = [
     path("products/", views.products_list, name="products-list"),
     path("products/create/", views.product_create, name="product-create"),
     path("products/<str:product_id>/", views.product_delete, name="product-delete"),
+    path(
+        "products/<str:product_id>/restore/",
+        views.product_restore,
+        name="product-restore",
+    ),
     # Cart endpoints
     path("cart/", views.cart_get, name="cart-get"),
     path("cart/items/", views.cart_add_item, name="cart-add-item"),

@@ -54,15 +54,21 @@ project-root/
 
 ### Product Endpoints
 - **GET /api/products/** - List all products
-  - Response: Array of Product objects
+  - Response: Array of Product objects (excludes soft-deleted by default)
+  - Query params: `include_deleted=true` (admin only) - Include soft-deleted products
   - Ordering: Alphabetical by name
 - **POST /api/products/** - Create a new product
   - Request body: `{ name, price, stock_quantity }`
   - Response: Created Product object
   - Error: 400 if validation fails or if product with same name already exists
-- **DELETE /api/products/{id}/** - Delete a product
+- **DELETE /api/products/{id}/** - Soft-delete a product
   - Response: 204 No Content
-  - Error: 400 if product is in any cart or referenced in any order
+  - Effect: Sets `deleted_at` timestamp, product hidden from catalog
+  - Error: 400 if product is in any cart
+  - Note: Products in orders can be soft-deleted (order history preserved via snapshot)
+- **POST /api/products/{id}/restore/** - Restore a soft-deleted product (Admin only)
+  - Response: Restored Product object
+  - Error: 400 if product is not deleted, 404 if not found
 
 ### Cart Endpoints
 - **GET /api/cart/** - Get current cart

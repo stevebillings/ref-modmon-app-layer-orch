@@ -28,3 +28,21 @@ class StockReleased(DomainEvent):
     quantity_released: int
     new_stock: int
     actor_id: str
+
+
+@dataclass(frozen=True, kw_only=True)
+class ProductDeleted(DomainEvent):
+    """Raised when a product is soft-deleted."""
+
+    product_id: UUID
+    product_name: str
+    actor_id: str
+
+
+@dataclass(frozen=True, kw_only=True)
+class ProductRestored(DomainEvent):
+    """Raised when a soft-deleted product is restored."""
+
+    product_id: UUID
+    product_name: str
+    actor_id: str

@@ -15,12 +15,15 @@ from domain.exceptions import (
     EmptyCartError,
     InsufficientStockError,
     PermissionDeniedError,
+    ProductAlreadyDeletedError,
     ProductInUseError,
+    ProductNotDeletedError,
     ProductNotFoundError,
     ValidationError,
 )
 from domain.user_context import UserContext
 from infrastructure.django_app.auth_decorators import require_auth
+from infrastructure.django_app.user_context_adapter import build_user_context
 from infrastructure.django_app.serialization import to_dict
 from infrastructure.django_app.unit_of_work import unit_of_work
 from infrastructure.events import get_event_dispatcher
@@ -53,6 +56,16 @@ def handle_domain_error(error: DomainError) -> Response:
             {"error": str(error)},
             status=status.HTTP_400_BAD_REQUEST,
         )
+    if isinstance(error, ProductAlreadyDeletedError):
+        return Response(
+            {"error": str(error)},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    if isinstance(error, ProductNotDeletedError):
+        return Response(
+            {"error": str(error)},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
     if isinstance(error, InsufficientStockError):
         return Response(
             {"error": str(error)},
@@ -76,6 +89,16 @@ def handle_domain_error(error: DomainError) -> Response:
 
 
 # --- Product Endpoints ---
+
+
+def _get_optional_user_context(request: Request) -> UserContext | None:
+    """Get user context if authenticated, None otherwise."""
+    if hasattr(request, "user") and request.user.is_authenticated:
+        try:
+            return build_user_context(request.user)
+        except Exception:
+            return None
+    return None
 
 
 def _parse_int(value: str | None, default: int) -> int:
@@ -117,6 +140,7 @@ def products_list(request: Request) -> Response:
         min_price: Minimum price filter
         max_price: Maximum price filter
         in_stock: If "true", only return products with stock > 0
+        include_deleted: If "true" and user is admin, include soft-deleted products
     """
     with unit_of_work(get_event_dispatcher()) as uow:
         service = ProductService(uow)
@@ -128,6 +152,10 @@ def products_list(request: Request) -> Response:
         min_price = _parse_decimal(request.query_params.get("min_price"))
         max_price = _parse_decimal(request.query_params.get("max_price"))
         in_stock = _parse_bool(request.query_params.get("in_stock"))
+        include_deleted = _parse_bool(request.query_params.get("include_deleted"))
+
+        # Get user context if authenticated (for include_deleted check)
+        user_context = _get_optional_user_context(request)
 
         result = service.get_products_paginated(
             page=page,
@@ -136,6 +164,8 @@ def products_list(request: Request) -> Response:
             min_price=min_price,
             max_price=max_price,
             in_stock=in_stock,
+            include_deleted=include_deleted or False,
+            user_context=user_context,
         )
 
         return Response({
@@ -176,12 +206,25 @@ def product_create(request: Request, user_context: UserContext) -> Response:
 @api_view(["DELETE"])
 @require_auth
 def product_delete(request: Request, product_id: str, user_context: UserContext) -> Response:
-    """Delete a product. Admin only."""
+    """Soft-delete a product. Admin only."""
     with unit_of_work(get_event_dispatcher()) as uow:
         service = ProductService(uow)
         try:
             service.delete_product(product_id, user_context=user_context)
             return Response(status=status.HTTP_204_NO_CONTENT)
+        except DomainError as e:
+            return handle_domain_error(e)
+
+
+@api_view(["POST"])
+@require_auth
+def product_restore(request: Request, product_id: str, user_context: UserContext) -> Response:
+    """Restore a soft-deleted product. Admin only."""
+    with unit_of_work(get_event_dispatcher()) as uow:
+        service = ProductService(uow)
+        try:
+            product = service.restore_product(product_id, user_context=user_context)
+            return Response(to_dict(product), status=status.HTTP_200_OK)
         except DomainError as e:
             return handle_domain_error(e)
 

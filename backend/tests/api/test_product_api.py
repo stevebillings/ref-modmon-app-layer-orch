@@ -152,6 +152,136 @@ class TestProductDelete:
 
 
 @pytest.mark.django_db
+class TestProductSoftDelete:
+    def test_delete_product_is_soft_delete(
+        self, admin_client: APIClient, api_client: APIClient
+    ) -> None:
+        """Verify delete is soft delete - product hidden but not destroyed."""
+        # Create product
+        response = admin_client.post(
+            "/api/products/create/",
+            {"name": "Soft Delete Test", "price": "10.00", "stock_quantity": 10},
+            format="json",
+        )
+        product_id = response.json()["id"]
+
+        # Delete
+        response = admin_client.delete(f"/api/products/{product_id}/")
+        assert response.status_code == 204
+
+        # Not visible in normal list
+        response = api_client.get("/api/products/")
+        assert product_id not in [p["id"] for p in response.json()["results"]]
+
+        # Visible with include_deleted (as admin)
+        response = admin_client.get("/api/products/?include_deleted=true")
+        product_ids = [p["id"] for p in response.json()["results"]]
+        assert product_id in product_ids
+
+    def test_include_deleted_requires_admin(
+        self, admin_client: APIClient, customer_client: APIClient
+    ) -> None:
+        """Non-admins cannot see deleted products even with include_deleted=true."""
+        # Create and delete product
+        response = admin_client.post(
+            "/api/products/create/",
+            {"name": "Admin Only", "price": "10.00", "stock_quantity": 10},
+            format="json",
+        )
+        product_id = response.json()["id"]
+        admin_client.delete(f"/api/products/{product_id}/")
+
+        # Customer with include_deleted=true should NOT see deleted
+        response = customer_client.get("/api/products/?include_deleted=true")
+        assert product_id not in [p["id"] for p in response.json()["results"]]
+
+    def test_restore_product(self, admin_client: APIClient, api_client: APIClient) -> None:
+        """Test restoring a soft-deleted product."""
+        # Create and delete
+        response = admin_client.post(
+            "/api/products/create/",
+            {"name": "To Restore", "price": "10.00", "stock_quantity": 10},
+            format="json",
+        )
+        product_id = response.json()["id"]
+        admin_client.delete(f"/api/products/{product_id}/")
+
+        # Restore
+        response = admin_client.post(f"/api/products/{product_id}/restore/")
+        assert response.status_code == 200
+        assert response.json()["id"] == product_id
+        assert response.json()["deleted_at"] is None
+
+        # Now visible again
+        response = api_client.get("/api/products/")
+        assert product_id in [p["id"] for p in response.json()["results"]]
+
+    def test_restore_non_deleted_returns_error(self, admin_client: APIClient) -> None:
+        """Restoring a non-deleted product should fail."""
+        response = admin_client.post(
+            "/api/products/create/",
+            {"name": "Not Deleted", "price": "10.00", "stock_quantity": 10},
+            format="json",
+        )
+        product_id = response.json()["id"]
+
+        response = admin_client.post(f"/api/products/{product_id}/restore/")
+        assert response.status_code == 400
+
+    def test_delete_already_deleted_returns_error(self, admin_client: APIClient) -> None:
+        """Deleting an already deleted product should fail."""
+        response = admin_client.post(
+            "/api/products/create/",
+            {"name": "Already Deleted", "price": "10.00", "stock_quantity": 10},
+            format="json",
+        )
+        product_id = response.json()["id"]
+
+        # First delete succeeds
+        response = admin_client.delete(f"/api/products/{product_id}/")
+        assert response.status_code == 204
+
+        # Second delete fails
+        response = admin_client.delete(f"/api/products/{product_id}/")
+        assert response.status_code == 400
+
+    def test_deleted_product_has_deleted_at_in_response(
+        self, admin_client: APIClient
+    ) -> None:
+        """Verify deleted_at is included in response for admins."""
+        response = admin_client.post(
+            "/api/products/create/",
+            {"name": "Check deleted_at", "price": "10.00", "stock_quantity": 10},
+            format="json",
+        )
+        product_id = response.json()["id"]
+        admin_client.delete(f"/api/products/{product_id}/")
+
+        # Get with include_deleted
+        response = admin_client.get("/api/products/?include_deleted=true")
+        product = next(
+            p for p in response.json()["results"] if p["id"] == product_id
+        )
+        assert product["deleted_at"] is not None
+
+    def test_restore_requires_admin(
+        self, admin_client: APIClient, customer_client: APIClient
+    ) -> None:
+        """Only admins can restore products."""
+        response = admin_client.post(
+            "/api/products/create/",
+            {"name": "Restore Auth Test", "price": "10.00", "stock_quantity": 10},
+            format="json",
+        )
+        product_id = response.json()["id"]
+        admin_client.delete(f"/api/products/{product_id}/")
+
+        # Customer cannot restore
+        response = customer_client.post(f"/api/products/{product_id}/restore/")
+        assert response.status_code == 403
+
+
+@pytest.mark.django_db
 class TestProductPagination:
     """Tests for product list pagination and filtering."""
 
