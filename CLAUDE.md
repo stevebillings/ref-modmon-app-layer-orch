@@ -9,6 +9,6 @@ The goal is to keep the application simple enough to be easy to understand, whil
 3. Domain events with sync/async handler support
 4. Audit logging via domain event subscription
 
-The specifications for the reference project are in src/resources/specs. These should always be considered, and as we change the application, we must also change the specs to keep them in sync.
+The specifications for the reference project are in the specs directory. These should always be considered, and as we change the application, we must also change the specs to keep them in sync.
 
 Each time we prepare to introduce a new type of problem and its solution, we should consider changing or expanding the requirements and the application itself to make it better illustrate the problem and solution.
