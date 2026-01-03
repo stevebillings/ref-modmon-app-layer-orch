@@ -1,7 +1,5 @@
-from datetime import datetime
 from decimal import Decimal
 from typing import List
-from uuid import uuid4
 
 from django.db import IntegrityError
 
@@ -11,11 +9,7 @@ from domain.exceptions import (
     ProductInUseError,
     ProductNotFoundError,
 )
-from domain.validation import (
-    validate_product_name,
-    validate_product_price,
-    validate_stock_quantity,
-)
+from domain.validation import validate_product_name
 from infrastructure.django_app.unit_of_work import UnitOfWork
 
 
@@ -37,22 +31,18 @@ class ProductService:
             ValidationError: If validation fails
             DuplicateProductError: If a product with the same name exists
         """
-        # Validate inputs
+        # Validate name early to check for duplicates with normalized value
         validated_name = validate_product_name(name)
-        validated_price = validate_product_price(price)
-        validated_quantity = validate_stock_quantity(stock_quantity)
 
         # Check for duplicate name (fast path for common case)
         if self.uow.products.exists_by_name(validated_name):
             raise DuplicateProductError(validated_name)
 
-        # Create and save
-        product = Product(
-            id=uuid4(),
-            name=validated_name,
-            price=validated_price,
-            stock_quantity=validated_quantity,
-            created_at=datetime.now(),
+        # Create product using factory method (validates all fields)
+        product = Product.create(
+            name=name,
+            price=price,
+            stock_quantity=stock_quantity,
         )
 
         try:

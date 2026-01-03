@@ -1,4 +1,3 @@
-from decimal import Decimal
 from uuid import UUID, uuid4
 
 from domain.aggregates.cart.entities import Cart, CartItem
@@ -9,7 +8,6 @@ from domain.exceptions import (
     InsufficientStockError,
     ProductNotFoundError,
 )
-from domain.validation import validate_cart_item_quantity
 from infrastructure.django_app.unit_of_work import UnitOfWork
 
 
@@ -33,8 +31,6 @@ class CartService:
             ValidationError: If quantity is invalid
             InsufficientStockError: If not enough stock available
         """
-        validate_cart_item_quantity(quantity)
-
         try:
             pid = UUID(product_id)
         except ValueError:
@@ -75,9 +71,8 @@ class CartService:
                     product.name, product.stock_quantity, quantity
                 )
 
-            # Create cart item with snapshotted product data
-            item = CartItem(
-                id=uuid4(),
+            # Create cart item with snapshotted product data (validates quantity)
+            item = CartItem.create(
                 product_id=pid,
                 product_name=product.name,
                 unit_price=product.price,
@@ -104,8 +99,6 @@ class CartService:
             ValidationError: If quantity is invalid
             InsufficientStockError: If increasing beyond available stock
         """
-        validate_cart_item_quantity(quantity)
-
         try:
             pid = UUID(product_id)
         except ValueError:
@@ -192,11 +185,10 @@ class CartService:
         if not cart.items:
             raise EmptyCartError()
 
-        # Create order
+        # Create order using factory methods
         order_id = uuid4()
         order_items = [
-            OrderItem(
-                id=uuid4(),
+            OrderItem.create(
                 order_id=order_id,
                 product_id=item.product_id,
                 product_name=item.product_name,
