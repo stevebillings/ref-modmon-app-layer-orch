@@ -93,6 +93,7 @@ export async function getProducts(
     if (filters.min_price) params.set('min_price', filters.min_price);
     if (filters.max_price) params.set('max_price', filters.max_price);
     if (filters.in_stock !== undefined) params.set('in_stock', filters.in_stock.toString());
+    if (filters.include_deleted) params.set('include_deleted', 'true');
   }
 
   const queryString = params.toString();
@@ -134,6 +135,15 @@ export async function deleteProduct(productId: string): Promise<void> {
     const error = await response.json();
     throw new Error(error.error || 'Failed to delete product');
   }
+}
+
+export async function restoreProduct(productId: string): Promise<Product> {
+  const response = await fetch(`${API_BASE}/products/${productId}/restore/`, {
+    method: 'POST',
+    headers: getHeaders(),
+    credentials: 'include',
+  });
+  return handleResponse<Product>(response);
 }
 
 // Cart API

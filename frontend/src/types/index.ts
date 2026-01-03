@@ -22,6 +22,7 @@ export interface Product {
   price: string;
   stock_quantity: number;
   created_at: string;
+  deleted_at: string | null;
 }
 
 export interface CartItem {
@@ -78,6 +79,7 @@ export interface ProductFilters {
   min_price?: string;
   max_price?: string;
   in_stock?: boolean;
+  include_deleted?: boolean;
   page?: number;
   page_size?: number;
 }

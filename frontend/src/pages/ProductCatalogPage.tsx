@@ -10,14 +10,16 @@ import {
   VStack,
 } from '@chakra-ui/react';
 import type { Product, ProductFilters, ProductListResponse } from '../types';
-import { getProducts, createProduct, deleteProduct, addToCart } from '../services/api';
+import { getProducts, createProduct, deleteProduct, restoreProduct, addToCart } from '../services/api';
 import { ProductList } from '../components/ProductList';
 import { ProductForm } from '../components/ProductForm';
 import { ErrorAlert } from '../components/ErrorAlert';
+import { useAuth } from '../contexts/AuthContext';
 
 const DEFAULT_PAGE_SIZE = 10;
 
 export function ProductCatalogPage() {
+  const { isAdmin } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [pagination, setPagination] = useState<Omit<ProductListResponse, 'results'> | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -28,6 +30,7 @@ export function ProductCatalogPage() {
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
   const [inStockOnly, setInStockOnly] = useState(false);
+  const [showDeleted, setShowDeleted] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
 
   const loadProducts = useCallback(async (filters: ProductFilters = {}) => {
@@ -40,6 +43,7 @@ export function ProductCatalogPage() {
         min_price: filters.min_price || minPrice || undefined,
         max_price: filters.max_price || maxPrice || undefined,
         in_stock: filters.in_stock !== undefined ? filters.in_stock : (inStockOnly || undefined),
+        include_deleted: isAdmin && showDeleted ? true : undefined,
       });
       setProducts(data.results);
       setPagination({
@@ -56,7 +60,7 @@ export function ProductCatalogPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [currentPage, searchTerm, minPrice, maxPrice, inStockOnly]);
+  }, [currentPage, searchTerm, minPrice, maxPrice, inStockOnly, isAdmin, showDeleted]);
 
   useEffect(() => {
     loadProducts();
@@ -81,6 +85,11 @@ export function ProductCatalogPage() {
     await loadProducts();
   };
 
+  const handleRestoreProduct = async (productId: string) => {
+    await restoreProduct(productId);
+    await loadProducts();
+  };
+
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
@@ -94,10 +103,11 @@ export function ProductCatalogPage() {
     setMinPrice('');
     setMaxPrice('');
     setInStockOnly(false);
+    setShowDeleted(false);
     setCurrentPage(1);
   };
 
-  const hasActiveFilters = searchTerm || minPrice || maxPrice || inStockOnly;
+  const hasActiveFilters = searchTerm || minPrice || maxPrice || inStockOnly || showDeleted;
 
   return (
     <Container maxW="container.xl" py={6}>
@@ -148,6 +158,16 @@ export function ProductCatalogPage() {
             >
               In Stock Only
             </Button>
+            {isAdmin && (
+              <Button
+                variant={showDeleted ? 'solid' : 'outline'}
+                colorPalette={showDeleted ? 'red' : 'gray'}
+                onClick={() => setShowDeleted(!showDeleted)}
+                size="sm"
+              >
+                Show Deleted
+              </Button>
+            )}
             {hasActiveFilters && (
               <Button
                 variant="ghost"
@@ -168,6 +188,7 @@ export function ProductCatalogPage() {
           products={products}
           pagination={pagination || undefined}
           onDelete={handleDeleteProduct}
+          onRestore={handleRestoreProduct}
           onAddToCart={handleAddToCart}
           onPageChange={handlePageChange}
         />

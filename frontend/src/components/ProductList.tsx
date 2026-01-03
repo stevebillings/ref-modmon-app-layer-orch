@@ -26,6 +26,7 @@ interface ProductListProps {
   products: Product[];
   pagination?: PaginationInfo;
   onDelete: (productId: string) => Promise<void>;
+  onRestore: (productId: string) => Promise<void>;
   onAddToCart: (productId: string, quantity: number) => Promise<void>;
   onPageChange?: (page: number) => void;
 }
@@ -34,11 +35,13 @@ export function ProductList({
   products,
   pagination,
   onDelete,
+  onRestore,
   onAddToCart,
   onPageChange,
 }: ProductListProps) {
   const [deleteProduct, setDeleteProduct] = useState<Product | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [restoringProduct, setRestoringProduct] = useState<string | null>(null);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [addingToCart, setAddingToCart] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -71,6 +74,18 @@ export function ProductList({
     }
   };
 
+  const handleRestore = async (product: Product) => {
+    setRestoringProduct(product.id);
+    setError(null);
+    try {
+      await onRestore(product.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to restore product');
+    } finally {
+      setRestoringProduct(null);
+    }
+  };
+
   if (products.length === 0) {
     return (
       <EmptyState message="No products available. Add products to the catalog to get started." />
@@ -91,50 +106,81 @@ export function ProductList({
           </Table.Row>
         </Table.Header>
         <Table.Body>
-          {products.map((product) => (
-            <Table.Row key={product.id}>
-              <Table.Cell>{product.name}</Table.Cell>
-              <Table.Cell>{formatCurrency(product.price)}</Table.Cell>
-              <Table.Cell>{product.stock_quantity}</Table.Cell>
-              <Table.Cell>
-                <Input
-                  type="number"
-                  min="1"
-                  max={product.stock_quantity}
-                  value={quantities[product.id] || 1}
-                  onChange={(e) =>
-                    setQuantities((prev) => ({
-                      ...prev,
-                      [product.id]: parseInt(e.target.value, 10) || 1,
-                    }))
-                  }
-                  width="80px"
-                  disabled={product.stock_quantity === 0}
-                />
-              </Table.Cell>
-              <Table.Cell>
-                <HStack gap={2}>
-                  <Button
-                    size="sm"
-                    colorPalette="green"
-                    onClick={() => handleAddToCart(product)}
-                    loading={addingToCart === product.id}
-                    disabled={product.stock_quantity === 0}
-                  >
-                    Add to Cart
-                  </Button>
-                  <Button
-                    size="sm"
-                    colorPalette="red"
-                    variant="outline"
-                    onClick={() => setDeleteProduct(product)}
-                  >
-                    Delete
-                  </Button>
-                </HStack>
-              </Table.Cell>
-            </Table.Row>
-          ))}
+          {products.map((product) => {
+            const isDeleted = product.deleted_at !== null;
+            return (
+              <Table.Row
+                key={product.id}
+                opacity={isDeleted ? 0.6 : 1}
+                bg={isDeleted ? 'red.50' : undefined}
+              >
+                <Table.Cell>
+                  <HStack gap={2}>
+                    <Text textDecoration={isDeleted ? 'line-through' : undefined}>
+                      {product.name}
+                    </Text>
+                    {isDeleted && (
+                      <Text fontSize="xs" color="red.500" fontWeight="bold">
+                        (Deleted)
+                      </Text>
+                    )}
+                  </HStack>
+                </Table.Cell>
+                <Table.Cell>{formatCurrency(product.price)}</Table.Cell>
+                <Table.Cell>{product.stock_quantity}</Table.Cell>
+                <Table.Cell>
+                  <Input
+                    type="number"
+                    min="1"
+                    max={product.stock_quantity}
+                    value={quantities[product.id] || 1}
+                    onChange={(e) =>
+                      setQuantities((prev) => ({
+                        ...prev,
+                        [product.id]: parseInt(e.target.value, 10) || 1,
+                      }))
+                    }
+                    width="80px"
+                    disabled={product.stock_quantity === 0 || isDeleted}
+                  />
+                </Table.Cell>
+                <Table.Cell>
+                  <HStack gap={2}>
+                    {isDeleted ? (
+                      <Button
+                        size="sm"
+                        colorPalette="green"
+                        onClick={() => handleRestore(product)}
+                        loading={restoringProduct === product.id}
+                      >
+                        Restore
+                      </Button>
+                    ) : (
+                      <>
+                        <Button
+                          size="sm"
+                          colorPalette="green"
+                          onClick={() => handleAddToCart(product)}
+                          loading={addingToCart === product.id}
+                          disabled={product.stock_quantity === 0}
+                        >
+                          Add to Cart
+                        </Button>
+                        <Button
+                          size="sm"
+                          colorPalette="red"
+                          variant="outline"
+                          onClick={() => setDeleteProduct(product)}
+                        >
+                          Delete
+                        </Button>
+                      </>
+                    )}
+                  </HStack>
+                </Table.Cell>
+              </Table.Row>
+            );
+          })}
         </Table.Body>
       </Table.Root>
 
