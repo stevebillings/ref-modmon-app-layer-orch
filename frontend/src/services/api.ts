@@ -4,6 +4,7 @@ import type {
   Order,
   OrderListResponse,
   Product,
+  ProductFilters,
   ProductListResponse,
   SessionResponse,
 } from '../types';
@@ -80,12 +81,29 @@ export async function logout(): Promise<void> {
 
 // Product API
 
-export async function getProducts(): Promise<Product[]> {
-  const response = await fetch(`${API_BASE}/products/`, {
+export async function getProducts(
+  filters?: ProductFilters
+): Promise<ProductListResponse> {
+  const params = new URLSearchParams();
+
+  if (filters) {
+    if (filters.page) params.set('page', filters.page.toString());
+    if (filters.page_size) params.set('page_size', filters.page_size.toString());
+    if (filters.search) params.set('search', filters.search);
+    if (filters.min_price) params.set('min_price', filters.min_price);
+    if (filters.max_price) params.set('max_price', filters.max_price);
+    if (filters.in_stock !== undefined) params.set('in_stock', filters.in_stock.toString());
+  }
+
+  const queryString = params.toString();
+  const url = queryString
+    ? `${API_BASE}/products/?${queryString}`
+    : `${API_BASE}/products/`;
+
+  const response = await fetch(url, {
     credentials: 'include',
   });
-  const data = await handleResponse<ProductListResponse>(response);
-  return data.results;
+  return handleResponse<ProductListResponse>(response);
 }
 
 export async function createProduct(

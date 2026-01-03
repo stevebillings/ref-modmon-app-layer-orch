@@ -65,6 +65,21 @@ export interface ApiError {
 
 export interface ProductListResponse {
   results: Product[];
+  page: number;
+  page_size: number;
+  total_count: number;
+  total_pages: number;
+  has_next: boolean;
+  has_previous: boolean;
+}
+
+export interface ProductFilters {
+  search?: string;
+  min_price?: string;
+  max_price?: string;
+  in_stock?: boolean;
+  page?: number;
+  page_size?: number;
 }
 
 export interface OrderListResponse {

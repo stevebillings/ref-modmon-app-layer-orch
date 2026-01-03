@@ -5,6 +5,7 @@ import {
   HStack,
   Input,
   Table,
+  Text,
 } from '@chakra-ui/react';
 import type { Product } from '../types';
 import { formatCurrency } from '../services/currencyUtils';
@@ -12,16 +13,29 @@ import { ConfirmationDialog } from './ConfirmationDialog';
 import { EmptyState } from './EmptyState';
 import { ErrorAlert } from './ErrorAlert';
 
+interface PaginationInfo {
+  page: number;
+  page_size: number;
+  total_count: number;
+  total_pages: number;
+  has_next: boolean;
+  has_previous: boolean;
+}
+
 interface ProductListProps {
   products: Product[];
+  pagination?: PaginationInfo;
   onDelete: (productId: string) => Promise<void>;
   onAddToCart: (productId: string, quantity: number) => Promise<void>;
+  onPageChange?: (page: number) => void;
 }
 
 export function ProductList({
   products,
+  pagination,
   onDelete,
   onAddToCart,
+  onPageChange,
 }: ProductListProps) {
   const [deleteProduct, setDeleteProduct] = useState<Product | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -132,6 +146,31 @@ export function ProductList({
         message={`Are you sure you want to delete "${deleteProduct?.name}"? This action cannot be undone.`}
         isLoading={isDeleting}
       />
+
+      {pagination && pagination.total_pages > 1 && (
+        <HStack justifyContent="center" mt={6} gap={4}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => onPageChange?.(pagination.page - 1)}
+            disabled={!pagination.has_previous}
+          >
+            Previous
+          </Button>
+          <Text fontSize="sm">
+            Page {pagination.page} of {pagination.total_pages}
+            {' '}({pagination.total_count} items)
+          </Text>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => onPageChange?.(pagination.page + 1)}
+            disabled={!pagination.has_next}
+          >
+            Next
+          </Button>
+        </HStack>
+      )}
     </Box>
   );
 }

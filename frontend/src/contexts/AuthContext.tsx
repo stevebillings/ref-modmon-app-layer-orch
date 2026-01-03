@@ -3,7 +3,7 @@ import {
   useContext,
   useState,
   useEffect,
-  ReactNode,
+  type ReactNode,
 } from 'react';
 import { getSession, login as apiLogin, logout as apiLogout } from '../services/api';
 
