@@ -103,14 +103,15 @@ class TestProductRepository:
     def test_update_stock_quantity(self) -> None:
         repo = DjangoProductRepository()
         product_id = uuid4()
-        original = Product(
+        product = Product(
             id=product_id, name="Stock Product", price=Decimal("10.00"),
             stock_quantity=100, created_at=datetime.now()
         )
-        repo.save(original)
+        repo.save(product)
 
-        updated = original.with_stock_quantity(50)
-        repo.save(updated)
+        # Use mutable approach - modify and save
+        product.reserve_stock(50)
+        repo.save(product)
 
         found = repo.get_by_id(product_id)
         assert found is not None
@@ -134,78 +135,86 @@ class TestCartRepository:
 
         assert cart1.id == cart2.id
 
-    def test_add_item(self) -> None:
+    def test_save_with_new_item(self) -> None:
         repo = DjangoCartRepository()
         cart = repo.get_cart()
-        item = CartItem(
-            id=uuid4(),
+
+        # Add item using aggregate method
+        cart.add_item(
             product_id=uuid4(),
             product_name="Test Product",
             unit_price=Decimal("15.00"),
             quantity=2,
         )
+        repo.save(cart)
 
-        saved_item = repo.add_item(cart.id, item)
-
-        assert saved_item.product_name == "Test Product"
-        assert saved_item.quantity == 2
-
-        # Verify item is in cart
+        # Verify item is persisted
         updated_cart = repo.get_cart()
         assert len(updated_cart.items) == 1
+        assert updated_cart.items[0].product_name == "Test Product"
+        assert updated_cart.items[0].quantity == 2
 
-    def test_update_item_quantity(self) -> None:
+    def test_save_updates_item_quantity(self) -> None:
         repo = DjangoCartRepository()
         cart = repo.get_cart()
-        item = CartItem(
-            id=uuid4(),
-            product_id=uuid4(),
+        product_id = uuid4()
+
+        # Add initial item
+        cart.add_item(
+            product_id=product_id,
             product_name="Update Test",
             unit_price=Decimal("10.00"),
             quantity=1,
         )
-        saved_item = repo.add_item(cart.id, item)
+        repo.save(cart)
 
-        updated_item = saved_item.with_quantity(5)
-        repo.update_item(updated_item)
+        # Update quantity using aggregate method
+        cart.update_item_quantity(product_id, 5)
+        repo.save(cart)
 
         updated_cart = repo.get_cart()
         assert updated_cart.items[0].quantity == 5
 
-    def test_delete_item(self) -> None:
+    def test_save_removes_deleted_item(self) -> None:
         repo = DjangoCartRepository()
         cart = repo.get_cart()
-        item = CartItem(
-            id=uuid4(),
-            product_id=uuid4(),
+        product_id = uuid4()
+
+        # Add item
+        cart.add_item(
+            product_id=product_id,
             product_name="Delete Test",
             unit_price=Decimal("10.00"),
             quantity=1,
         )
-        saved_item = repo.add_item(cart.id, item)
+        repo.save(cart)
+        assert len(repo.get_cart().items) == 1
 
-        repo.delete_item(saved_item.id)
+        # Remove using aggregate method
+        cart.remove_item(product_id)
+        repo.save(cart)
 
         updated_cart = repo.get_cart()
         assert len(updated_cart.items) == 0
 
-    def test_clear_items(self) -> None:
+    def test_save_clears_all_items(self) -> None:
         repo = DjangoCartRepository()
         cart = repo.get_cart()
 
         # Add multiple items
         for i in range(3):
-            repo.add_item(cart.id, CartItem(
-                id=uuid4(),
+            cart.add_item(
                 product_id=uuid4(),
                 product_name=f"Product {i}",
                 unit_price=Decimal("10.00"),
                 quantity=1,
-            ))
-
+            )
+        repo.save(cart)
         assert len(repo.get_cart().items) == 3
 
-        repo.clear_items(cart.id)
+        # Clear items (simulate what submit does)
+        cart.items = []
+        repo.save(cart)
 
         assert len(repo.get_cart().items) == 0
 
@@ -281,14 +290,14 @@ class TestProductInCartAndOrder:
         # Not in cart initially
         assert product_repo.is_in_any_cart(product_id) is False
 
-        # Add to cart
-        cart_repo.add_item(cart.id, CartItem(
-            id=uuid4(),
+        # Add to cart using aggregate method
+        cart.add_item(
             product_id=product_id,
             product_name="In Cart",
             unit_price=Decimal("10.00"),
             quantity=1,
-        ))
+        )
+        cart_repo.save(cart)
 
         assert product_repo.is_in_any_cart(product_id) is True
 

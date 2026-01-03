@@ -1,10 +1,9 @@
-from uuid import UUID, uuid4
+from uuid import UUID
 
-from domain.aggregates.cart.entities import Cart, CartItem
-from domain.aggregates.order.entities import Order, OrderItem
+from domain.aggregates.cart.entities import Cart
+from domain.aggregates.order.entities import Order
 from domain.exceptions import (
     CartItemNotFoundError,
-    EmptyCartError,
     InsufficientStockError,
     ProductNotFoundError,
 )
@@ -12,6 +11,16 @@ from infrastructure.django_app.unit_of_work import UnitOfWork
 
 
 class CartService:
+    """
+    Application service for cart operations.
+
+    Thin orchestration layer that coordinates between Cart and Product aggregates.
+    Business logic is encapsulated in the aggregates; this service handles:
+    - Cross-aggregate coordination (stock availability checking)
+    - Persistence via repositories
+    - Concurrency control (pessimistic locking)
+    """
+
     def __init__(self, uow: UnitOfWork):
         self.uow = uow
 
@@ -36,57 +45,27 @@ class CartService:
         except ValueError:
             raise ProductNotFoundError(product_id)
 
-        # Use get_by_id_for_update to acquire a row-level lock, preventing
-        # race conditions when multiple requests try to reserve stock concurrently
+        # Acquire row-level lock to prevent concurrent stock modifications
         product = self.uow.products.get_by_id_for_update(pid)
         if product is None:
             raise ProductNotFoundError(product_id)
 
+        # Check stock availability (cross-aggregate concern handled by service)
+        if not product.has_sufficient_stock(quantity):
+            raise InsufficientStockError(
+                product.name, product.stock_quantity, quantity
+            )
+
+        # Delegate to aggregates
         cart = self.uow.cart.get_cart()
-        existing_item = cart.get_item_by_product_id(pid)
+        cart.add_item(pid, product.name, product.price, quantity)
+        product.reserve_stock(quantity)
 
-        if existing_item:
-            # Adding to existing item
-            new_quantity = existing_item.quantity + quantity
-            additional_stock_needed = quantity
+        # Persist both aggregates
+        self.uow.cart.save(cart)
+        self.uow.products.save(product)
 
-            if additional_stock_needed > product.stock_quantity:
-                raise InsufficientStockError(
-                    product.name, product.stock_quantity, additional_stock_needed
-                )
-
-            # Update cart item
-            updated_item = existing_item.with_quantity(new_quantity)
-            self.uow.cart.update_item(updated_item)
-
-            # Reserve stock
-            updated_product = product.with_stock_quantity(
-                product.stock_quantity - additional_stock_needed
-            )
-            self.uow.products.save(updated_product)
-        else:
-            # New item
-            if quantity > product.stock_quantity:
-                raise InsufficientStockError(
-                    product.name, product.stock_quantity, quantity
-                )
-
-            # Create cart item with snapshotted product data (validates quantity)
-            item = CartItem.create(
-                product_id=pid,
-                product_name=product.name,
-                unit_price=product.price,
-                quantity=quantity,
-            )
-            self.uow.cart.add_item(cart.id, item)
-
-            # Reserve stock
-            updated_product = product.with_stock_quantity(
-                product.stock_quantity - quantity
-            )
-            self.uow.products.save(updated_product)
-
-        return self.uow.cart.get_cart()
+        return cart
 
     def update_item_quantity(self, product_id: str, quantity: int) -> Cart:
         """
@@ -105,36 +84,36 @@ class CartService:
             raise CartItemNotFoundError(product_id)
 
         cart = self.uow.cart.get_cart()
-        item = cart.get_item_by_product_id(pid)
 
-        if item is None:
+        # Check item exists before acquiring product lock
+        if cart.get_item_by_product_id(pid) is None:
             raise CartItemNotFoundError(product_id)
 
-        # Use get_by_id_for_update to acquire a row-level lock, preventing
-        # race conditions when multiple requests try to modify stock concurrently
+        # Acquire row-level lock for stock modification
         product = self.uow.products.get_by_id_for_update(pid)
         if product is None:
             raise ProductNotFoundError(product_id)
 
-        quantity_diff = quantity - item.quantity
+        # Delegate to cart aggregate - returns quantity difference
+        diff = cart.update_item_quantity(pid, quantity)
 
-        if quantity_diff > 0:
+        # Adjust stock based on difference
+        if diff > 0:
             # Increasing quantity - need more stock
-            if quantity_diff > product.stock_quantity:
+            if not product.has_sufficient_stock(diff):
                 raise InsufficientStockError(
-                    product.name, product.stock_quantity, quantity_diff
+                    product.name, product.stock_quantity, diff
                 )
+            product.reserve_stock(diff)
+        elif diff < 0:
+            # Decreasing quantity - release stock
+            product.release_stock(-diff)
 
-        # Update cart item
-        updated_item = item.with_quantity(quantity)
-        self.uow.cart.update_item(updated_item)
+        # Persist both aggregates
+        self.uow.cart.save(cart)
+        self.uow.products.save(product)
 
-        # Adjust stock
-        new_stock = product.stock_quantity - quantity_diff
-        updated_product = product.with_stock_quantity(new_stock)
-        self.uow.products.save(updated_product)
-
-        return self.uow.cart.get_cart()
+        return cart
 
     def remove_item(self, product_id: str) -> Cart:
         """
@@ -151,24 +130,20 @@ class CartService:
             raise CartItemNotFoundError(product_id)
 
         cart = self.uow.cart.get_cart()
-        item = cart.get_item_by_product_id(pid)
 
-        if item is None:
-            raise CartItemNotFoundError(product_id)
+        # Delegate to cart aggregate - returns removed item for stock release
+        removed_item = cart.remove_item(pid)
 
-        # Release stock - use get_by_id_for_update to acquire a row-level lock,
-        # preventing race conditions when multiple requests try to release stock
+        # Acquire row-level lock and release stock
         product = self.uow.products.get_by_id_for_update(pid)
         if product:
-            updated_product = product.with_stock_quantity(
-                product.stock_quantity + item.quantity
-            )
-            self.uow.products.save(updated_product)
+            product.release_stock(removed_item.quantity)
+            self.uow.products.save(product)
 
-        # Remove item
-        self.uow.cart.delete_item(item.id)
+        # Persist cart
+        self.uow.cart.save(cart)
 
-        return self.uow.cart.get_cart()
+        return cart
 
     def submit_cart(self) -> Order:
         """
@@ -182,31 +157,11 @@ class CartService:
         """
         cart = self.uow.cart.get_cart()
 
-        if not cart.items:
-            raise EmptyCartError()
+        # Delegate to cart aggregate - creates order and clears cart
+        order = cart.submit()
 
-        # Create order using factory methods
-        order_id = uuid4()
-        order_items = [
-            OrderItem.create(
-                order_id=order_id,
-                product_id=item.product_id,
-                product_name=item.product_name,
-                unit_price=item.unit_price,
-                quantity=item.quantity,
-            )
-            for item in cart.items
-        ]
-
-        order = Order(
-            id=order_id,
-            items=order_items,
-            submitted_at=None,  # Will be set by repository
-        )
-
+        # Persist order and cleared cart
         saved_order = self.uow.orders.save(order)
-
-        # Clear cart
-        self.uow.cart.clear_items(cart.id)
+        self.uow.cart.save(cart)
 
         return saved_order

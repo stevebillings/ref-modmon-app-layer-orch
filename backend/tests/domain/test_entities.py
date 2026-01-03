@@ -7,6 +7,11 @@ import pytest
 from domain.aggregates.product.entity import Product
 from domain.aggregates.cart.entities import Cart, CartItem
 from domain.aggregates.order.entities import Order, OrderItem
+from domain.exceptions import (
+    CartItemNotFoundError,
+    EmptyCartError,
+    InsufficientStockError,
+)
 
 
 class TestProduct:
@@ -27,19 +32,7 @@ class TestProduct:
         assert product.stock_quantity == 100
         assert product.created_at == now
 
-    def test_product_is_frozen(self) -> None:
-        product = Product(
-            id=uuid4(),
-            name="Test",
-            price=Decimal("10.00"),
-            stock_quantity=10,
-            created_at=datetime.now(),
-        )
-
-        with pytest.raises(AttributeError):
-            product.name = "New Name"  # type: ignore[misc]
-
-    def test_with_stock_quantity(self) -> None:
+    def test_has_sufficient_stock(self) -> None:
         product = Product(
             id=uuid4(),
             name="Test",
@@ -48,13 +41,48 @@ class TestProduct:
             created_at=datetime.now(),
         )
 
-        updated = product.with_stock_quantity(50)
+        assert product.has_sufficient_stock(50) is True
+        assert product.has_sufficient_stock(100) is True
+        assert product.has_sufficient_stock(101) is False
 
-        assert updated.stock_quantity == 50
-        assert updated.id == product.id
-        assert updated.name == product.name
-        assert updated.price == product.price
-        assert product.stock_quantity == 100  # Original unchanged
+    def test_reserve_stock(self) -> None:
+        product = Product(
+            id=uuid4(),
+            name="Test",
+            price=Decimal("10.00"),
+            stock_quantity=100,
+            created_at=datetime.now(),
+        )
+
+        product.reserve_stock(30)
+        assert product.stock_quantity == 70
+
+        product.reserve_stock(20)
+        assert product.stock_quantity == 50
+
+    def test_reserve_stock_insufficient_raises(self) -> None:
+        product = Product(
+            id=uuid4(),
+            name="Test",
+            price=Decimal("10.00"),
+            stock_quantity=10,
+            created_at=datetime.now(),
+        )
+
+        with pytest.raises(InsufficientStockError):
+            product.reserve_stock(20)
+
+    def test_release_stock(self) -> None:
+        product = Product(
+            id=uuid4(),
+            name="Test",
+            price=Decimal("10.00"),
+            stock_quantity=50,
+            created_at=datetime.now(),
+        )
+
+        product.release_stock(25)
+        assert product.stock_quantity == 75
 
 
 class TestCartItem:
@@ -187,23 +215,74 @@ class TestCart:
         cart = Cart(id=uuid4(), items=[], created_at=datetime.now())
         assert cart.get_item_by_product_id(uuid4()) is None
 
-    def test_with_items(self) -> None:
+    def test_add_item_new(self) -> None:
         cart = Cart(id=uuid4(), items=[], created_at=datetime.now())
-        new_items = [
-            CartItem(
-                id=uuid4(),
-                product_id=uuid4(),
-                product_name="New Item",
-                unit_price=Decimal("15.00"),
-                quantity=1,
-            )
-        ]
+        product_id = uuid4()
 
-        updated = cart.with_items(new_items)
+        cart.add_item(product_id, "Test Product", Decimal("15.00"), 2)
 
-        assert len(updated.items) == 1
-        assert updated.id == cart.id
-        assert len(cart.items) == 0  # Original unchanged
+        assert len(cart.items) == 1
+        assert cart.items[0].product_id == product_id
+        assert cart.items[0].quantity == 2
+
+    def test_add_item_merges_existing(self) -> None:
+        product_id = uuid4()
+        cart = Cart(id=uuid4(), items=[], created_at=datetime.now())
+
+        cart.add_item(product_id, "Test Product", Decimal("10.00"), 2)
+        cart.add_item(product_id, "Test Product", Decimal("10.00"), 3)
+
+        assert len(cart.items) == 1
+        assert cart.items[0].quantity == 5
+
+    def test_update_item_quantity(self) -> None:
+        product_id = uuid4()
+        cart = Cart(id=uuid4(), items=[], created_at=datetime.now())
+        cart.add_item(product_id, "Test", Decimal("10.00"), 5)
+
+        diff = cart.update_item_quantity(product_id, 8)
+
+        assert diff == 3
+        assert cart.items[0].quantity == 8
+
+    def test_update_item_quantity_not_found_raises(self) -> None:
+        cart = Cart(id=uuid4(), items=[], created_at=datetime.now())
+
+        with pytest.raises(CartItemNotFoundError):
+            cart.update_item_quantity(uuid4(), 5)
+
+    def test_remove_item(self) -> None:
+        product_id = uuid4()
+        cart = Cart(id=uuid4(), items=[], created_at=datetime.now())
+        cart.add_item(product_id, "Test", Decimal("10.00"), 5)
+
+        removed = cart.remove_item(product_id)
+
+        assert removed.quantity == 5
+        assert len(cart.items) == 0
+
+    def test_remove_item_not_found_raises(self) -> None:
+        cart = Cart(id=uuid4(), items=[], created_at=datetime.now())
+
+        with pytest.raises(CartItemNotFoundError):
+            cart.remove_item(uuid4())
+
+    def test_submit_creates_order(self) -> None:
+        cart = Cart(id=uuid4(), items=[], created_at=datetime.now())
+        cart.add_item(uuid4(), "Product A", Decimal("10.00"), 2)
+        cart.add_item(uuid4(), "Product B", Decimal("5.00"), 3)
+
+        order = cart.submit()
+
+        assert len(order.items) == 2
+        assert order.total == Decimal("35.00")
+        assert len(cart.items) == 0  # Cart is cleared
+
+    def test_submit_empty_cart_raises(self) -> None:
+        cart = Cart(id=uuid4(), items=[], created_at=datetime.now())
+
+        with pytest.raises(EmptyCartError):
+            cart.submit()
 
 
 class TestOrderItem:

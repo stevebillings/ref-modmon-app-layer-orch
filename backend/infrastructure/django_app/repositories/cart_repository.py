@@ -1,4 +1,3 @@
-from typing import List
 from uuid import UUID
 
 from domain.aggregates.cart.entities import Cart, CartItem
@@ -18,39 +17,38 @@ class DjangoCartRepository(CartRepository):
         return self._to_domain(model)
 
     def save(self, cart: Cart) -> Cart:
-        """Save the cart and its items."""
-        # Cart itself has no mutable fields besides items
-        # Items are managed via add_item, update_item, delete_item
-        model = CartModel.objects.get(id=cart.id)
-        return self._to_domain(model)
+        """
+        Save the cart and its items.
 
-    def add_item(self, cart_id: UUID, item: CartItem) -> CartItem:
-        """Add an item to the cart."""
-        model = CartItemModel.objects.create(
-            id=item.id,
-            cart_id=cart_id,
-            product_id=item.product_id,
-            product_name=item.product_name,
-            unit_price=item.unit_price,
-            quantity=item.quantity,
+        Compares current state with database and handles add/update/delete.
+        """
+        # Get current item IDs from database
+        current_ids = set(
+            CartItemModel.objects.filter(cart_id=cart.id).values_list(
+                "id", flat=True
+            )
         )
-        return self._item_to_domain(model)
+        new_ids = {item.id for item in cart.items}
 
-    def update_item(self, item: CartItem) -> CartItem:
-        """Update an existing cart item."""
-        CartItemModel.objects.filter(id=item.id).update(
-            quantity=item.quantity
-        )
-        model = CartItemModel.objects.get(id=item.id)
-        return self._item_to_domain(model)
+        # Delete removed items
+        removed_ids = current_ids - new_ids
+        if removed_ids:
+            CartItemModel.objects.filter(id__in=removed_ids).delete()
 
-    def delete_item(self, item_id: UUID) -> None:
-        """Delete a cart item by its ID."""
-        CartItemModel.objects.filter(id=item_id).delete()
+        # Upsert current items
+        for item in cart.items:
+            CartItemModel.objects.update_or_create(
+                id=item.id,
+                defaults={
+                    "cart_id": cart.id,
+                    "product_id": item.product_id,
+                    "product_name": item.product_name,
+                    "unit_price": item.unit_price,
+                    "quantity": item.quantity,
+                },
+            )
 
-    def clear_items(self, cart_id: UUID) -> None:
-        """Remove all items from the cart."""
-        CartItemModel.objects.filter(cart_id=cart_id).delete()
+        return cart
 
     def _to_domain(self, model: CartModel) -> Cart:
         """Convert ORM model to domain entity."""

@@ -3,6 +3,7 @@ from datetime import datetime
 from decimal import Decimal
 from uuid import UUID, uuid4
 
+from domain.exceptions import InsufficientStockError
 from domain.validation import (
     validate_product_name,
     validate_product_price,
@@ -10,8 +11,16 @@ from domain.validation import (
 )
 
 
-@dataclass(frozen=True)
+@dataclass
 class Product:
+    """
+    Product aggregate root.
+
+    Mutable aggregate that encapsulates product data and stock management.
+    Use create() factory for new products with validation.
+    Use constructor directly for reconstitution from persistence.
+    """
+
     id: UUID
     name: str
     price: Decimal
@@ -39,12 +48,23 @@ class Product:
             created_at=datetime.now(),
         )
 
-    def with_stock_quantity(self, new_quantity: int) -> "Product":
-        """Return a new Product with updated stock quantity."""
-        return Product(
-            id=self.id,
-            name=self.name,
-            price=self.price,
-            stock_quantity=new_quantity,
-            created_at=self.created_at,
-        )
+    def has_sufficient_stock(self, quantity: int) -> bool:
+        """Check if the requested quantity can be reserved."""
+        return quantity <= self.stock_quantity
+
+    def reserve_stock(self, quantity: int) -> None:
+        """
+        Reserve stock by decrementing stock_quantity.
+
+        Raises:
+            InsufficientStockError: If not enough stock available
+        """
+        if not self.has_sufficient_stock(quantity):
+            raise InsufficientStockError(
+                self.name, self.stock_quantity, quantity
+            )
+        self.stock_quantity -= quantity
+
+    def release_stock(self, quantity: int) -> None:
+        """Release previously reserved stock by incrementing stock_quantity."""
+        self.stock_quantity += quantity

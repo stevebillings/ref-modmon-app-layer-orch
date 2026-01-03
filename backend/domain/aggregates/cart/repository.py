@@ -1,10 +1,15 @@
 from abc import ABC, abstractmethod
-from uuid import UUID
 
-from domain.aggregates.cart.entities import Cart, CartItem
+from domain.aggregates.cart.entities import Cart
 
 
 class CartRepository(ABC):
+    """
+    Repository interface for Cart aggregate.
+
+    Uses whole-aggregate persistence - save() handles all item changes.
+    """
+
     @abstractmethod
     def get_cart(self) -> Cart:
         """Get the singleton cart. Creates it if it doesn't exist."""
@@ -12,25 +17,9 @@ class CartRepository(ABC):
 
     @abstractmethod
     def save(self, cart: Cart) -> Cart:
-        """Save the cart and its items."""
-        pass
+        """
+        Save the cart and its items.
 
-    @abstractmethod
-    def add_item(self, cart_id: UUID, item: CartItem) -> CartItem:
-        """Add an item to the cart."""
-        pass
-
-    @abstractmethod
-    def update_item(self, item: CartItem) -> CartItem:
-        """Update an existing cart item."""
-        pass
-
-    @abstractmethod
-    def delete_item(self, item_id: UUID) -> None:
-        """Delete a cart item by its ID."""
-        pass
-
-    @abstractmethod
-    def clear_items(self, cart_id: UUID) -> None:
-        """Remove all items from the cart."""
+        Handles add/update/delete of items by comparing with persisted state.
+        """
         pass
