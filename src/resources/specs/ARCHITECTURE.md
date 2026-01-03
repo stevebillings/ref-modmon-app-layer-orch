@@ -35,16 +35,19 @@ Follow best practices for good separation of concerns in this type of applicatio
 project-root/
 ├── backend/
 │   ├── domain/                    # Core business logic (NO Django dependencies)
+│   │   ├── validation.py          # Shared validation functions
+│   │   ├── exceptions.py          # Domain exceptions
 │   │   ├── aggregates/            # Organized by aggregate
 │   │   │   ├── <aggregate_a>/
-│   │   │   │   ├── entity.py              # Aggregate root entity
+│   │   │   │   ├── entity.py              # Aggregate root (mutable, with behavior)
+│   │   │   │   ├── validation.py          # Aggregate-specific validations
 │   │   │   │   └── repository.py          # Repository interface (ABC)
 │   │   │   └── <aggregate_b>/
-│   │   │       ├── entities.py            # Aggregate root + child entities
+│   │   │       ├── entities.py            # Aggregate root + child value objects
 │   │   │       └── repository.py          # Repository interface (ABC)
 │   │   └── services/              # Domain services (cross-aggregate business logic)
 │   ├── application/               # Application layer (use case orchestration)
-│   │   └── services/              # Application services
+│   │   └── services/              # Application services (thin orchestration)
 │   └── infrastructure/            # Framework-dependent code
 │       └── django_app/            # Django project
 │           ├── models.py          # ORM models
@@ -70,30 +73,130 @@ project-root/
 
 The backend uses a simplified pattern for returning data from API endpoints, keeping the Django layer thin and the domain logic framework-agnostic.
 
-### Domain entities as frozen dataclasses
+### True DDD aggregates with encapsulated behavior
 
-Domain entities are defined as frozen (immutable) dataclasses in the domain layer:
+Domain aggregates are **not anemic data containers**. They are mutable classes with behavior methods that enforce invariants and encapsulate business logic. This follows the core DDD principle that aggregates are consistency boundaries responsible for maintaining their own validity.
+
+**Aggregate roots** (e.g., `Product`, `Cart`) are mutable and contain behavior methods:
+
+```python
+@dataclass
+class Product:
+    id: UUID
+    name: str
+    price: Decimal
+    stock_quantity: int
+    created_at: datetime
+
+    @classmethod
+    def create(cls, name: str, price: Decimal, stock_quantity: int) -> "Product":
+        """Factory method for new products with validation."""
+        return cls(
+            id=uuid4(),
+            name=validate_product_name(name),
+            price=validate_product_price(price),
+            stock_quantity=validate_stock_quantity(stock_quantity),
+            created_at=datetime.now(),
+        )
+
+    def reserve_stock(self, quantity: int) -> None:
+        """Reserve stock. Raises InsufficientStockError if unavailable."""
+        if quantity > self.stock_quantity:
+            raise InsufficientStockError(...)
+        self.stock_quantity -= quantity
+
+    def release_stock(self, quantity: int) -> None:
+        """Release previously reserved stock."""
+        self.stock_quantity += quantity
+```
+
+**Value objects** within aggregates (e.g., `CartItem`, `OrderItem`) remain frozen since they have no independent lifecycle:
 
 ```python
 @dataclass(frozen=True)
-class ExampleEntity:
+class CartItem:
     id: UUID
-    name: str
-    value: Decimal
-    created_at: datetime
-
-@dataclass(frozen=True)
-class ChildEntity:
-    id: UUID
-    parent_id: UUID        # Reference by ID only (not the parent entity)
-    parent_name: str       # Snapshot of parent name when created
+    product_id: UUID        # Reference by ID only
+    product_name: str       # Snapshot of product name when added
+    unit_price: Decimal     # Snapshot of price when added
     quantity: int
 
-@dataclass(frozen=True)
-class ParentEntity:
+    @classmethod
+    def create(cls, product_id: UUID, product_name: str,
+               unit_price: Decimal, quantity: int) -> "CartItem":
+        """Factory method with validation."""
+        return cls(
+            id=uuid4(),
+            product_id=product_id,
+            product_name=product_name,
+            unit_price=unit_price,
+            quantity=validate_positive_quantity(quantity),
+        )
+```
+
+**Aggregates with child entities** manage their children through behavior methods:
+
+```python
+@dataclass
+class Cart:
     id: UUID
-    items: List[ChildEntity]  # Child entities contain snapshots, not parent references
+    items: List[CartItem]   # Mutable list of immutable items
     created_at: datetime
+
+    def add_item(self, product_id: UUID, product_name: str,
+                 unit_price: Decimal, quantity: int) -> None:
+        """Add item or merge with existing. Validates quantity."""
+        validate_positive_quantity(quantity)
+        existing = self.get_item_by_product_id(product_id)
+        if existing:
+            # Merge: replace with updated quantity
+            new_item = existing.with_quantity(existing.quantity + quantity)
+            self.items = [new_item if i.id == existing.id else i for i in self.items]
+        else:
+            self.items.append(CartItem.create(product_id, product_name, unit_price, quantity))
+
+    def remove_item(self, product_id: UUID) -> CartItem:
+        """Remove and return item for stock release. Raises if not found."""
+        item = self.get_item_by_product_id(product_id)
+        if item is None:
+            raise CartItemNotFoundError(str(product_id))
+        self.items = [i for i in self.items if i.id != item.id]
+        return item
+
+    def submit(self) -> Order:
+        """Create Order from cart and clear items. Raises if empty."""
+        if not self.items:
+            raise EmptyCartError()
+        # ... create order, clear self.items
+```
+
+### Factory methods and reconstitution
+
+Aggregates use two patterns for instantiation:
+
+1. **Factory methods (`create()`)** - For creating new instances with validation:
+   ```python
+   product = Product.create(name="Widget", price="19.99", stock_quantity=100)
+   ```
+
+2. **Constructor** - For reconstituting from persistence (no re-validation needed):
+   ```python
+   # Used by repositories when loading from database
+   product = Product(id=row.id, name=row.name, price=row.price, ...)
+   ```
+
+This separation allows aggregates to enforce invariants on creation while avoiding redundant validation when loading trusted data from the database.
+
+### Validation organization
+
+Validation functions are organized by aggregate:
+
+```
+domain/
+├── validation.py                      # Shared validations (e.g., validate_positive_quantity)
+└── aggregates/
+    └── product/
+        └── validation.py              # Product-specific validations
 ```
 
 ### Recursive `to_dict()` conversion
@@ -198,14 +301,12 @@ def get_by_id_for_update(self, entity_id: UUID) -> Entity | None:
         return None
 
 # In application service
-def update_entity(self, entity_id: str, new_value: int) -> Entity:
+def reserve_resource(self, entity_id: str, quantity: int) -> Entity:
     entity = self.uow.entities.get_by_id_for_update(entity_id)  # Lock acquired
-    # Check business rules against locked data
-    if new_value > entity.available:
-        raise InsufficientResourceError(...)
-    # Update is safe - no other transaction can modify this row
-    updated = entity.with_value(new_value)
-    return self.uow.entities.save(updated)
+    # Delegate to aggregate - it validates and mutates in place
+    entity.reserve(quantity)  # Raises if insufficient
+    # Persist the mutated aggregate
+    return self.uow.entities.save(entity)
 ```
 
 The lock is held until the transaction commits, preventing other transactions from reading or modifying the row.
