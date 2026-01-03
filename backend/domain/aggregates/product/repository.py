@@ -29,7 +29,12 @@ class ProductRepository(ABC):
 
     @abstractmethod
     def save(self, product: Product) -> Product:
-        """Save a product (create or update)."""
+        """
+        Save a product (create or update).
+
+        Raises:
+            DuplicateProductError: If a product with the same name already exists
+        """
         pass
 
     @abstractmethod

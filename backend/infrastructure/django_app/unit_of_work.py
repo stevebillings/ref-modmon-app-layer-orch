@@ -3,6 +3,7 @@ from typing import Any, Generator, List
 
 from django.db import transaction
 
+from application.ports.unit_of_work import UnitOfWork
 from domain.aggregates.cart.repository import CartRepository
 from domain.aggregates.order.repository import OrderRepository
 from domain.aggregates.product.repository import ProductRepository
@@ -19,7 +20,7 @@ from infrastructure.django_app.repositories.product_repository import (
 )
 
 
-class UnitOfWork:
+class DjangoUnitOfWork(UnitOfWork):
     """
     Unit of Work pattern implementation for Django.
 
@@ -92,7 +93,7 @@ def unit_of_work(
     or rolled back if an exception occurs.
     Events are dispatched after successful commit.
     """
-    uow = UnitOfWork(event_dispatcher)
+    uow = DjangoUnitOfWork(event_dispatcher)
     with transaction.atomic():
         yield uow
     # After successful commit, dispatch events

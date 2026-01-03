@@ -1,16 +1,14 @@
 from decimal import Decimal
 from typing import List
 
-from django.db import IntegrityError
-
+from application.ports.unit_of_work import UnitOfWork
 from domain.aggregates.product.entity import Product
+from domain.aggregates.product.validation import validate_product_name
 from domain.exceptions import (
     DuplicateProductError,
     ProductInUseError,
     ProductNotFoundError,
 )
-from domain.aggregates.product.validation import validate_product_name
-from infrastructure.django_app.unit_of_work import UnitOfWork
 
 
 class ProductService:
@@ -51,14 +49,11 @@ class ProductService:
             stock_quantity=stock_quantity,
         )
 
-        try:
-            saved_product = self.uow.get_product_repository().save(product)
-            self.uow.collect_events_from(product)
-            return saved_product
-        except IntegrityError:
-            # Handle race condition: another request created the product
-            # after our exists_by_name check but before our save
-            raise DuplicateProductError(validated_name)
+        # Repository handles race condition by raising DuplicateProductError
+        # if another request created the product after our exists_by_name check
+        saved_product = self.uow.get_product_repository().save(product)
+        self.uow.collect_events_from(product)
+        return saved_product
 
     def delete_product(self, product_id: str) -> None:
         """

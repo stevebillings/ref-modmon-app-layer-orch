@@ -1,7 +1,7 @@
 from typing import List
 
+from application.ports.unit_of_work import UnitOfWork
 from domain.aggregates.order.entities import Order
-from infrastructure.django_app.unit_of_work import UnitOfWork
 
 
 class OrderService:

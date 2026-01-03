@@ -3,13 +3,13 @@ import pytest
 from application.services.cart_service import CartService
 from application.services.order_service import OrderService
 from application.services.product_service import ProductService
-from infrastructure.django_app.unit_of_work import UnitOfWork
+from infrastructure.django_app.unit_of_work import DjangoUnitOfWork
 
 
 @pytest.mark.django_db
 class TestOrderService:
     def test_get_all_orders_empty(self) -> None:
-        uow = UnitOfWork()
+        uow = DjangoUnitOfWork()
         service = OrderService(uow)
 
         orders = service.get_all_orders()
@@ -17,7 +17,7 @@ class TestOrderService:
         assert orders == []
 
     def test_get_all_orders(self) -> None:
-        uow = UnitOfWork()
+        uow = DjangoUnitOfWork()
         product_service = ProductService(uow)
         cart_service = CartService(uow)
         order_service = OrderService(uow)
@@ -36,7 +36,7 @@ class TestOrderService:
         assert len(orders) == 3
 
     def test_orders_newest_first(self) -> None:
-        uow = UnitOfWork()
+        uow = DjangoUnitOfWork()
         product_service = ProductService(uow)
         cart_service = CartService(uow)
         order_service = OrderService(uow)

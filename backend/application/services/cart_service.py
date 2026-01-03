@@ -1,5 +1,6 @@
 from uuid import UUID
 
+from application.ports.unit_of_work import UnitOfWork
 from domain.aggregates.cart.entities import Cart
 from domain.aggregates.order.entities import Order
 from domain.exceptions import (
@@ -7,7 +8,6 @@ from domain.exceptions import (
     InsufficientStockError,
     ProductNotFoundError,
 )
-from infrastructure.django_app.unit_of_work import UnitOfWork
 
 
 class CartService:

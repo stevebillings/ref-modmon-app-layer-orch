@@ -1,8 +1,11 @@
 from typing import List
 from uuid import UUID
 
+from django.db import IntegrityError
+
 from domain.aggregates.product.entity import Product
 from domain.aggregates.product.repository import ProductRepository
+from domain.exceptions import DuplicateProductError
 from infrastructure.django_app.models import (
     CartItemModel,
     OrderItemModel,
@@ -40,15 +43,23 @@ class DjangoProductRepository(ProductRepository):
             return None
 
     def save(self, product: Product) -> Product:
-        """Save a product (create or update)."""
-        model, _ = ProductModel.objects.update_or_create(
-            id=product.id,
-            defaults={
-                "name": product.name,
-                "price": product.price,
-                "stock_quantity": product.stock_quantity,
-            },
-        )
+        """
+        Save a product (create or update).
+
+        Raises:
+            DuplicateProductError: If a product with the same name already exists
+        """
+        try:
+            model, _ = ProductModel.objects.update_or_create(
+                id=product.id,
+                defaults={
+                    "name": product.name,
+                    "price": product.price,
+                    "stock_quantity": product.stock_quantity,
+                },
+            )
+        except IntegrityError:
+            raise DuplicateProductError(product.name)
         # Refresh to get auto-generated created_at if new
         model.refresh_from_db()
         return self._to_domain(model)
