@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from uuid import UUID
 
 from domain.aggregates.cart.entities import Cart
 
@@ -11,8 +12,8 @@ class CartRepository(ABC):
     """
 
     @abstractmethod
-    def get_cart(self) -> Cart:
-        """Get the singleton cart. Creates it if it doesn't exist."""
+    def get_cart_for_user(self, user_id: UUID) -> Cart:
+        """Get the cart for a specific user. Creates it if it doesn't exist."""
         pass
 
     @abstractmethod

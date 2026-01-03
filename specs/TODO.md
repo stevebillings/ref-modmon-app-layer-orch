@@ -8,9 +8,9 @@ This document tracks additional patterns and solutions typical of medium complex
 
 2. ~~**Audit Logging**~~ - Implemented as a domain event subscriber. See `features/DOMAIN-EVENTS-AND-AUDIT-LOGGING.md`.
 
-## High Value Additions
+3. ~~**Authentication & Authorization**~~ - Django session auth with role-based access (admin can manage products, customers manage their own cart). Shows how auth concerns stay out of domain logic via UserContext pattern. See `features/AUTHENTICATION-AND-AUTHORIZATION.md`.
 
-3. **Authentication & Authorization** - Role-based access (e.g., admin can manage products, customers can only manage their own cart). Shows how auth concerns stay out of domain logic.
+## High Value Additions
 
 4. **Pagination & Filtering** - Product catalog search, filtering by price range, paginated results. Common requirement that touches all layers.
 

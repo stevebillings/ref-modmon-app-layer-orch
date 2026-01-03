@@ -1,12 +1,17 @@
 import type {
+  AuthResponse,
   Cart,
   Order,
   OrderListResponse,
   Product,
   ProductListResponse,
+  SessionResponse,
 } from '../types';
 
 const API_BASE = 'http://localhost:8000/api';
+
+// Store CSRF token for authenticated requests
+let csrfToken: string | null = null;
 
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
@@ -16,10 +21,69 @@ async function handleResponse<T>(response: Response): Promise<T> {
   return response.json();
 }
 
+function getHeaders(): HeadersInit {
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+  };
+  if (csrfToken) {
+    headers['X-CSRFToken'] = csrfToken;
+  }
+  return headers;
+}
+
+// Auth API
+
+export async function getSession(): Promise<SessionResponse> {
+  const response = await fetch(`${API_BASE}/auth/session/`, {
+    credentials: 'include',
+  });
+  const data = await handleResponse<SessionResponse>(response);
+  csrfToken = data.csrf_token;
+  return data;
+}
+
+export async function login(
+  username: string,
+  password: string
+): Promise<AuthResponse> {
+  // Get CSRF token first if we don't have one
+  if (!csrfToken) {
+    await getSession();
+  }
+
+  const response = await fetch(`${API_BASE}/auth/login/`, {
+    method: 'POST',
+    headers: getHeaders(),
+    credentials: 'include',
+    body: JSON.stringify({ username, password }),
+  });
+  const data = await handleResponse<AuthResponse>(response);
+
+  // After login, refresh CSRF token since a new session was created
+  await getSession();
+
+  return data;
+}
+
+export async function logout(): Promise<void> {
+  const response = await fetch(`${API_BASE}/auth/logout/`, {
+    method: 'POST',
+    headers: getHeaders(),
+    credentials: 'include',
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Logout failed');
+  }
+  csrfToken = null;
+}
+
 // Product API
 
 export async function getProducts(): Promise<Product[]> {
-  const response = await fetch(`${API_BASE}/products/`);
+  const response = await fetch(`${API_BASE}/products/`, {
+    credentials: 'include',
+  });
   const data = await handleResponse<ProductListResponse>(response);
   return data.results;
 }
@@ -29,9 +93,10 @@ export async function createProduct(
   price: string,
   stockQuantity: number
 ): Promise<Product> {
-  const response = await fetch(`${API_BASE}/products/`, {
+  const response = await fetch(`${API_BASE}/products/create/`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getHeaders(),
+    credentials: 'include',
     body: JSON.stringify({
       name,
       price,
@@ -44,6 +109,8 @@ export async function createProduct(
 export async function deleteProduct(productId: string): Promise<void> {
   const response = await fetch(`${API_BASE}/products/${productId}/`, {
     method: 'DELETE',
+    headers: getHeaders(),
+    credentials: 'include',
   });
   if (!response.ok) {
     const error = await response.json();
@@ -54,7 +121,9 @@ export async function deleteProduct(productId: string): Promise<void> {
 // Cart API
 
 export async function getCart(): Promise<Cart> {
-  const response = await fetch(`${API_BASE}/cart/`);
+  const response = await fetch(`${API_BASE}/cart/`, {
+    credentials: 'include',
+  });
   return handleResponse<Cart>(response);
 }
 
@@ -64,7 +133,8 @@ export async function addToCart(
 ): Promise<Cart> {
   const response = await fetch(`${API_BASE}/cart/items/`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getHeaders(),
+    credentials: 'include',
     body: JSON.stringify({
       product_id: productId,
       quantity,
@@ -79,7 +149,8 @@ export async function updateCartItem(
 ): Promise<Cart> {
   const response = await fetch(`${API_BASE}/cart/items/${productId}/`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getHeaders(),
+    credentials: 'include',
     body: JSON.stringify({ quantity }),
   });
   return handleResponse<Cart>(response);
@@ -88,6 +159,8 @@ export async function updateCartItem(
 export async function removeFromCart(productId: string): Promise<Cart> {
   const response = await fetch(`${API_BASE}/cart/items/${productId}/remove/`, {
     method: 'DELETE',
+    headers: getHeaders(),
+    credentials: 'include',
   });
   return handleResponse<Cart>(response);
 }
@@ -95,6 +168,8 @@ export async function removeFromCart(productId: string): Promise<Cart> {
 export async function submitCart(): Promise<Order> {
   const response = await fetch(`${API_BASE}/cart/submit/`, {
     method: 'POST',
+    headers: getHeaders(),
+    credentials: 'include',
   });
   return handleResponse<Order>(response);
 }
@@ -102,7 +177,9 @@ export async function submitCart(): Promise<Order> {
 // Order API
 
 export async function getOrders(): Promise<Order[]> {
-  const response = await fetch(`${API_BASE}/orders/`);
+  const response = await fetch(`${API_BASE}/orders/`, {
+    credentials: 'include',
+  });
   const data = await handleResponse<OrderListResponse>(response);
   return data.results;
 }

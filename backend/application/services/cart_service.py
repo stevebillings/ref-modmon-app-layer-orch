@@ -8,6 +8,7 @@ from domain.exceptions import (
     InsufficientStockError,
     ProductNotFoundError,
 )
+from domain.user_context import UserContext
 
 
 class CartService:
@@ -20,18 +21,21 @@ class CartService:
     - Persistence via repositories
     - Concurrency control (pessimistic locking)
     - Event collection for dispatch after commit
+    - User context for cart ownership and audit logging
     """
 
     def __init__(self, uow: UnitOfWork):
         self.uow = uow
 
-    def get_cart(self) -> Cart:
-        """Get the current cart."""
-        return self.uow.get_cart_repository().get_cart()
+    def get_cart(self, user_context: UserContext) -> Cart:
+        """Get the cart for the authenticated user."""
+        return self.uow.get_cart_repository().get_cart_for_user(user_context.user_id)
 
-    def add_item(self, product_id: str, quantity: int) -> Cart:
+    def add_item(
+        self, product_id: str, quantity: int, user_context: UserContext
+    ) -> Cart:
         """
-        Add an item to the cart.
+        Add an item to the user's cart.
 
         If the product is already in the cart, increases the quantity.
         Reserves stock immediately (decrements product's stock_quantity).
@@ -58,9 +62,11 @@ class CartService:
             )
 
         # Delegate to aggregates
-        cart = self.uow.get_cart_repository().get_cart()
-        cart.add_item(pid, product.name, product.price, quantity)
-        product.reserve_stock(quantity)
+        cart = self.uow.get_cart_repository().get_cart_for_user(user_context.user_id)
+        cart.add_item(
+            pid, product.name, product.price, quantity, actor_id=user_context.actor_id
+        )
+        product.reserve_stock(quantity, actor_id=user_context.actor_id)
 
         # Persist both aggregates
         self.uow.get_cart_repository().save(cart)
@@ -72,9 +78,11 @@ class CartService:
 
         return cart
 
-    def update_item_quantity(self, product_id: str, quantity: int) -> Cart:
+    def update_item_quantity(
+        self, product_id: str, quantity: int, user_context: UserContext
+    ) -> Cart:
         """
-        Update the quantity of an item in the cart.
+        Update the quantity of an item in the user's cart.
 
         Adjusts stock reservation accordingly.
 
@@ -88,7 +96,7 @@ class CartService:
         except ValueError:
             raise CartItemNotFoundError(product_id)
 
-        cart = self.uow.get_cart_repository().get_cart()
+        cart = self.uow.get_cart_repository().get_cart_for_user(user_context.user_id)
 
         # Check item exists before acquiring product lock
         if cart.get_item_by_product_id(pid) is None:
@@ -100,7 +108,7 @@ class CartService:
             raise ProductNotFoundError(product_id)
 
         # Delegate to cart aggregate - returns quantity difference
-        diff = cart.update_item_quantity(pid, quantity)
+        diff = cart.update_item_quantity(pid, quantity, actor_id=user_context.actor_id)
 
         # Adjust stock based on difference
         if diff > 0:
@@ -109,10 +117,10 @@ class CartService:
                 raise InsufficientStockError(
                     product.name, product.stock_quantity, diff
                 )
-            product.reserve_stock(diff)
+            product.reserve_stock(diff, actor_id=user_context.actor_id)
         elif diff < 0:
             # Decreasing quantity - release stock
-            product.release_stock(-diff)
+            product.release_stock(-diff, actor_id=user_context.actor_id)
 
         # Persist both aggregates
         self.uow.get_cart_repository().save(cart)
@@ -124,9 +132,9 @@ class CartService:
 
         return cart
 
-    def remove_item(self, product_id: str) -> Cart:
+    def remove_item(self, product_id: str, user_context: UserContext) -> Cart:
         """
-        Remove an item from the cart.
+        Remove an item from the user's cart.
 
         Releases reserved stock.
 
@@ -138,15 +146,15 @@ class CartService:
         except ValueError:
             raise CartItemNotFoundError(product_id)
 
-        cart = self.uow.get_cart_repository().get_cart()
+        cart = self.uow.get_cart_repository().get_cart_for_user(user_context.user_id)
 
         # Delegate to cart aggregate - returns removed item for stock release
-        removed_item = cart.remove_item(pid)
+        removed_item = cart.remove_item(pid, actor_id=user_context.actor_id)
 
         # Acquire row-level lock and release stock
         product = self.uow.get_product_repository().get_by_id_for_update(pid)
         if product:
-            product.release_stock(removed_item.quantity)
+            product.release_stock(removed_item.quantity, actor_id=user_context.actor_id)
             self.uow.get_product_repository().save(product)
             self.uow.collect_events_from(product)
 
@@ -156,9 +164,9 @@ class CartService:
 
         return cart
 
-    def submit_cart(self) -> Order:
+    def submit_cart(self, user_context: UserContext) -> Order:
         """
-        Submit the cart as an order.
+        Submit the user's cart as an order.
 
         Creates an immutable Order from cart contents and clears the cart.
         Stock remains decremented (was reserved when added to cart).
@@ -166,10 +174,10 @@ class CartService:
         Raises:
             EmptyCartError: If cart has no items
         """
-        cart = self.uow.get_cart_repository().get_cart()
+        cart = self.uow.get_cart_repository().get_cart_for_user(user_context.user_id)
 
         # Delegate to cart aggregate - creates order and clears cart
-        order = cart.submit()
+        order = cart.submit(actor_id=user_context.actor_id)
 
         # Persist order and cleared cart
         saved_order = self.uow.get_order_repository().save(order)

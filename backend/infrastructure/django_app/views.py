@@ -12,10 +12,13 @@ from domain.exceptions import (
     DuplicateProductError,
     EmptyCartError,
     InsufficientStockError,
+    PermissionDeniedError,
     ProductInUseError,
     ProductNotFoundError,
     ValidationError,
 )
+from domain.user_context import UserContext
+from infrastructure.django_app.auth_decorators import require_auth
 from infrastructure.django_app.serialization import to_dict
 from infrastructure.django_app.unit_of_work import unit_of_work
 from infrastructure.events import get_event_dispatcher
@@ -23,6 +26,11 @@ from infrastructure.events import get_event_dispatcher
 
 def handle_domain_error(error: DomainError) -> Response:
     """Convert domain errors to appropriate HTTP responses."""
+    if isinstance(error, PermissionDeniedError):
+        return Response(
+            {"error": str(error)},
+            status=status.HTTP_403_FORBIDDEN,
+        )
     if isinstance(error, ValidationError):
         return Response(
             {"error": error.message, "field": error.field},
@@ -68,23 +76,28 @@ def handle_domain_error(error: DomainError) -> Response:
 # --- Product Endpoints ---
 
 
-@api_view(["GET", "POST"])
-def products_list_create(request: Request) -> Response:
-    """List all products or create a new product."""
+@api_view(["GET"])
+def products_list(request: Request) -> Response:
+    """List all products. Public endpoint - no auth required."""
     with unit_of_work(get_event_dispatcher()) as uow:
         service = ProductService(uow)
+        products = service.get_all_products()
+        return Response({"results": [to_dict(p) for p in products]})
 
-        if request.method == "GET":
-            products = service.get_all_products()
-            return Response({"results": [to_dict(p) for p in products]})
 
-        # POST - create product
+@api_view(["POST"])
+@require_auth
+def product_create(request: Request, user_context: UserContext) -> Response:
+    """Create a new product. Admin only."""
+    with unit_of_work(get_event_dispatcher()) as uow:
+        service = ProductService(uow)
         try:
             data = request.data
             product = service.create_product(
                 name=data.get("name", ""),
                 price=data.get("price", "0"),
                 stock_quantity=int(data.get("stock_quantity", 0)),
+                user_context=user_context,
             )
             return Response(to_dict(product), status=status.HTTP_201_CREATED)
         except DomainError as e:
@@ -97,12 +110,13 @@ def products_list_create(request: Request) -> Response:
 
 
 @api_view(["DELETE"])
-def product_delete(request: Request, product_id: str) -> Response:
-    """Delete a product."""
+@require_auth
+def product_delete(request: Request, product_id: str, user_context: UserContext) -> Response:
+    """Delete a product. Admin only."""
     with unit_of_work(get_event_dispatcher()) as uow:
         service = ProductService(uow)
         try:
-            service.delete_product(product_id)
+            service.delete_product(product_id, user_context=user_context)
             return Response(status=status.HTTP_204_NO_CONTENT)
         except DomainError as e:
             return handle_domain_error(e)
@@ -112,11 +126,12 @@ def product_delete(request: Request, product_id: str) -> Response:
 
 
 @api_view(["GET"])
-def cart_get(request: Request) -> Response:
-    """Get the current cart."""
+@require_auth
+def cart_get(request: Request, user_context: UserContext) -> Response:
+    """Get the current user's cart."""
     with unit_of_work(get_event_dispatcher()) as uow:
         service = CartService(uow)
-        cart = service.get_cart()
+        cart = service.get_cart(user_context=user_context)
         cart_dict = to_dict(cart)
         cart_dict["total"] = str(cart.get_total())
         cart_dict["item_count"] = cart.get_item_count()
@@ -124,8 +139,9 @@ def cart_get(request: Request) -> Response:
 
 
 @api_view(["POST"])
-def cart_add_item(request: Request) -> Response:
-    """Add an item to the cart."""
+@require_auth
+def cart_add_item(request: Request, user_context: UserContext) -> Response:
+    """Add an item to the user's cart."""
     with unit_of_work(get_event_dispatcher()) as uow:
         service = CartService(uow)
         try:
@@ -133,6 +149,7 @@ def cart_add_item(request: Request) -> Response:
             cart = service.add_item(
                 product_id=data.get("product_id", ""),
                 quantity=int(data.get("quantity", 0)),
+                user_context=user_context,
             )
             cart_dict = to_dict(cart)
             cart_dict["total"] = str(cart.get_total())
@@ -148,8 +165,9 @@ def cart_add_item(request: Request) -> Response:
 
 
 @api_view(["PATCH"])
-def cart_update_item(request: Request, product_id: str) -> Response:
-    """Update the quantity of an item in the cart."""
+@require_auth
+def cart_update_item(request: Request, product_id: str, user_context: UserContext) -> Response:
+    """Update the quantity of an item in the user's cart."""
     with unit_of_work(get_event_dispatcher()) as uow:
         service = CartService(uow)
         try:
@@ -157,6 +175,7 @@ def cart_update_item(request: Request, product_id: str) -> Response:
             cart = service.update_item_quantity(
                 product_id=product_id,
                 quantity=int(data.get("quantity", 0)),
+                user_context=user_context,
             )
             cart_dict = to_dict(cart)
             cart_dict["total"] = str(cart.get_total())
@@ -172,12 +191,13 @@ def cart_update_item(request: Request, product_id: str) -> Response:
 
 
 @api_view(["DELETE"])
-def cart_remove_item(request: Request, product_id: str) -> Response:
-    """Remove an item from the cart."""
+@require_auth
+def cart_remove_item(request: Request, product_id: str, user_context: UserContext) -> Response:
+    """Remove an item from the user's cart."""
     with unit_of_work(get_event_dispatcher()) as uow:
         service = CartService(uow)
         try:
-            cart = service.remove_item(product_id=product_id)
+            cart = service.remove_item(product_id=product_id, user_context=user_context)
             cart_dict = to_dict(cart)
             cart_dict["total"] = str(cart.get_total())
             cart_dict["item_count"] = cart.get_item_count()
@@ -187,12 +207,13 @@ def cart_remove_item(request: Request, product_id: str) -> Response:
 
 
 @api_view(["POST"])
-def cart_submit(request: Request) -> Response:
-    """Submit the cart as an order."""
+@require_auth
+def cart_submit(request: Request, user_context: UserContext) -> Response:
+    """Submit the user's cart as an order."""
     with unit_of_work(get_event_dispatcher()) as uow:
         service = CartService(uow)
         try:
-            order = service.submit_cart()
+            order = service.submit_cart(user_context=user_context)
             order_dict = to_dict(order)
             order_dict["total"] = str(order.get_total())
             return Response(order_dict, status=status.HTTP_201_CREATED)
@@ -204,11 +225,12 @@ def cart_submit(request: Request) -> Response:
 
 
 @api_view(["GET"])
-def orders_list(request: Request) -> Response:
-    """List all orders."""
+@require_auth
+def orders_list(request: Request, user_context: UserContext) -> Response:
+    """List orders. Admins see all; customers see only their own."""
     with unit_of_work(get_event_dispatcher()) as uow:
         service = OrderService(uow)
-        orders = service.get_all_orders()
+        orders = service.get_orders(user_context=user_context)
         results = []
         for order in orders:
             order_dict = to_dict(order)

@@ -1,3 +1,21 @@
+// Auth types
+export interface User {
+  id: string;
+  username: string;
+  role: 'admin' | 'customer';
+}
+
+export interface AuthResponse {
+  user: User;
+}
+
+export interface SessionResponse {
+  authenticated: boolean;
+  user?: User;
+  csrf_token: string;
+}
+
+// Product types
 export interface Product {
   id: string;
   name: string;

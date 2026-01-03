@@ -14,9 +14,18 @@ class DjangoOrderRepository(OrderRepository):
             for model in OrderModel.objects.prefetch_related("items").all()
         ]
 
+    def get_all_for_user(self, user_id: UUID) -> List[Order]:
+        """Get all orders for a specific user, ordered by submitted_at descending."""
+        return [
+            self._to_domain(model)
+            for model in OrderModel.objects.filter(user_id=user_id)
+            .prefetch_related("items")
+            .all()
+        ]
+
     def save(self, order: Order) -> Order:
         """Save an order and its items."""
-        model = OrderModel.objects.create(id=order.id)
+        model = OrderModel.objects.create(id=order.id, user_id=order.user_id)
         for item in order.items:
             OrderItemModel.objects.create(
                 id=item.id,
@@ -34,6 +43,7 @@ class DjangoOrderRepository(OrderRepository):
         items = [self._item_to_domain(item, model.id) for item in model.items.all()]
         return Order(
             id=model.id,
+            user_id=model.user_id,
             items=items,
             submitted_at=model.submitted_at,
         )

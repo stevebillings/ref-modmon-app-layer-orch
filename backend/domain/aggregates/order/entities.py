@@ -47,19 +47,22 @@ class OrderItem:
 @dataclass(frozen=True)
 class Order:
     id: UUID
+    user_id: UUID
     items: List[OrderItem]
     submitted_at: datetime | None
 
     @classmethod
-    def create(cls, items: List[OrderItem]) -> "Order":
+    def create(cls, user_id: UUID, items: List[OrderItem]) -> "Order":
         """
         Factory method to create a new Order.
 
         Args:
+            user_id: The ID of the user who placed the order
             items: List of OrderItems (should be created via OrderItem.create())
         """
         return cls(
             id=uuid4(),
+            user_id=user_id,
             items=items,
             submitted_at=None,
         )

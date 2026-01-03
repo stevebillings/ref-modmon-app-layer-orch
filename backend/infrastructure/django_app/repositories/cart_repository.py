@@ -4,16 +4,16 @@ from domain.aggregates.cart.entities import Cart, CartItem
 from domain.aggregates.cart.repository import CartRepository
 from infrastructure.django_app.models import CartItemModel, CartModel
 
-# Fixed UUID for the singleton cart - ensures get_or_create atomicity
-SINGLETON_CART_ID = UUID("00000000-0000-0000-0000-000000000001")
-
 
 class DjangoCartRepository(CartRepository):
-    def get_cart(self) -> Cart:
-        """Get the singleton cart. Creates it if it doesn't exist."""
-        # Use get_or_create with a fixed ID for atomicity - prevents race condition
-        # where concurrent requests could both create a cart
-        model, _ = CartModel.objects.get_or_create(id=SINGLETON_CART_ID)
+    def get_cart_for_user(self, user_id: UUID) -> Cart:
+        """Get the cart for a specific user. Creates it if it doesn't exist."""
+        # Use get_or_create with user_id for atomicity - prevents race condition
+        # where concurrent requests could both create a cart for the same user
+        model, _ = CartModel.objects.get_or_create(
+            user_id=user_id,
+            defaults={"user_id": user_id},
+        )
         return self._to_domain(model)
 
     def save(self, cart: Cart) -> Cart:
@@ -22,6 +22,12 @@ class DjangoCartRepository(CartRepository):
 
         Compares current state with database and handles add/update/delete.
         """
+        # Ensure cart model exists with user_id
+        CartModel.objects.update_or_create(
+            id=cart.id,
+            defaults={"user_id": cart.user_id},
+        )
+
         # Get current item IDs from database
         current_ids = set(
             CartItemModel.objects.filter(cart_id=cart.id).values_list(
@@ -55,6 +61,7 @@ class DjangoCartRepository(CartRepository):
         items = [self._item_to_domain(item) for item in model.items.all()]
         return Cart(
             id=model.id,
+            user_id=model.user_id,
             items=items,
             created_at=model.created_at,
         )

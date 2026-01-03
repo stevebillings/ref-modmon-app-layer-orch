@@ -77,6 +77,7 @@ class Cart:
     """
 
     id: UUID
+    user_id: UUID
     items: List[CartItem] = field(default_factory=list)
     created_at: datetime = field(default_factory=datetime.now)
     _domain_events: List["DomainEvent"] = field(
@@ -84,10 +85,11 @@ class Cart:
     )
 
     @classmethod
-    def create(cls) -> "Cart":
-        """Factory method to create a new empty Cart."""
+    def create(cls, user_id: UUID) -> "Cart":
+        """Factory method to create a new empty Cart for a user."""
         return cls(
             id=uuid4(),
+            user_id=user_id,
             items=[],
             created_at=datetime.now(),
         )
@@ -256,7 +258,12 @@ class Cart:
             for item in self.items
         ]
 
-        order = Order(id=order_id, items=order_items, submitted_at=None)
+        order = Order(
+            id=order_id,
+            user_id=self.user_id,
+            items=order_items,
+            submitted_at=None,
+        )
         self.items = []
 
         self._raise_event(

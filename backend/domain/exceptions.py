@@ -64,3 +64,12 @@ class EmptyCartError(DomainError):
 
     def __init__(self) -> None:
         super().__init__("Cannot submit an empty cart")
+
+
+class PermissionDeniedError(DomainError):
+    """Raised when a user lacks permission for an operation."""
+
+    def __init__(self, action: str, reason: str = "Insufficient permissions") -> None:
+        self.action = action
+        self.reason = reason
+        super().__init__(f"Permission denied for '{action}': {reason}")

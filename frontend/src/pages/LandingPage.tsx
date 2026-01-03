@@ -1,23 +1,64 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Button, Container, Heading, Text, VStack } from '@chakra-ui/react';
+import { Link, useNavigate } from 'react-router-dom';
+import {
+  Box,
+  Button,
+  Container,
+  Heading,
+  HStack,
+  Text,
+  VStack,
+} from '@chakra-ui/react';
+import { useAuth } from '../contexts/AuthContext';
 import { getCart } from '../services/api';
 
 export function LandingPage() {
   const [cartItemCount, setCartItemCount] = useState(0);
+  const { user, isAuthenticated, isAdmin, logout, loading } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
-    getCart()
-      .then((cart) => setCartItemCount(cart.item_count))
-      .catch(() => setCartItemCount(0));
-  }, []);
+    if (isAuthenticated) {
+      getCart()
+        .then((cart) => setCartItemCount(cart.item_count))
+        .catch(() => setCartItemCount(0));
+    }
+  }, [isAuthenticated]);
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/');
+  };
 
   return (
     <Container maxW="container.md" py={10}>
       <VStack gap={8}>
+        <Box width="100%" textAlign="right">
+          {loading ? (
+            <Text>Loading...</Text>
+          ) : isAuthenticated ? (
+            <HStack justify="flex-end" gap={4}>
+              <Text>
+                Logged in as <strong>{user?.username}</strong>
+                {isAdmin && ' (Admin)'}
+              </Text>
+              <Button size="sm" variant="outline" onClick={handleLogout}>
+                Logout
+              </Button>
+            </HStack>
+          ) : (
+            <Link to="/login">
+              <Button size="sm" colorPalette="blue">
+                Login
+              </Button>
+            </Link>
+          )}
+        </Box>
+
         <Heading size="2xl">E-Commerce Store</Heading>
         <Text color="gray.600">
-          Welcome to our store. Browse products, add them to your cart, and place orders.
+          Welcome to our store. Browse products, add them to your cart, and
+          place orders.
         </Text>
 
         <VStack gap={4} width="100%">
@@ -39,6 +80,12 @@ export function LandingPage() {
             </Button>
           </Link>
         </VStack>
+
+        {!isAuthenticated && (
+          <Text fontSize="sm" color="gray.500">
+            Login to access your cart and order history
+          </Text>
+        )}
       </VStack>
     </Container>
   );

@@ -1,12 +1,16 @@
 from django.urls import path
 
-from infrastructure.django_app import views
+from infrastructure.django_app import auth_views, views
 
 urlpatterns = [
+    # Auth endpoints
+    path("auth/login/", auth_views.login_view, name="auth-login"),
+    path("auth/logout/", auth_views.logout_view, name="auth-logout"),
+    path("auth/session/", auth_views.session_view, name="auth-session"),
     # Product endpoints
-    path("products/", views.products_list_create, name="products-list-create"),
+    path("products/", views.products_list, name="products-list"),
+    path("products/create/", views.product_create, name="product-create"),
     path("products/<str:product_id>/", views.product_delete, name="product-delete"),
-
     # Cart endpoints
     path("cart/", views.cart_get, name="cart-get"),
     path("cart/items/", views.cart_add_item, name="cart-add-item"),
@@ -21,7 +25,6 @@ urlpatterns = [
         name="cart-remove-item",
     ),
     path("cart/submit/", views.cart_submit, name="cart-submit"),
-
     # Order endpoints
     path("orders/", views.orders_list, name="orders-list"),
 ]

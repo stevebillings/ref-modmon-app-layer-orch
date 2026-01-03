@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import List
+from uuid import UUID
 
 from domain.aggregates.order.entities import Order
 
@@ -8,6 +9,11 @@ class OrderRepository(ABC):
     @abstractmethod
     def get_all(self) -> List[Order]:
         """Get all orders ordered by submitted_at descending (newest first)."""
+        pass
+
+    @abstractmethod
+    def get_all_for_user(self, user_id: UUID) -> List[Order]:
+        """Get all orders for a specific user, ordered by submitted_at descending."""
         pass
 
     @abstractmethod

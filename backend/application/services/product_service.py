@@ -1,40 +1,60 @@
 from decimal import Decimal
 from typing import List
+from uuid import UUID
 
 from application.ports.unit_of_work import UnitOfWork
 from domain.aggregates.product.entity import Product
 from domain.aggregates.product.validation import validate_product_name
 from domain.exceptions import (
     DuplicateProductError,
+    PermissionDeniedError,
     ProductInUseError,
     ProductNotFoundError,
 )
+from domain.user_context import UserContext
 
 
 class ProductService:
     """
     Application service for product operations.
 
-    Handles product CRUD operations with validation and event collection.
+    Handles product CRUD operations with validation, authorization,
+    and event collection.
     """
 
     def __init__(self, uow: UnitOfWork):
         self.uow = uow
 
     def get_all_products(self) -> List[Product]:
-        """Get all products ordered alphabetically by name."""
+        """
+        Get all products ordered alphabetically by name.
+
+        No authorization required - product catalog is public.
+        """
         return self.uow.get_product_repository().get_all()
 
     def create_product(
-        self, name: str, price: Decimal | str, stock_quantity: int
+        self,
+        name: str,
+        price: Decimal | str,
+        stock_quantity: int,
+        user_context: UserContext,
     ) -> Product:
         """
         Create a new product.
 
+        Authorization: Admin only.
+
         Raises:
+            PermissionDeniedError: If user is not an admin
             ValidationError: If validation fails
             DuplicateProductError: If a product with the same name exists
         """
+        if not user_context.is_admin():
+            raise PermissionDeniedError(
+                "create_product", "Only administrators can create products"
+            )
+
         # Validate name early to check for duplicates with normalized value
         validated_name = validate_product_name(name)
 
@@ -55,15 +75,21 @@ class ProductService:
         self.uow.collect_events_from(product)
         return saved_product
 
-    def delete_product(self, product_id: str) -> None:
+    def delete_product(self, product_id: str, user_context: UserContext) -> None:
         """
         Delete a product.
 
+        Authorization: Admin only.
+
         Raises:
+            PermissionDeniedError: If user is not an admin
             ProductNotFoundError: If product doesn't exist
             ProductInUseError: If product is in a cart or order
         """
-        from uuid import UUID
+        if not user_context.is_admin():
+            raise PermissionDeniedError(
+                "delete_product", "Only administrators can delete products"
+            )
 
         try:
             pid = UUID(product_id)

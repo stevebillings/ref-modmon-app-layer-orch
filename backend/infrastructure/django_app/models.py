@@ -1,6 +1,30 @@
 import uuid
 
+from django.contrib.auth.models import User
 from django.db import models
+
+
+class UserProfile(models.Model):
+    """
+    Extends Django User with application-specific fields.
+
+    Uses OneToOne relationship to keep auth separate from application concerns.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
+    role = models.CharField(
+        max_length=20,
+        choices=[("admin", "Admin"), ("customer", "Customer")],
+        default="customer",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "user_profile"
+
+    def __str__(self) -> str:
+        return f"{self.user.username} ({self.role})"
 
 
 class ProductModel(models.Model):
@@ -20,10 +44,14 @@ class ProductModel(models.Model):
 
 class CartModel(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user_id = models.UUIDField(db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         db_table = "cart"
+        constraints = [
+            models.UniqueConstraint(fields=["user_id"], name="unique_cart_per_user")
+        ]
 
     def __str__(self) -> str:
         return f"Cart {self.id}"
@@ -54,6 +82,7 @@ class CartItemModel(models.Model):
 
 class OrderModel(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user_id = models.UUIDField(db_index=True)
     submitted_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

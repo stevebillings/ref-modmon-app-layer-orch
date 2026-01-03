@@ -421,6 +421,68 @@ Sync handlers complete before the response returns. Async handlers are submitted
 
 Handler failures are logged but don't break operations or prevent other handlers from running. This ensures the business transaction succeeds even if a handler fails.
 
+## Authentication and authorization
+
+The application uses Django session-based authentication with role-based access control. The key architectural pattern is `UserContext` - a framework-agnostic representation of the authenticated user.
+
+### UserContext pattern
+
+The domain layer defines a `UserContext` dataclass that contains only the information needed for authorization and audit logging:
+
+```python
+@dataclass(frozen=True)
+class UserContext:
+    user_id: UUID
+    username: str
+    role: Role  # Enum: ADMIN, CUSTOMER
+
+    def is_admin(self) -> bool
+    def is_customer(self) -> bool
+
+    @property
+    def actor_id(self) -> str  # For domain event audit logging
+```
+
+This keeps the domain layer free of Django dependencies while enabling authorization decisions in the application layer.
+
+### Layer responsibilities
+
+| Layer | Auth Concern | Django Dependency |
+|-------|-------------|-------------------|
+| Domain | None - completely auth-unaware | None |
+| Application | Authorization checks using UserContext | None |
+| Infrastructure | Session handling, User → UserContext conversion | Yes |
+
+### Request flow with auth
+
+```
+HTTP Request with Session Cookie
+    ↓
+Django SessionMiddleware (authenticates)
+    ↓
+@require_auth decorator
+    ↓ Converts Django User → UserContext
+View Function
+    ↓ Passes UserContext to application service
+Application Service
+    ↓ Checks permissions, uses actor_id for events
+Domain Aggregates (auth-unaware)
+```
+
+### Authorization in application services
+
+Permission checks happen in application services, not in views or domain:
+
+```python
+class ProductService:
+    def create_product(self, ..., user_context: UserContext) -> Product:
+        if not user_context.is_admin():
+            raise PermissionDeniedError("create_product", "Only admins can create products")
+        # ... proceed with creation
+```
+
+This centralizes authorization logic and keeps it testable without Django.
+
 ## Future considerations
 
 The following topics are intentionally deferred to keep the initial implementation simple. They may be worth revisiting as the application grows:
