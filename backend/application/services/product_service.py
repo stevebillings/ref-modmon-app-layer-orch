@@ -19,7 +19,7 @@ class ProductService:
 
     def get_all_products(self) -> List[Product]:
         """Get all products ordered alphabetically by name."""
-        return self.uow.products.get_all()
+        return self.uow.get_product_repository().get_all()
 
     def create_product(
         self, name: str, price: Decimal | str, stock_quantity: int
@@ -35,7 +35,7 @@ class ProductService:
         validated_name = validate_product_name(name)
 
         # Check for duplicate name (fast path for common case)
-        if self.uow.products.exists_by_name(validated_name):
+        if self.uow.get_product_repository().exists_by_name(validated_name):
             raise DuplicateProductError(validated_name)
 
         # Create product using factory method (validates all fields)
@@ -46,7 +46,7 @@ class ProductService:
         )
 
         try:
-            return self.uow.products.save(product)
+            return self.uow.get_product_repository().save(product)
         except IntegrityError:
             # Handle race condition: another request created the product
             # after our exists_by_name check but before our save
@@ -70,20 +70,20 @@ class ProductService:
         # Use get_by_id_for_update to acquire a row-level lock, preventing
         # race conditions where another request adds this product to cart
         # while we're checking and deleting (add_item also uses this lock)
-        product = self.uow.products.get_by_id_for_update(pid)
+        product = self.uow.get_product_repository().get_by_id_for_update(pid)
         if product is None:
             raise ProductNotFoundError(product_id)
 
         # Check if in cart
-        if self.uow.products.is_in_any_cart(pid):
+        if self.uow.get_product_repository().is_in_any_cart(pid):
             raise ProductInUseError(
                 product_id, "Product is currently in a cart"
             )
 
         # Check if in any order
-        if self.uow.products.is_in_any_order(pid):
+        if self.uow.get_product_repository().is_in_any_order(pid):
             raise ProductInUseError(
                 product_id, "Product has been ordered and cannot be deleted"
             )
 
-        self.uow.products.delete(pid)
+        self.uow.get_product_repository().delete(pid)

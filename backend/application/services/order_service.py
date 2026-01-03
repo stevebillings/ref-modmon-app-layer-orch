@@ -10,4 +10,4 @@ class OrderService:
 
     def get_all_orders(self) -> List[Order]:
         """Get all orders ordered by submitted_at descending (newest first)."""
-        return self.uow.orders.get_all()
+        return self.uow.get_order_repository().get_all()

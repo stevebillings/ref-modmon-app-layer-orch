@@ -26,7 +26,7 @@ class CartService:
 
     def get_cart(self) -> Cart:
         """Get the current cart."""
-        return self.uow.cart.get_cart()
+        return self.uow.get_cart_repository().get_cart()
 
     def add_item(self, product_id: str, quantity: int) -> Cart:
         """
@@ -46,7 +46,7 @@ class CartService:
             raise ProductNotFoundError(product_id)
 
         # Acquire row-level lock to prevent concurrent stock modifications
-        product = self.uow.products.get_by_id_for_update(pid)
+        product = self.uow.get_product_repository().get_by_id_for_update(pid)
         if product is None:
             raise ProductNotFoundError(product_id)
 
@@ -57,13 +57,13 @@ class CartService:
             )
 
         # Delegate to aggregates
-        cart = self.uow.cart.get_cart()
+        cart = self.uow.get_cart_repository().get_cart()
         cart.add_item(pid, product.name, product.price, quantity)
         product.reserve_stock(quantity)
 
         # Persist both aggregates
-        self.uow.cart.save(cart)
-        self.uow.products.save(product)
+        self.uow.get_cart_repository().save(cart)
+        self.uow.get_product_repository().save(product)
 
         return cart
 
@@ -83,14 +83,14 @@ class CartService:
         except ValueError:
             raise CartItemNotFoundError(product_id)
 
-        cart = self.uow.cart.get_cart()
+        cart = self.uow.get_cart_repository().get_cart()
 
         # Check item exists before acquiring product lock
         if cart.get_item_by_product_id(pid) is None:
             raise CartItemNotFoundError(product_id)
 
         # Acquire row-level lock for stock modification
-        product = self.uow.products.get_by_id_for_update(pid)
+        product = self.uow.get_product_repository().get_by_id_for_update(pid)
         if product is None:
             raise ProductNotFoundError(product_id)
 
@@ -110,8 +110,8 @@ class CartService:
             product.release_stock(-diff)
 
         # Persist both aggregates
-        self.uow.cart.save(cart)
-        self.uow.products.save(product)
+        self.uow.get_cart_repository().save(cart)
+        self.uow.get_product_repository().save(product)
 
         return cart
 
@@ -129,19 +129,19 @@ class CartService:
         except ValueError:
             raise CartItemNotFoundError(product_id)
 
-        cart = self.uow.cart.get_cart()
+        cart = self.uow.get_cart_repository().get_cart()
 
         # Delegate to cart aggregate - returns removed item for stock release
         removed_item = cart.remove_item(pid)
 
         # Acquire row-level lock and release stock
-        product = self.uow.products.get_by_id_for_update(pid)
+        product = self.uow.get_product_repository().get_by_id_for_update(pid)
         if product:
             product.release_stock(removed_item.quantity)
-            self.uow.products.save(product)
+            self.uow.get_product_repository().save(product)
 
         # Persist cart
-        self.uow.cart.save(cart)
+        self.uow.get_cart_repository().save(cart)
 
         return cart
 
@@ -155,13 +155,13 @@ class CartService:
         Raises:
             EmptyCartError: If cart has no items
         """
-        cart = self.uow.cart.get_cart()
+        cart = self.uow.get_cart_repository().get_cart()
 
         # Delegate to cart aggregate - creates order and clears cart
         order = cart.submit()
 
         # Persist order and cleared cart
-        saved_order = self.uow.orders.save(order)
-        self.uow.cart.save(cart)
+        saved_order = self.uow.get_order_repository().save(order)
+        self.uow.get_cart_repository().save(cart)
 
         return saved_order

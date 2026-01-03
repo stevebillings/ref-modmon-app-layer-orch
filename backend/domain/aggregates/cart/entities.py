@@ -45,8 +45,7 @@ class CartItem:
             quantity=validate_positive_quantity(quantity),
         )
 
-    @property
-    def subtotal(self) -> Decimal:
+    def get_subtotal(self) -> Decimal:
         return self.unit_price * self.quantity
 
     def with_quantity(self, new_quantity: int) -> "CartItem":
@@ -87,12 +86,10 @@ class Cart:
             created_at=datetime.now(),
         )
 
-    @property
-    def total(self) -> Decimal:
-        return sum((item.subtotal for item in self.items), Decimal("0"))
+    def get_total(self) -> Decimal:
+        return sum((item.get_subtotal() for item in self.items), Decimal("0"))
 
-    @property
-    def item_count(self) -> int:
+    def get_item_count(self) -> int:
         return sum(item.quantity for item in self.items)
 
     def get_item_by_product_id(self, product_id: UUID) -> CartItem | None:

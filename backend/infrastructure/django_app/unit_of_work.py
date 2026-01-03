@@ -31,20 +31,17 @@ class UnitOfWork:
         self._cart_repository: CartRepository | None = None
         self._order_repository: OrderRepository | None = None
 
-    @property
-    def products(self) -> ProductRepository:
+    def get_product_repository(self) -> ProductRepository:
         if self._product_repository is None:
             self._product_repository = DjangoProductRepository()
         return self._product_repository
 
-    @property
-    def cart(self) -> CartRepository:
+    def get_cart_repository(self) -> CartRepository:
         if self._cart_repository is None:
             self._cart_repository = DjangoCartRepository()
         return self._cart_repository
 
-    @property
-    def orders(self) -> OrderRepository:
+    def get_order_repository(self) -> OrderRepository:
         if self._order_repository is None:
             self._order_repository = DjangoOrderRepository()
         return self._order_repository
@@ -57,7 +54,7 @@ def unit_of_work() -> Generator[UnitOfWork, None, None]:
 
     Usage:
         with unit_of_work() as uow:
-            product = uow.products.get_by_id(product_id)
+            product = uow.get_product_repository().get_by_id(product_id)
             # ... perform operations
 
     The transaction is committed on successful exit,

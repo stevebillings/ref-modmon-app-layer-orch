@@ -112,7 +112,7 @@ class TestCartItem:
             quantity=3,
         )
 
-        assert item.subtotal == Decimal("29.97")
+        assert item.get_subtotal() == Decimal("29.97")
 
     def test_with_quantity(self) -> None:
         item = CartItem(
@@ -140,9 +140,9 @@ class TestCart:
         assert cart.items == []
         assert cart.created_at == now
 
-    def test_total_empty_cart(self) -> None:
+    def test_get_total_empty_cart(self) -> None:
         cart = Cart(id=uuid4(), items=[], created_at=datetime.now())
-        assert cart.total == Decimal("0")
+        assert cart.get_total() == Decimal("0")
 
     def test_total_with_items(self) -> None:
         items = [
@@ -164,7 +164,7 @@ class TestCart:
         cart = Cart(id=uuid4(), items=items, created_at=datetime.now())
 
         # 10*2 + 5.50*3 = 20 + 16.50 = 36.50
-        assert cart.total == Decimal("36.50")
+        assert cart.get_total() == Decimal("36.50")
 
     def test_item_count(self) -> None:
         items = [
@@ -185,7 +185,7 @@ class TestCart:
         ]
         cart = Cart(id=uuid4(), items=items, created_at=datetime.now())
 
-        assert cart.item_count == 5
+        assert cart.get_item_count() == 5
 
     def test_get_item_by_product_id(self) -> None:
         product_id = uuid4()
@@ -275,7 +275,7 @@ class TestCart:
         order = cart.submit()
 
         assert len(order.items) == 2
-        assert order.total == Decimal("35.00")
+        assert order.get_total() == Decimal("35.00")
         assert len(cart.items) == 0  # Cart is cleared
 
     def test_submit_empty_cart_raises(self) -> None:
@@ -316,7 +316,7 @@ class TestOrderItem:
             quantity=2,
         )
 
-        assert item.subtotal == Decimal("25.98")
+        assert item.get_subtotal() == Decimal("25.98")
 
 
 class TestOrder:
@@ -352,4 +352,4 @@ class TestOrder:
         order = Order(id=order_id, items=items, submitted_at=datetime.now())
 
         # 10*2 + 7.50*4 = 20 + 30 = 50
-        assert order.total == Decimal("50.00")
+        assert order.get_total() == Decimal("50.00")

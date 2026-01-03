@@ -40,8 +40,7 @@ class OrderItem:
             quantity=validate_positive_quantity(quantity),
         )
 
-    @property
-    def subtotal(self) -> Decimal:
+    def get_subtotal(self) -> Decimal:
         return self.unit_price * self.quantity
 
 
@@ -65,6 +64,5 @@ class Order:
             submitted_at=None,
         )
 
-    @property
-    def total(self) -> Decimal:
-        return sum((item.subtotal for item in self.items), Decimal("0"))
+    def get_total(self) -> Decimal:
+        return sum((item.get_subtotal() for item in self.items), Decimal("0"))

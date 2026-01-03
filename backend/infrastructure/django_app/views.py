@@ -117,8 +117,8 @@ def cart_get(request: Request) -> Response:
         service = CartService(uow)
         cart = service.get_cart()
         cart_dict = to_dict(cart)
-        cart_dict["total"] = str(cart.total)
-        cart_dict["item_count"] = cart.item_count
+        cart_dict["total"] = str(cart.get_total())
+        cart_dict["item_count"] = cart.get_item_count()
         return Response(cart_dict)
 
 
@@ -134,8 +134,8 @@ def cart_add_item(request: Request) -> Response:
                 quantity=int(data.get("quantity", 0)),
             )
             cart_dict = to_dict(cart)
-            cart_dict["total"] = str(cart.total)
-            cart_dict["item_count"] = cart.item_count
+            cart_dict["total"] = str(cart.get_total())
+            cart_dict["item_count"] = cart.get_item_count()
             return Response(cart_dict)
         except DomainError as e:
             return handle_domain_error(e)
@@ -158,8 +158,8 @@ def cart_update_item(request: Request, product_id: str) -> Response:
                 quantity=int(data.get("quantity", 0)),
             )
             cart_dict = to_dict(cart)
-            cart_dict["total"] = str(cart.total)
-            cart_dict["item_count"] = cart.item_count
+            cart_dict["total"] = str(cart.get_total())
+            cart_dict["item_count"] = cart.get_item_count()
             return Response(cart_dict)
         except DomainError as e:
             return handle_domain_error(e)
@@ -178,8 +178,8 @@ def cart_remove_item(request: Request, product_id: str) -> Response:
         try:
             cart = service.remove_item(product_id=product_id)
             cart_dict = to_dict(cart)
-            cart_dict["total"] = str(cart.total)
-            cart_dict["item_count"] = cart.item_count
+            cart_dict["total"] = str(cart.get_total())
+            cart_dict["item_count"] = cart.get_item_count()
             return Response(cart_dict)
         except DomainError as e:
             return handle_domain_error(e)
@@ -193,7 +193,7 @@ def cart_submit(request: Request) -> Response:
         try:
             order = service.submit_cart()
             order_dict = to_dict(order)
-            order_dict["total"] = str(order.total)
+            order_dict["total"] = str(order.get_total())
             return Response(order_dict, status=status.HTTP_201_CREATED)
         except DomainError as e:
             return handle_domain_error(e)
@@ -211,6 +211,6 @@ def orders_list(request: Request) -> Response:
         results = []
         for order in orders:
             order_dict = to_dict(order)
-            order_dict["total"] = str(order.total)
+            order_dict["total"] = str(order.get_total())
             results.append(order_dict)
         return Response({"results": results})

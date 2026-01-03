@@ -24,7 +24,7 @@ class TestCartService:
 
         assert cart is not None
         assert cart.items == []
-        assert cart.total == Decimal("0")
+        assert cart.get_total() == Decimal("0")
 
     def test_add_item_to_cart(self) -> None:
         uow = UnitOfWork()
@@ -41,7 +41,7 @@ class TestCartService:
         assert cart.items[0].product_name == "Cart Test Product"
         assert cart.items[0].quantity == 2
         assert cart.items[0].unit_price == Decimal("15.00")
-        assert cart.total == Decimal("30.00")
+        assert cart.get_total() == Decimal("30.00")
 
     def test_add_item_reserves_stock(self) -> None:
         uow = UnitOfWork()
@@ -245,7 +245,7 @@ class TestSubmitCart:
         assert len(order.items) == 1
         assert order.items[0].product_name == "Submit Test"
         assert order.items[0].quantity == 3
-        assert order.total == Decimal("30.00")
+        assert order.get_total() == Decimal("30.00")
 
     def test_submit_clears_cart(self) -> None:
         uow = UnitOfWork()
@@ -307,4 +307,4 @@ class TestSubmitCart:
 
         assert len(order.items) == 2
         # 10*2 + 20*3 = 20 + 60 = 80
-        assert order.total == Decimal("80.00")
+        assert order.get_total() == Decimal("80.00")
