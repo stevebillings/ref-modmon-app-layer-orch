@@ -7,3 +7,7 @@ The goal is to keep the application simple enough to be easy to understand, whil
 1. Domain Driven Design Modular Monolith using Hexogonal architecture
 1. Cross-aggregate operations
 1. More to follow...
+
+The specifications for the reference project are in src/resources/specs. These should always be considered, and as we change the application, we must also change the specs to keep them in sync.
+
+Each time we prepare to introduce a new type of problem and its solution, we should consider changing or expanding the requirements and the application itself to make it better illustrate the problem and solution.

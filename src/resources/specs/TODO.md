@@ -1,6 +1,6 @@
-# Future Challenges/Solutions to Demonstrate
+# Future Challenges/Solutions to Consider
 
-This document tracks additional patterns and solutions typical of medium complexity web applications that should be added to this reference project.
+This document tracks additional patterns and solutions typical of medium complexity web applications that we should consider added to this reference project.
 
 ## High Value Additions
 
