@@ -11,6 +11,7 @@ from domain.exceptions import (
     ProductInUseError,
     ProductNotFoundError,
 )
+from domain.pagination import PaginatedResult, ProductFilter
 from domain.user_context import UserContext
 
 
@@ -32,6 +33,48 @@ class ProductService:
         No authorization required - product catalog is public.
         """
         return self.uow.get_product_repository().get_all()
+
+    def get_products_paginated(
+        self,
+        page: int = 1,
+        page_size: int = 20,
+        search: str | None = None,
+        min_price: Decimal | None = None,
+        max_price: Decimal | None = None,
+        in_stock: bool | None = None,
+    ) -> PaginatedResult[Product]:
+        """
+        Get products with pagination and optional filtering.
+
+        No authorization required - product catalog is public.
+
+        Args:
+            page: Page number (1-indexed, default 1)
+            page_size: Items per page (default 20, max 100)
+            search: Search term for product name (case-insensitive)
+            min_price: Minimum price filter
+            max_price: Maximum price filter
+            in_stock: If True, only return products with stock > 0
+        """
+        # Enforce reasonable limits
+        page = max(1, page)
+        page_size = max(1, min(100, page_size))
+
+        # Build filter if any criteria provided
+        filter = None
+        if any([search, min_price is not None, max_price is not None, in_stock is not None]):
+            filter = ProductFilter(
+                search=search,
+                min_price=min_price,
+                max_price=max_price,
+                in_stock=in_stock,
+            )
+
+        return self.uow.get_product_repository().find_paginated(
+            page=page,
+            page_size=page_size,
+            filter=filter,
+        )
 
     def create_product(
         self,

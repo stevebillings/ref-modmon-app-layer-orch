@@ -10,9 +10,9 @@ This document tracks additional patterns and solutions typical of medium complex
 
 3. ~~**Authentication & Authorization**~~ - Django session auth with role-based access (admin can manage products, customers manage their own cart). Shows how auth concerns stay out of domain logic via UserContext pattern. See `features/AUTHENTICATION-AND-AUTHORIZATION.md`.
 
-## High Value Additions
+4. ~~**Pagination & Filtering**~~ - Implemented with search, price range filtering, stock availability filtering, and paginated results. See `features/PAGINATION-AND-FILTERING.md`.
 
-4. **Pagination & Filtering** - Product catalog search, filtering by price range, paginated results. Common requirement that touches all layers.
+## High Value Additions
 
 5. **Soft Deletes** - Products shouldn't disappear from order history. Shows how to handle data retention while maintaining referential integrity.
 

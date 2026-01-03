@@ -3,6 +3,7 @@ from typing import List
 from uuid import UUID
 
 from domain.aggregates.product.entity import Product
+from domain.pagination import PaginatedResult, ProductFilter
 
 
 class ProductRepository(ABC):
@@ -55,4 +56,24 @@ class ProductRepository(ABC):
     @abstractmethod
     def is_in_any_order(self, product_id: UUID) -> bool:
         """Check if the product is referenced in any order."""
+        pass
+
+    @abstractmethod
+    def find_paginated(
+        self,
+        page: int = 1,
+        page_size: int = 20,
+        filter: ProductFilter | None = None,
+    ) -> PaginatedResult[Product]:
+        """
+        Find products with pagination and optional filtering.
+
+        Args:
+            page: Page number (1-indexed)
+            page_size: Number of items per page
+            filter: Optional filter criteria
+
+        Returns:
+            PaginatedResult containing the products and pagination metadata
+        """
         pass

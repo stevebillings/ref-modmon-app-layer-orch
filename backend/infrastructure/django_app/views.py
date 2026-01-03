@@ -1,3 +1,5 @@
+from decimal import Decimal, InvalidOperation
+
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.request import Request
@@ -76,13 +78,75 @@ def handle_domain_error(error: DomainError) -> Response:
 # --- Product Endpoints ---
 
 
+def _parse_int(value: str | None, default: int) -> int:
+    """Safely parse an integer from a query parameter."""
+    if value is None:
+        return default
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        return default
+
+
+def _parse_decimal(value: str | None) -> Decimal | None:
+    """Safely parse a decimal from a query parameter."""
+    if value is None:
+        return None
+    try:
+        return Decimal(value)
+    except InvalidOperation:
+        return None
+
+
+def _parse_bool(value: str | None) -> bool | None:
+    """Safely parse a boolean from a query parameter."""
+    if value is None:
+        return None
+    return value.lower() in ("true", "1", "yes")
+
+
 @api_view(["GET"])
 def products_list(request: Request) -> Response:
-    """List all products. Public endpoint - no auth required."""
+    """
+    List products with optional pagination and filtering. Public endpoint.
+
+    Query parameters:
+        page: Page number (1-indexed, default 1)
+        page_size: Items per page (default 20, max 100)
+        search: Search term for product name
+        min_price: Minimum price filter
+        max_price: Maximum price filter
+        in_stock: If "true", only return products with stock > 0
+    """
     with unit_of_work(get_event_dispatcher()) as uow:
         service = ProductService(uow)
-        products = service.get_all_products()
-        return Response({"results": [to_dict(p) for p in products]})
+
+        # Parse query parameters
+        page = _parse_int(request.query_params.get("page"), 1)
+        page_size = _parse_int(request.query_params.get("page_size"), 20)
+        search = request.query_params.get("search") or None
+        min_price = _parse_decimal(request.query_params.get("min_price"))
+        max_price = _parse_decimal(request.query_params.get("max_price"))
+        in_stock = _parse_bool(request.query_params.get("in_stock"))
+
+        result = service.get_products_paginated(
+            page=page,
+            page_size=page_size,
+            search=search,
+            min_price=min_price,
+            max_price=max_price,
+            in_stock=in_stock,
+        )
+
+        return Response({
+            "results": [to_dict(p) for p in result.items],
+            "page": result.page,
+            "page_size": result.page_size,
+            "total_count": result.total_count,
+            "total_pages": result.total_pages,
+            "has_next": result.has_next,
+            "has_previous": result.has_previous,
+        })
 
 
 @api_view(["POST"])

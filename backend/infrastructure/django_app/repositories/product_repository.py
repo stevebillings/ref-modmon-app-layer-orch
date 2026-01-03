@@ -2,10 +2,12 @@ from typing import List
 from uuid import UUID
 
 from django.db import IntegrityError
+from django.db.models import QuerySet
 
 from domain.aggregates.product.entity import Product
 from domain.aggregates.product.repository import ProductRepository
 from domain.exceptions import DuplicateProductError
+from domain.pagination import PaginatedResult, ProductFilter
 from infrastructure.django_app.models import (
     CartItemModel,
     OrderItemModel,
@@ -79,6 +81,46 @@ class DjangoProductRepository(ProductRepository):
     def is_in_any_order(self, product_id: UUID) -> bool:
         """Check if the product is referenced in any order."""
         return OrderItemModel.objects.filter(product_id=product_id).exists()
+
+    def find_paginated(
+        self,
+        page: int = 1,
+        page_size: int = 20,
+        filter: ProductFilter | None = None,
+    ) -> PaginatedResult[Product]:
+        """Find products with pagination and optional filtering."""
+        queryset = ProductModel.objects.all()
+
+        # Apply filters
+        if filter:
+            queryset = self._apply_filter(queryset, filter)
+
+        # Get total count before pagination
+        total_count = queryset.count()
+
+        # Apply pagination (ordering is defined on the model's Meta)
+        offset = (page - 1) * page_size
+        models = list(queryset[offset : offset + page_size])
+
+        return PaginatedResult(
+            items=[self._to_domain(m) for m in models],
+            total_count=total_count,
+            page=page,
+            page_size=page_size,
+        )
+
+    @staticmethod
+    def _apply_filter(queryset: "QuerySet[ProductModel]", filter: ProductFilter) -> "QuerySet[ProductModel]":
+        """Apply filter criteria to the queryset."""
+        if filter.search:
+            queryset = queryset.filter(name__icontains=filter.search)
+        if filter.min_price is not None:
+            queryset = queryset.filter(price__gte=filter.min_price)
+        if filter.max_price is not None:
+            queryset = queryset.filter(price__lte=filter.max_price)
+        if filter.in_stock is True:
+            queryset = queryset.filter(stock_quantity__gt=0)
+        return queryset
 
     @staticmethod
     def _to_domain(model: ProductModel) -> Product:
