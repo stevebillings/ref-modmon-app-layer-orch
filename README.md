@@ -1,0 +1,270 @@
+# Reference Web Application
+
+A reference e-commerce web application demonstrating architectural patterns for medium-complexity applications developed by small teams. This project serves as a practical example of how to structure a **Domain-Driven Design (DDD) Modular Monolith** with **Hexagonal Architecture** and **Application Layer Orchestration**.
+
+## Purpose
+
+This application is intentionally kept simple enough to understand while demonstrating solutions to common web application problems. Use it as a reference when building real applications that need clean architecture, maintainability, and testability.
+
+For detailed architecture documentation, see [specs/ARCHITECTURE.md](specs/ARCHITECTURE.md).
+
+## Technology Stack
+
+- **Backend**: Python 3.12+ / Django 6.0 / Django REST Framework
+- **Frontend**: TypeScript / React 19 / Chakra UI
+- **Database**: SQLite (development)
+
+## Quick Start
+
+### Prerequisites
+
+- Python 3.12+
+- Node.js 18+
+
+### Backend Setup
+
+```bash
+cd backend
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py runserver
+```
+
+### Frontend Setup
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+### Default Login
+
+- **Username**: `admin`
+- **Password**: `admin`
+
+## Problems and Solutions Demonstrated
+
+This reference application demonstrates solutions to common architectural challenges in web applications:
+
+### 1. Separation of Concerns
+
+**Problem**: Business logic gets tangled with framework code, database access, and HTTP handling, making the codebase hard to test and maintain.
+
+**Solution**: **Layered Architecture** with clear boundaries:
+
+| Layer | Responsibility | Dependencies |
+|-------|---------------|--------------|
+| Domain | Business logic, entities, validation | None (pure Python) |
+| Application | Use case orchestration, authorization | Domain only |
+| Infrastructure | Framework integration, persistence, APIs | All layers |
+
+The `domain/` directory contains zero Django imports. Business rules can be tested without spinning up a web server or database.
+
+### 2. Framework Independence
+
+**Problem**: Over-reliance on framework features creates vendor lock-in and makes the codebase harder to port or test.
+
+**Solution**: **Hexagonal Architecture (Ports & Adapters)**
+
+- **Ports**: Abstract interfaces defined in domain/application layers (e.g., `RepositoryInterface`, `FeatureFlagPort`, `EmailPort`)
+- **Adapters**: Framework-specific implementations in infrastructure (e.g., `DjangoProductRepository`, `DjangoFeatureFlagAdapter`)
+
+The application layer depends only on interfaces. Swap Django for Flask by writing new adapters—the domain and application layers remain unchanged.
+
+### 3. Cross-Aggregate Coordination
+
+**Problem**: Operations spanning multiple aggregates (e.g., "add item to cart" affects both Cart and Product) need coordination while maintaining consistency.
+
+**Solution**: **Application Layer Orchestration** with **Unit of Work**
+
+```python
+def add_item(self, product_id: str, quantity: int, user_context: UserContext) -> Cart:
+    # Lock product to prevent concurrent stock changes
+    product = self.uow.get_product_repository().get_by_id_for_update(product_id)
+
+    # Coordinate both aggregates
+    cart.add_item(product_id, product.name, product.price, quantity)
+    product.reserve_stock(quantity)
+
+    # Single transaction commits both changes
+    self.uow.get_cart_repository().save(cart)
+    self.uow.get_product_repository().save(product)
+```
+
+All changes within a request happen in a single database transaction, ensuring strong consistency.
+
+### 4. Aggregate Isolation
+
+**Problem**: Aggregates that directly reference each other become tightly coupled and hard to evolve independently.
+
+**Solution**: **Reference by ID + Snapshot Pattern**
+
+Aggregates never embed or import other aggregates. They reference other aggregates by ID only:
+
+```python
+@dataclass(frozen=True)
+class CartItem:
+    product_id: UUID      # Reference by ID, not embedded Product
+    product_name: str     # Snapshot: copied when item added
+    unit_price: Decimal   # Snapshot: price at time of addition
+```
+
+If a product's price changes later, cart items retain the original price. If a product is deleted, order history remains intact.
+
+### 5. Domain Events and Audit Logging
+
+**Problem**: Cross-cutting concerns like audit logging pollute domain logic. Tightly coupled event handling creates fragile systems.
+
+**Solution**: **Domain Events with Post-Commit Dispatch**
+
+Aggregates raise events internally:
+```python
+def reserve_stock(self, quantity: int, actor_id: str) -> None:
+    self.stock_quantity -= quantity
+    self._raise_event(StockReserved(product_id=self.id, quantity=quantity, actor_id=actor_id))
+```
+
+Events are dispatched after the transaction commits. Handlers (sync or async) process them independently:
+- **Sync handlers**: Audit logging (fast, critical)
+- **Async handlers**: Email notifications (slow, non-blocking)
+
+Handler failures are logged but don't break the business operation.
+
+### 6. Authentication Without Domain Pollution
+
+**Problem**: Authentication concerns (sessions, tokens, user objects) leak into domain logic, coupling it to the web framework.
+
+**Solution**: **UserContext Pattern**
+
+The domain layer defines a framework-agnostic `UserContext`:
+```python
+@dataclass(frozen=True)
+class UserContext:
+    user_id: UUID
+    username: str
+    role: Role  # ADMIN or CUSTOMER
+```
+
+Infrastructure converts Django's User to UserContext. Application services receive UserContext for authorization decisions. The domain layer remains completely auth-unaware.
+
+### 7. Concurrency Control
+
+**Problem**: Concurrent requests can corrupt data (overselling stock, duplicate records, lost updates).
+
+**Solution**: **Multiple Patterns Based on Scenario**
+
+| Scenario | Pattern | Implementation |
+|----------|---------|----------------|
+| Read-then-modify | Row-level locking | `select_for_update()` |
+| Singleton creation | Atomic get-or-create | `get_or_create()` |
+| Uniqueness validation | DB constraint + fallback | Unique constraint + catch `IntegrityError` |
+
+### 8. Feature Flags
+
+**Problem**: Deploying new features requires code changes. Rolling back problematic features means redeploying.
+
+**Solution**: **Feature Flag System with Hexagonal Architecture**
+
+- Port interface: `FeatureFlagPort.is_enabled(flag_name)`
+- Database adapter: Stores flags, changes take effect immediately
+- Admin API: CRUD operations for flag management
+- Fail-safe defaults: Unknown flags return `false`
+
+Features can be toggled without deployment. The first use case demonstrated is incident email notifications.
+
+### 9. Soft Delete with History Preservation
+
+**Problem**: Hard deletes lose data permanently. Deleting products breaks order history.
+
+**Solution**: **Soft Delete + Snapshot Pattern**
+
+- Products have `deleted_at` timestamp (null = active)
+- Soft-deleted products hidden from catalog but remain in database
+- Order items store product name and price as snapshots
+- Admins can view and restore soft-deleted products
+
+### 10. Rich Domain Model (Not Anemic)
+
+**Problem**: "Anemic domain models" push all logic into services, reducing entities to data bags.
+
+**Solution**: **Aggregates with Behavior**
+
+Aggregates are mutable classes with behavior methods that enforce invariants:
+
+```python
+@dataclass
+class Cart:
+    items: List[CartItem]
+
+    def add_item(self, product_id, name, price, quantity):
+        """Add or merge item. Enforces business rules."""
+        validate_positive_quantity(quantity)
+        existing = self.get_item_by_product_id(product_id)
+        if existing:
+            # Merge with existing item
+            ...
+```
+
+Factory methods (`create()`) validate on creation. Constructors reconstitute from persistence without re-validation.
+
+## Project Structure
+
+```
+project-root/
+├── backend/
+│   ├── domain/                 # Pure business logic (NO Django)
+│   │   ├── aggregates/         # Product, Cart, Order
+│   │   ├── events.py           # Base DomainEvent class
+│   │   └── user_context.py     # Auth abstraction
+│   ├── application/            # Use case orchestration
+│   │   ├── ports/              # Interface definitions
+│   │   └── services/           # Application services
+│   └── infrastructure/         # Framework-dependent code
+│       ├── events/             # Event dispatcher
+│       └── django_app/         # Django implementation
+├── frontend/
+│   └── src/
+│       ├── components/         # Reusable UI components
+│       ├── pages/              # Page components
+│       ├── services/           # API client
+│       └── types/              # TypeScript types
+└── specs/                      # Architecture documentation
+```
+
+## Running Tests
+
+### Backend
+```bash
+cd backend
+python -m pytest
+```
+
+### Frontend
+```bash
+cd frontend
+npm test
+```
+
+## Documentation
+
+- [Architecture](specs/ARCHITECTURE.md) - Detailed architectural patterns
+- [Design](specs/DESIGN.md) - API design and data entities
+- [Requirements](specs/REQUIREMENTS.md) - Functional requirements
+- [Domain Events](specs/features/DOMAIN-EVENTS-AND-AUDIT-LOGGING.md) - Event system implementation
+- [Authentication](specs/features/AUTHENTICATION-AND-AUTHORIZATION.md) - Auth implementation
+- [Feature Flags](specs/features/FEATURE-FLAGS-AND-INCIDENT-NOTIFICATION.md) - Feature flag system
+- [Soft Delete](specs/features/SOFT-DELETE.md) - Soft delete implementation
+
+## Future Considerations
+
+The following are intentionally deferred to keep the implementation simple:
+
+- **Value Objects**: Wrapping primitives (Money, Quantity) for type safety
+- **API Specification**: OpenAPI/Swagger for contract-first development
+- **Dependency Injection Framework**: Currently using manual DI
+- **One Django App Per Aggregate**: Currently using single app for simplicity
+
+See [ARCHITECTURE.md](specs/ARCHITECTURE.md#future-considerations) for trade-off analysis.
