@@ -186,29 +186,38 @@ Features can be toggled without deployment. The first use case demonstrated is i
 - Order items store product name and price as snapshots
 - Admins can view and restore soft-deleted products
 
-### 10. Rich Domain Model (Not Anemic)
+### 10. Third-Party API Integration
 
-**Problem**: "Anemic domain models" push all logic into services, reducing entities to data bags.
+**Problem**: External service integrations (payment processors, address verification, shipping APIs) tightly couple infrastructure code to business logic, making testing difficult and creating vendor lock-in.
 
-**Solution**: **Aggregates with Behavior**
+**Solution**: **Port/Adapter Pattern for External Services**
 
-Aggregates are mutable classes with behavior methods that enforce invariants:
-
+Define a port interface in the application layer:
 ```python
-@dataclass
-class Cart:
-    items: List[CartItem]
-
-    def add_item(self, product_id, name, price, quantity):
-        """Add or merge item. Enforces business rules."""
-        validate_positive_quantity(quantity)
-        existing = self.get_item_by_product_id(product_id)
-        if existing:
-            # Merge with existing item
-            ...
+class AddressVerificationPort(ABC):
+    @abstractmethod
+    def verify(self, street, city, state, postal_code, country) -> AddressVerificationResult:
+        pass
 ```
 
-Factory methods (`create()`) validate on creation. Constructors reconstitute from persistence without re-validation.
+Implement adapters in infrastructure:
+```python
+class StubAddressVerificationAdapter(AddressVerificationPort):
+    """Stub for development/testing."""
+    def verify(self, ...) -> AddressVerificationResult:
+        # Returns standardized address or validation errors
+
+class USPSAddressVerificationAdapter(AddressVerificationPort):
+    """Real adapter using USPS API."""
+    def verify(self, ...) -> AddressVerificationResult:
+        # HTTP client calls to USPS service
+```
+
+Benefits:
+- **Testability**: Use stub adapter in tests without network calls
+- **Flexibility**: Swap providers (USPS → SmartyStreets) by changing adapter
+- **Fail-closed**: Reject operations if external service unavailable
+- **Separation**: Business logic doesn't know about HTTP, retries, or API keys
 
 ## Project Structure
 
@@ -257,6 +266,7 @@ npm test
 - [Authentication](specs/features/AUTHENTICATION-AND-AUTHORIZATION.md) - Auth implementation
 - [Feature Flags](specs/features/FEATURE-FLAGS-AND-INCIDENT-NOTIFICATION.md) - Feature flag system
 - [Soft Delete](specs/features/SOFT-DELETE.md) - Soft delete implementation
+- [Address Verification](specs/features/ADDRESS-VERIFICATION.md) - Third-party API integration pattern
 
 ## Future Considerations
 
