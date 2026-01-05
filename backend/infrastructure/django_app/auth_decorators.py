@@ -6,9 +6,10 @@ and inject it into view functions.
 """
 
 from functools import wraps
-from typing import Callable
+from typing import Any, Callable, cast
 
 from rest_framework import status
+from rest_framework.request import Request
 from rest_framework.response import Response
 
 from infrastructure.django_app.user_context_adapter import build_user_context
@@ -30,7 +31,7 @@ def require_auth(view_func: Callable) -> Callable:
     """
 
     @wraps(view_func)
-    def wrapper(request, *args, **kwargs):
+    def wrapper(request: Request, *args: Any, **kwargs: Any) -> Response:
         if not request.user.is_authenticated:
             return Response(
                 {"error": "Authentication required"},
@@ -46,6 +47,6 @@ def require_auth(view_func: Callable) -> Callable:
             )
 
         kwargs["user_context"] = user_context
-        return view_func(request, *args, **kwargs)
+        return cast(Response, view_func(request, *args, **kwargs))
 
     return wrapper

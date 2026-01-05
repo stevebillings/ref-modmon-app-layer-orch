@@ -9,7 +9,9 @@ Usage:
 import random
 from decimal import Decimal
 
-from django.core.management.base import BaseCommand
+from typing import Any
+
+from django.core.management.base import BaseCommand, CommandParser
 
 from infrastructure.django_app.models import ProductModel
 
@@ -39,7 +41,7 @@ class Command(BaseCommand):
         "2024", "Gen 2", "Gen 3", "MK II", "Rev B",
     ]
 
-    def add_arguments(self, parser):
+    def add_arguments(self, parser: CommandParser) -> None:
         parser.add_argument(
             "--count",
             type=int,
@@ -52,7 +54,7 @@ class Command(BaseCommand):
             help="Clear existing products before seeding",
         )
 
-    def handle(self, *args, **options):
+    def handle(self, *args: Any, **options: Any) -> None:
         count = options["count"]
         clear = options["clear"]
 
