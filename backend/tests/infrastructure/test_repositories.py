@@ -122,22 +122,26 @@ class TestProductRepository:
 class TestCartRepository:
     def test_get_cart_creates_if_not_exists(self) -> None:
         repo = DjangoCartRepository()
+        user_id = uuid4()
 
-        cart = repo.get_cart()
+        cart = repo.get_cart_for_user(user_id)
 
         assert cart is not None
         assert cart.items == []
+        assert cart.user_id == user_id
 
     def test_get_cart_returns_same_cart(self) -> None:
         repo = DjangoCartRepository()
-        cart1 = repo.get_cart()
-        cart2 = repo.get_cart()
+        user_id = uuid4()
+        cart1 = repo.get_cart_for_user(user_id)
+        cart2 = repo.get_cart_for_user(user_id)
 
         assert cart1.id == cart2.id
 
     def test_save_with_new_item(self) -> None:
         repo = DjangoCartRepository()
-        cart = repo.get_cart()
+        user_id = uuid4()
+        cart = repo.get_cart_for_user(user_id)
 
         # Add item using aggregate method
         cart.add_item(
@@ -149,14 +153,15 @@ class TestCartRepository:
         repo.save(cart)
 
         # Verify item is persisted
-        updated_cart = repo.get_cart()
+        updated_cart = repo.get_cart_for_user(user_id)
         assert len(updated_cart.items) == 1
         assert updated_cart.items[0].product_name == "Test Product"
         assert updated_cart.items[0].quantity == 2
 
     def test_save_updates_item_quantity(self) -> None:
         repo = DjangoCartRepository()
-        cart = repo.get_cart()
+        user_id = uuid4()
+        cart = repo.get_cart_for_user(user_id)
         product_id = uuid4()
 
         # Add initial item
@@ -172,12 +177,13 @@ class TestCartRepository:
         cart.update_item_quantity(product_id, 5)
         repo.save(cart)
 
-        updated_cart = repo.get_cart()
+        updated_cart = repo.get_cart_for_user(user_id)
         assert updated_cart.items[0].quantity == 5
 
     def test_save_removes_deleted_item(self) -> None:
         repo = DjangoCartRepository()
-        cart = repo.get_cart()
+        user_id = uuid4()
+        cart = repo.get_cart_for_user(user_id)
         product_id = uuid4()
 
         # Add item
@@ -188,18 +194,19 @@ class TestCartRepository:
             quantity=1,
         )
         repo.save(cart)
-        assert len(repo.get_cart().items) == 1
+        assert len(repo.get_cart_for_user(user_id).items) == 1
 
         # Remove using aggregate method
         cart.remove_item(product_id)
         repo.save(cart)
 
-        updated_cart = repo.get_cart()
+        updated_cart = repo.get_cart_for_user(user_id)
         assert len(updated_cart.items) == 0
 
     def test_save_clears_all_items(self) -> None:
         repo = DjangoCartRepository()
-        cart = repo.get_cart()
+        user_id = uuid4()
+        cart = repo.get_cart_for_user(user_id)
 
         # Add multiple items
         for i in range(3):
@@ -210,13 +217,13 @@ class TestCartRepository:
                 quantity=1,
             )
         repo.save(cart)
-        assert len(repo.get_cart().items) == 3
+        assert len(repo.get_cart_for_user(user_id).items) == 3
 
         # Clear items (simulate what submit does)
         cart.items = []
         repo.save(cart)
 
-        assert len(repo.get_cart().items) == 0
+        assert len(repo.get_cart_for_user(user_id).items) == 0
 
 
 @pytest.mark.django_db
@@ -224,8 +231,10 @@ class TestOrderRepository:
     def test_save_and_get_orders(self) -> None:
         repo = DjangoOrderRepository()
         order_id = uuid4()
+        user_id = uuid4()
         order = Order(
             id=order_id,
+            user_id=user_id,
             items=[
                 OrderItem(
                     id=uuid4(),
@@ -242,17 +251,20 @@ class TestOrderRepository:
         saved = repo.save(order)
 
         assert saved.id == order_id
+        assert saved.user_id == user_id
         assert len(saved.items) == 1
         assert saved.items[0].product_name == "Test Product"
 
     def test_get_all_orders_newest_first(self) -> None:
         repo = DjangoOrderRepository()
+        user_id = uuid4()
 
         # Create orders
         for i in range(3):
             order_id = uuid4()
             repo.save(Order(
                 id=order_id,
+                user_id=user_id,
                 items=[
                     OrderItem(
                         id=uuid4(),
@@ -285,7 +297,8 @@ class TestProductInCartAndOrder:
         cart_repo = DjangoCartRepository()
 
         product_id = uuid4()
-        cart = cart_repo.get_cart()
+        user_id = uuid4()
+        cart = cart_repo.get_cart_for_user(user_id)
 
         # Not in cart initially
         assert product_repo.is_in_any_cart(product_id) is False
@@ -312,8 +325,10 @@ class TestProductInCartAndOrder:
 
         # Create order with product
         order_id = uuid4()
+        user_id = uuid4()
         order_repo.save(Order(
             id=order_id,
+            user_id=user_id,
             items=[
                 OrderItem(
                     id=uuid4(),

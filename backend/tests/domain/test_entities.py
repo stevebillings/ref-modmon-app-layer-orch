@@ -133,15 +133,17 @@ class TestCartItem:
 class TestCart:
     def test_create_cart(self) -> None:
         cart_id = uuid4()
+        user_id = uuid4()
         now = datetime.now()
-        cart = Cart(id=cart_id, items=[], created_at=now)
+        cart = Cart(id=cart_id, user_id=user_id, items=[], created_at=now)
 
         assert cart.id == cart_id
+        assert cart.user_id == user_id
         assert cart.items == []
         assert cart.created_at == now
 
     def test_get_total_empty_cart(self) -> None:
-        cart = Cart(id=uuid4(), items=[], created_at=datetime.now())
+        cart = Cart(id=uuid4(), user_id=uuid4(), items=[], created_at=datetime.now())
         assert cart.get_total() == Decimal("0")
 
     def test_total_with_items(self) -> None:
@@ -161,7 +163,7 @@ class TestCart:
                 quantity=3,
             ),
         ]
-        cart = Cart(id=uuid4(), items=items, created_at=datetime.now())
+        cart = Cart(id=uuid4(), user_id=uuid4(), items=items, created_at=datetime.now())
 
         # 10*2 + 5.50*3 = 20 + 16.50 = 36.50
         assert cart.get_total() == Decimal("36.50")
@@ -183,7 +185,7 @@ class TestCart:
                 quantity=3,
             ),
         ]
-        cart = Cart(id=uuid4(), items=items, created_at=datetime.now())
+        cart = Cart(id=uuid4(), user_id=uuid4(), items=items, created_at=datetime.now())
 
         assert cart.get_item_count() == 5
 
@@ -205,18 +207,18 @@ class TestCart:
                 quantity=1,
             ),
         ]
-        cart = Cart(id=uuid4(), items=items, created_at=datetime.now())
+        cart = Cart(id=uuid4(), user_id=uuid4(), items=items, created_at=datetime.now())
 
         item = cart.get_item_by_product_id(product_id)
         assert item is not None
         assert item.product_name == "Target Product"
 
     def test_get_item_by_product_id_not_found(self) -> None:
-        cart = Cart(id=uuid4(), items=[], created_at=datetime.now())
+        cart = Cart(id=uuid4(), user_id=uuid4(), items=[], created_at=datetime.now())
         assert cart.get_item_by_product_id(uuid4()) is None
 
     def test_add_item_new(self) -> None:
-        cart = Cart(id=uuid4(), items=[], created_at=datetime.now())
+        cart = Cart(id=uuid4(), user_id=uuid4(), items=[], created_at=datetime.now())
         product_id = uuid4()
 
         cart.add_item(product_id, "Test Product", Decimal("15.00"), 2)
@@ -227,7 +229,7 @@ class TestCart:
 
     def test_add_item_merges_existing(self) -> None:
         product_id = uuid4()
-        cart = Cart(id=uuid4(), items=[], created_at=datetime.now())
+        cart = Cart(id=uuid4(), user_id=uuid4(), items=[], created_at=datetime.now())
 
         cart.add_item(product_id, "Test Product", Decimal("10.00"), 2)
         cart.add_item(product_id, "Test Product", Decimal("10.00"), 3)
@@ -237,7 +239,7 @@ class TestCart:
 
     def test_update_item_quantity(self) -> None:
         product_id = uuid4()
-        cart = Cart(id=uuid4(), items=[], created_at=datetime.now())
+        cart = Cart(id=uuid4(), user_id=uuid4(), items=[], created_at=datetime.now())
         cart.add_item(product_id, "Test", Decimal("10.00"), 5)
 
         diff = cart.update_item_quantity(product_id, 8)
@@ -246,14 +248,14 @@ class TestCart:
         assert cart.items[0].quantity == 8
 
     def test_update_item_quantity_not_found_raises(self) -> None:
-        cart = Cart(id=uuid4(), items=[], created_at=datetime.now())
+        cart = Cart(id=uuid4(), user_id=uuid4(), items=[], created_at=datetime.now())
 
         with pytest.raises(CartItemNotFoundError):
             cart.update_item_quantity(uuid4(), 5)
 
     def test_remove_item(self) -> None:
         product_id = uuid4()
-        cart = Cart(id=uuid4(), items=[], created_at=datetime.now())
+        cart = Cart(id=uuid4(), user_id=uuid4(), items=[], created_at=datetime.now())
         cart.add_item(product_id, "Test", Decimal("10.00"), 5)
 
         removed = cart.remove_item(product_id)
@@ -262,13 +264,13 @@ class TestCart:
         assert len(cart.items) == 0
 
     def test_remove_item_not_found_raises(self) -> None:
-        cart = Cart(id=uuid4(), items=[], created_at=datetime.now())
+        cart = Cart(id=uuid4(), user_id=uuid4(), items=[], created_at=datetime.now())
 
         with pytest.raises(CartItemNotFoundError):
             cart.remove_item(uuid4())
 
     def test_submit_creates_order(self) -> None:
-        cart = Cart(id=uuid4(), items=[], created_at=datetime.now())
+        cart = Cart(id=uuid4(), user_id=uuid4(), items=[], created_at=datetime.now())
         cart.add_item(uuid4(), "Product A", Decimal("10.00"), 2)
         cart.add_item(uuid4(), "Product B", Decimal("5.00"), 3)
 
@@ -279,7 +281,7 @@ class TestCart:
         assert len(cart.items) == 0  # Cart is cleared
 
     def test_submit_empty_cart_raises(self) -> None:
-        cart = Cart(id=uuid4(), items=[], created_at=datetime.now())
+        cart = Cart(id=uuid4(), user_id=uuid4(), items=[], created_at=datetime.now())
 
         with pytest.raises(EmptyCartError):
             cart.submit()
@@ -322,15 +324,18 @@ class TestOrderItem:
 class TestOrder:
     def test_create_order(self) -> None:
         order_id = uuid4()
+        user_id = uuid4()
         now = datetime.now()
-        order = Order(id=order_id, items=[], submitted_at=now)
+        order = Order(id=order_id, user_id=user_id, items=[], submitted_at=now)
 
         assert order.id == order_id
+        assert order.user_id == user_id
         assert order.items == []
         assert order.submitted_at == now
 
     def test_total(self) -> None:
         order_id = uuid4()
+        user_id = uuid4()
         items = [
             OrderItem(
                 id=uuid4(),
@@ -349,7 +354,7 @@ class TestOrder:
                 quantity=4,
             ),
         ]
-        order = Order(id=order_id, items=items, submitted_at=datetime.now())
+        order = Order(id=order_id, user_id=user_id, items=items, submitted_at=datetime.now())
 
         # 10*2 + 7.50*4 = 20 + 30 = 50
         assert order.get_total() == Decimal("50.00")

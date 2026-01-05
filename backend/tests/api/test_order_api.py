@@ -5,14 +5,9 @@ from rest_framework.test import APIClient
 
 
 @pytest.fixture
-def api_client() -> APIClient:
-    return APIClient()
-
-
-@pytest.fixture
-def product(api_client: APIClient) -> dict[str, Any]:
-    response = api_client.post(
-        "/api/products/",
+def product(authenticated_admin_client: APIClient) -> dict[str, Any]:
+    response = authenticated_admin_client.post(
+        "/api/products/create/",
         {"name": "Test Product", "price": "10.00", "stock_quantity": 100},
         format="json",
     )
@@ -21,54 +16,54 @@ def product(api_client: APIClient) -> dict[str, Any]:
 
 @pytest.mark.django_db
 class TestOrderList:
-    def test_list_orders_empty(self, api_client: APIClient) -> None:
-        response = api_client.get("/api/orders/")
+    def test_list_orders_empty(self, authenticated_admin_client: APIClient) -> None:
+        response = authenticated_admin_client.get("/api/orders/")
         assert response.status_code == 200
         assert response.json() == {"results": []}
 
     def test_list_orders(
-        self, api_client: APIClient, product: dict[str, Any]
+        self, authenticated_admin_client: APIClient, product: dict[str, Any]
     ) -> None:
         # Create orders
         for _ in range(3):
-            api_client.post(
+            authenticated_admin_client.post(
                 "/api/cart/items/",
                 {"product_id": product["id"], "quantity": 1},
                 format="json",
             )
-            api_client.post("/api/cart/submit/")
+            authenticated_admin_client.post("/api/cart/submit/")
 
-        response = api_client.get("/api/orders/")
+        response = authenticated_admin_client.get("/api/orders/")
         assert response.status_code == 200
         results = response.json()["results"]
         assert len(results) == 3
 
     def test_orders_include_total(
-        self, api_client: APIClient, product: dict[str, Any]
+        self, authenticated_admin_client: APIClient, product: dict[str, Any]
     ) -> None:
-        api_client.post(
+        authenticated_admin_client.post(
             "/api/cart/items/",
             {"product_id": product["id"], "quantity": 5},
             format="json",
         )
-        api_client.post("/api/cart/submit/")
+        authenticated_admin_client.post("/api/cart/submit/")
 
-        response = api_client.get("/api/orders/")
+        response = authenticated_admin_client.get("/api/orders/")
         order = response.json()["results"][0]
         assert order["total"] == "50.00"
 
     def test_orders_newest_first(
-        self, api_client: APIClient, product: dict[str, Any]
+        self, authenticated_admin_client: APIClient, product: dict[str, Any]
     ) -> None:
         for _ in range(3):
-            api_client.post(
+            authenticated_admin_client.post(
                 "/api/cart/items/",
                 {"product_id": product["id"], "quantity": 1},
                 format="json",
             )
-            api_client.post("/api/cart/submit/")
+            authenticated_admin_client.post("/api/cart/submit/")
 
-        response = api_client.get("/api/orders/")
+        response = authenticated_admin_client.get("/api/orders/")
         results = response.json()["results"]
 
         # Verify descending order
@@ -78,27 +73,27 @@ class TestOrderList:
 
 @pytest.mark.django_db
 class TestFullWorkflow:
-    def test_complete_order_workflow(self, api_client: APIClient) -> None:
+    def test_complete_order_workflow(self, authenticated_admin_client: APIClient) -> None:
         # 1. Create products
-        product1 = api_client.post(
-            "/api/products/",
+        product1 = authenticated_admin_client.post(
+            "/api/products/create/",
             {"name": "Widget", "price": "15.00", "stock_quantity": 50},
             format="json",
         ).json()
 
-        product2 = api_client.post(
-            "/api/products/",
+        product2 = authenticated_admin_client.post(
+            "/api/products/create/",
             {"name": "Gadget", "price": "25.00", "stock_quantity": 30},
             format="json",
         ).json()
 
         # 2. Add items to cart
-        api_client.post(
+        authenticated_admin_client.post(
             "/api/cart/items/",
             {"product_id": product1["id"], "quantity": 2},
             format="json",
         )
-        cart_response = api_client.post(
+        cart_response = authenticated_admin_client.post(
             "/api/cart/items/",
             {"product_id": product2["id"], "quantity": 3},
             format="json",
@@ -110,28 +105,28 @@ class TestFullWorkflow:
         assert cart["total"] == "105.00"
 
         # 3. Verify stock reserved
-        products = api_client.get("/api/products/").json()["results"]
+        products = authenticated_admin_client.get("/api/products/").json()["results"]
         widget = next(p for p in products if p["name"] == "Widget")
         gadget = next(p for p in products if p["name"] == "Gadget")
         assert widget["stock_quantity"] == 48
         assert gadget["stock_quantity"] == 27
 
         # 4. Submit order
-        order = api_client.post("/api/cart/submit/").json()
+        order = authenticated_admin_client.post("/api/cart/submit/").json()
         assert order["total"] == "105.00"
         assert len(order["items"]) == 2
 
         # 5. Verify cart is empty
-        cart = api_client.get("/api/cart/").json()
+        cart = authenticated_admin_client.get("/api/cart/").json()
         assert cart["items"] == []
 
         # 6. Verify order appears in history
-        orders = api_client.get("/api/orders/").json()["results"]
+        orders = authenticated_admin_client.get("/api/orders/").json()["results"]
         assert len(orders) == 1
         assert orders[0]["total"] == "105.00"
 
         # 7. Stock remains decremented
-        products = api_client.get("/api/products/").json()["results"]
+        products = authenticated_admin_client.get("/api/products/").json()["results"]
         widget = next(p for p in products if p["name"] == "Widget")
         gadget = next(p for p in products if p["name"] == "Gadget")
         assert widget["stock_quantity"] == 48

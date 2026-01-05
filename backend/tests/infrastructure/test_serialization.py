@@ -59,16 +59,19 @@ class TestToDict:
             "price": "19.99",
             "stock_quantity": 100,
             "created_at": "2024-01-15T10:00:00",
+            "deleted_at": None,
         }
 
     def test_cart_with_items(self) -> None:
         cart_id = uuid4()
+        user_id = uuid4()
         item_id = uuid4()
         product_id = uuid4()
         now = datetime(2024, 1, 15, 10, 0, 0)
 
         cart = Cart(
             id=cart_id,
+            user_id=user_id,
             items=[
                 CartItem(
                     id=item_id,
@@ -92,12 +95,14 @@ class TestToDict:
 
     def test_order_with_items(self) -> None:
         order_id = uuid4()
+        user_id = uuid4()
         item_id = uuid4()
         product_id = uuid4()
         now = datetime(2024, 1, 15, 10, 0, 0)
 
         order = Order(
             id=order_id,
+            user_id=user_id,
             items=[
                 OrderItem(
                     id=item_id,
@@ -121,6 +126,7 @@ class TestToDict:
     def test_empty_cart(self) -> None:
         cart = Cart(
             id=uuid4(),
+            user_id=uuid4(),
             items=[],
             created_at=datetime.now(),
         )

@@ -137,7 +137,7 @@ class TestCartEvents:
     """Tests for Cart aggregate event raising."""
 
     def test_add_item_raises_event(self) -> None:
-        cart = Cart.create()
+        cart = Cart.create(user_id=uuid4())
         product_id = uuid4()
 
         cart.add_item(
@@ -157,7 +157,7 @@ class TestCartEvents:
         assert events[0].actor_id == "user-456"
 
     def test_submit_raises_event(self) -> None:
-        cart = Cart.create()
+        cart = Cart.create(user_id=uuid4())
         cart.add_item(
             product_id=uuid4(),
             product_name="Test Product",
@@ -178,7 +178,7 @@ class TestCartEvents:
         assert events[0].actor_id == "user-789"
 
     def test_multiple_operations_collect_events(self) -> None:
-        cart = Cart.create()
+        cart = Cart.create(user_id=uuid4())
         product1_id = uuid4()
         product2_id = uuid4()
 
