@@ -87,3 +87,27 @@ export interface ProductFilters {
 export interface OrderListResponse {
   results: Order[];
 }
+
+// Feature Flag types
+export interface FeatureFlag {
+  name: string;
+  enabled: boolean;
+  description: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FeatureFlagListResponse {
+  results: FeatureFlag[];
+}
+
+export interface CreateFeatureFlagRequest {
+  name: string;
+  enabled?: boolean;
+  description?: string;
+}
+
+export interface UpdateFeatureFlagRequest {
+  enabled?: boolean;
+  description?: string;
+}

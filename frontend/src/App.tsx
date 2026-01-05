@@ -7,6 +7,7 @@ import { LoginPage } from './pages/LoginPage';
 import { ProductCatalogPage } from './pages/ProductCatalogPage';
 import { CartPage } from './pages/CartPage';
 import { OrderHistoryPage } from './pages/OrderHistoryPage';
+import { FeatureFlagAdminPage } from './pages/FeatureFlagAdminPage';
 
 function App() {
   return (
@@ -30,6 +31,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <OrderHistoryPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/flags"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <FeatureFlagAdminPage />
                 </ProtectedRoute>
               }
             />

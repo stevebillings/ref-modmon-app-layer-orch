@@ -439,3 +439,22 @@ def feature_flag_detail(
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+
+# --- Debug/Test Endpoints ---
+
+
+@api_view(["POST"])
+@require_auth
+def trigger_test_error(request: Request, user_context: UserContext) -> Response:
+    """
+    Test endpoint to trigger a 500 error for testing incident notifications.
+
+    Admin only. Raises an exception to test the incident notification middleware.
+    """
+    if not user_context.is_admin():
+        return Response(
+            {"error": "Only admins can trigger test errors"},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+    raise Exception("Test error triggered for incident notification testing")

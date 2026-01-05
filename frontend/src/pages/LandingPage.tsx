@@ -79,6 +79,14 @@ export function LandingPage() {
               Order History
             </Button>
           </Link>
+
+          {isAdmin && (
+            <Link to="/admin/flags" style={{ width: '100%' }}>
+              <Button width="100%" size="lg" variant="outline" colorPalette="purple">
+                Feature Flags (Admin)
+              </Button>
+            </Link>
+          )}
         </VStack>
 
         {!isAuthenticated && (

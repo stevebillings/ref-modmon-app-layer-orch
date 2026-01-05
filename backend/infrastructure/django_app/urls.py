@@ -44,4 +44,6 @@ urlpatterns = [
         views.feature_flag_detail,
         name="feature-flag-detail",
     ),
+    # Debug/test endpoints
+    path("debug/trigger-error/", views.trigger_test_error, name="trigger-test-error"),
 ]

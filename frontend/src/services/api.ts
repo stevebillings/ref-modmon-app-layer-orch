@@ -1,12 +1,16 @@
 import type {
   AuthResponse,
   Cart,
+  CreateFeatureFlagRequest,
+  FeatureFlag,
+  FeatureFlagListResponse,
   Order,
   OrderListResponse,
   Product,
   ProductFilters,
   ProductListResponse,
   SessionResponse,
+  UpdateFeatureFlagRequest,
 } from '../types';
 
 const API_BASE = 'http://localhost:8000/api';
@@ -210,4 +214,70 @@ export async function getOrders(): Promise<Order[]> {
   });
   const data = await handleResponse<OrderListResponse>(response);
   return data.results;
+}
+
+// Feature Flag API
+
+export async function getFeatureFlags(): Promise<FeatureFlag[]> {
+  const response = await fetch(`${API_BASE}/admin/feature-flags/`, {
+    credentials: 'include',
+  });
+  const data = await handleResponse<FeatureFlagListResponse>(response);
+  return data.results;
+}
+
+export async function getFeatureFlag(name: string): Promise<FeatureFlag> {
+  const response = await fetch(`${API_BASE}/admin/feature-flags/${name}/`, {
+    credentials: 'include',
+  });
+  return handleResponse<FeatureFlag>(response);
+}
+
+export async function createFeatureFlag(
+  request: CreateFeatureFlagRequest
+): Promise<FeatureFlag> {
+  const response = await fetch(`${API_BASE}/admin/feature-flags/create/`, {
+    method: 'POST',
+    headers: getHeaders(),
+    credentials: 'include',
+    body: JSON.stringify(request),
+  });
+  return handleResponse<FeatureFlag>(response);
+}
+
+export async function updateFeatureFlag(
+  name: string,
+  request: UpdateFeatureFlagRequest
+): Promise<FeatureFlag> {
+  const response = await fetch(`${API_BASE}/admin/feature-flags/${name}/`, {
+    method: 'PUT',
+    headers: getHeaders(),
+    credentials: 'include',
+    body: JSON.stringify(request),
+  });
+  return handleResponse<FeatureFlag>(response);
+}
+
+export async function deleteFeatureFlag(name: string): Promise<void> {
+  const response = await fetch(`${API_BASE}/admin/feature-flags/${name}/`, {
+    method: 'DELETE',
+    headers: getHeaders(),
+    credentials: 'include',
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to delete feature flag');
+  }
+}
+
+// Debug API
+
+export async function triggerTestError(): Promise<void> {
+  const response = await fetch(`${API_BASE}/debug/trigger-error/`, {
+    method: 'POST',
+    headers: getHeaders(),
+    credentials: 'include',
+  });
+  // This endpoint always throws a 500, so we don't check response.ok
+  // We just want to trigger the error
 }
