@@ -5,7 +5,9 @@ import pytest
 
 from application.services.cart_service import CartService
 from application.services.product_service import ProductService
+from domain.aggregates.order.value_objects import UnverifiedAddress
 from domain.exceptions import (
+    AddressVerificationError,
     CartItemNotFoundError,
     EmptyCartError,
     InsufficientStockError,
@@ -13,12 +15,23 @@ from domain.exceptions import (
     ValidationError,
 )
 from domain.user_context import Role, UserContext
+from infrastructure.django_app.address_verification import get_address_verification_adapter
 from infrastructure.django_app.unit_of_work import DjangoUnitOfWork
 
 
 def make_user_context(role: Role = Role.ADMIN) -> UserContext:
     """Create a test UserContext."""
     return UserContext(user_id=uuid4(), username="testuser", role=role)
+
+
+VALID_SHIPPING_ADDRESS = UnverifiedAddress(
+    street_line_1="123 Main St",
+    street_line_2="Apt 4",
+    city="Anytown",
+    state="CA",
+    postal_code="90210",
+    country="US",
+)
 
 
 @pytest.mark.django_db
@@ -267,7 +280,7 @@ class TestSubmitCart:
     def test_submit_cart_creates_order(self) -> None:
         uow = DjangoUnitOfWork()
         product_service = ProductService(uow)
-        cart_service = CartService(uow)
+        cart_service = CartService(uow, address_verification=get_address_verification_adapter())
         user_context = make_user_context()
 
         product = product_service.create_product(
@@ -276,18 +289,20 @@ class TestSubmitCart:
         )
 
         cart_service.add_item(str(product.id), quantity=3, user_context=user_context)
-        order = cart_service.submit_cart(user_context)
+        order = cart_service.submit_cart(user_context, shipping_address=VALID_SHIPPING_ADDRESS)
 
         assert order is not None
         assert len(order.items) == 1
         assert order.items[0].product_name == "Submit Test"
         assert order.items[0].quantity == 3
         assert order.get_total() == Decimal("30.00")
+        assert order.shipping_address is not None
+        assert order.shipping_address.city == "ANYTOWN"  # Uppercased by stub
 
     def test_submit_clears_cart(self) -> None:
         uow = DjangoUnitOfWork()
         product_service = ProductService(uow)
-        cart_service = CartService(uow)
+        cart_service = CartService(uow, address_verification=get_address_verification_adapter())
         user_context = make_user_context()
 
         product = product_service.create_product(
@@ -296,7 +311,7 @@ class TestSubmitCart:
         )
 
         cart_service.add_item(str(product.id), quantity=2, user_context=user_context)
-        cart_service.submit_cart(user_context)
+        cart_service.submit_cart(user_context, shipping_address=VALID_SHIPPING_ADDRESS)
 
         cart = cart_service.get_cart(user_context)
         assert len(cart.items) == 0
@@ -304,7 +319,7 @@ class TestSubmitCart:
     def test_submit_stock_remains_decremented(self) -> None:
         uow = DjangoUnitOfWork()
         product_service = ProductService(uow)
-        cart_service = CartService(uow)
+        cart_service = CartService(uow, address_verification=get_address_verification_adapter())
         user_context = make_user_context()
 
         product = product_service.create_product(
@@ -313,7 +328,7 @@ class TestSubmitCart:
         )
 
         cart_service.add_item(str(product.id), quantity=20, user_context=user_context)  # Stock: 80
-        cart_service.submit_cart(user_context)
+        cart_service.submit_cart(user_context, shipping_address=VALID_SHIPPING_ADDRESS)
 
         products = product_service.get_all_products()
         updated_product = next(p for p in products if p.id == product.id)
@@ -321,7 +336,7 @@ class TestSubmitCart:
 
     def test_submit_empty_cart_raises(self) -> None:
         uow = DjangoUnitOfWork()
-        cart_service = CartService(uow)
+        cart_service = CartService(uow, address_verification=get_address_verification_adapter())
         user_context = make_user_context()
 
         # Ensure cart is empty
@@ -329,12 +344,12 @@ class TestSubmitCart:
         assert len(cart.items) == 0
 
         with pytest.raises(EmptyCartError):
-            cart_service.submit_cart(user_context)
+            cart_service.submit_cart(user_context, shipping_address=VALID_SHIPPING_ADDRESS)
 
     def test_submit_with_multiple_items(self) -> None:
         uow = DjangoUnitOfWork()
         product_service = ProductService(uow)
-        cart_service = CartService(uow)
+        cart_service = CartService(uow, address_verification=get_address_verification_adapter())
         user_context = make_user_context()
 
         product1 = product_service.create_product(
@@ -348,8 +363,33 @@ class TestSubmitCart:
 
         cart_service.add_item(str(product1.id), quantity=2, user_context=user_context)
         cart_service.add_item(str(product2.id), quantity=3, user_context=user_context)
-        order = cart_service.submit_cart(user_context)
+        order = cart_service.submit_cart(user_context, shipping_address=VALID_SHIPPING_ADDRESS)
 
         assert len(order.items) == 2
         # 10*2 + 20*3 = 20 + 60 = 80
         assert order.get_total() == Decimal("80.00")
+
+    def test_submit_with_invalid_address_raises(self) -> None:
+        uow = DjangoUnitOfWork()
+        product_service = ProductService(uow)
+        cart_service = CartService(uow, address_verification=get_address_verification_adapter())
+        user_context = make_user_context()
+
+        product = product_service.create_product(
+            name="Invalid Address Test", price="10.00", stock_quantity=100,
+            user_context=user_context
+        )
+
+        cart_service.add_item(str(product.id), quantity=1, user_context=user_context)
+
+        invalid_address = UnverifiedAddress(
+            street_line_1="Invalid Street Address",
+            street_line_2=None,
+            city="Nowhere",
+            state="XX",
+            postal_code="00000",
+            country="US",
+        )
+
+        with pytest.raises(AddressVerificationError):
+            cart_service.submit_cart(user_context, shipping_address=invalid_address)

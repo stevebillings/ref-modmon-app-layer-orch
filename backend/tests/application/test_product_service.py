@@ -4,6 +4,7 @@ from uuid import uuid4
 import pytest
 
 from application.services.product_service import ProductService
+from domain.aggregates.order.value_objects import UnverifiedAddress
 from domain.exceptions import (
     DuplicateProductError,
     ProductInUseError,
@@ -11,7 +12,18 @@ from domain.exceptions import (
     ValidationError,
 )
 from domain.user_context import Role, UserContext
+from infrastructure.django_app.address_verification import get_address_verification_adapter
 from infrastructure.django_app.unit_of_work import DjangoUnitOfWork
+
+
+VALID_SHIPPING_ADDRESS = UnverifiedAddress(
+    street_line_1="123 Main St",
+    street_line_2=None,
+    city="Anytown",
+    state="CA",
+    postal_code="90210",
+    country="US",
+)
 
 
 def make_user_context(role: Role = Role.ADMIN) -> UserContext:
@@ -173,7 +185,7 @@ class TestProductDeletionConstraints:
 
         uow = DjangoUnitOfWork()
         product_service = ProductService(uow)
-        cart_service = CartService(uow)
+        cart_service = CartService(uow, address_verification=get_address_verification_adapter())
         user_context = make_user_context()
 
         product = product_service.create_product(
@@ -181,7 +193,7 @@ class TestProductDeletionConstraints:
         )
 
         cart_service.add_item(str(product.id), quantity=1, user_context=user_context)
-        cart_service.submit_cart(user_context)
+        cart_service.submit_cart(user_context, shipping_address=VALID_SHIPPING_ADDRESS)
 
         # After submitting, the cart is cleared, so delete should work
         # (product is in order but that no longer blocks deletion due to soft delete)

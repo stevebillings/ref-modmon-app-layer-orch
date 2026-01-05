@@ -8,7 +8,9 @@ from rest_framework.response import Response
 from application.services.cart_service import CartService
 from application.services.order_service import OrderService
 from application.services.product_service import ProductService
+from domain.aggregates.order.value_objects import UnverifiedAddress
 from domain.exceptions import (
+    AddressVerificationError,
     CartItemNotFoundError,
     DomainError,
     DuplicateProductError,
@@ -22,6 +24,7 @@ from domain.exceptions import (
     ValidationError,
 )
 from domain.user_context import UserContext
+from infrastructure.django_app.address_verification import get_address_verification_adapter
 from infrastructure.django_app.auth_decorators import require_auth
 from infrastructure.django_app.models import FeatureFlagModel
 from infrastructure.django_app.user_context_adapter import build_user_context
@@ -80,6 +83,11 @@ def handle_domain_error(error: DomainError) -> Response:
     if isinstance(error, EmptyCartError):
         return Response(
             {"error": str(error)},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    if isinstance(error, AddressVerificationError):
+        return Response(
+            {"error": str(error), "field": error.field},
             status=status.HTTP_400_BAD_REQUEST,
         )
     # Generic domain error
@@ -316,12 +324,101 @@ def cart_remove_item(request: Request, product_id: str, user_context: UserContex
 
 @api_view(["POST"])
 @require_auth
-def cart_submit(request: Request, user_context: UserContext) -> Response:
-    """Submit the user's cart as an order."""
+def cart_verify_address(request: Request, user_context: UserContext) -> Response:
+    """
+    Verify a shipping address without submitting the cart.
+
+    Request body:
+        street_line_1: str (required)
+        street_line_2: str (optional)
+        city: str (required)
+        state: str (required)
+        postal_code: str (required)
+        country: str (default: "US")
+
+    Returns:
+        verified: bool
+        status: str ("verified", "corrected", "invalid", "undeliverable")
+        standardized_address: dict (if verified/corrected)
+        error_message: str (if invalid/undeliverable)
+    """
     with unit_of_work(get_event_dispatcher()) as uow:
-        service = CartService(uow)
+        service = CartService(
+            uow,
+            address_verification=get_address_verification_adapter(),
+        )
         try:
-            order = service.submit_cart(user_context=user_context)
+            data = request.data
+            address = UnverifiedAddress(
+                street_line_1=data.get("street_line_1", ""),
+                street_line_2=data.get("street_line_2"),
+                city=data.get("city", ""),
+                state=data.get("state", ""),
+                postal_code=data.get("postal_code", ""),
+                country=data.get("country", "US"),
+            )
+
+            verified, result = service.verify_address(address)
+
+            return Response({
+                "verified": True,
+                "status": result.status.value,
+                "standardized_address": verified.to_dict(),
+            })
+        except AddressVerificationError as e:
+            return Response({
+                "verified": False,
+                "status": "invalid",
+                "error_message": str(e),
+                "field": e.field,
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except DomainError as e:
+            return handle_domain_error(e)
+
+
+@api_view(["POST"])
+@require_auth
+def cart_submit(request: Request, user_context: UserContext) -> Response:
+    """
+    Submit the user's cart as an order.
+
+    Request body:
+        shipping_address:
+            street_line_1: str (required)
+            street_line_2: str (optional)
+            city: str (required)
+            state: str (required)
+            postal_code: str (required)
+            country: str (default: "US")
+    """
+    with unit_of_work(get_event_dispatcher()) as uow:
+        service = CartService(
+            uow,
+            address_verification=get_address_verification_adapter(),
+        )
+        try:
+            data = request.data
+            address_data = data.get("shipping_address", {})
+
+            if not address_data:
+                return Response(
+                    {"error": "shipping_address is required"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            shipping_address = UnverifiedAddress(
+                street_line_1=address_data.get("street_line_1", ""),
+                street_line_2=address_data.get("street_line_2"),
+                city=address_data.get("city", ""),
+                state=address_data.get("state", ""),
+                postal_code=address_data.get("postal_code", ""),
+                country=address_data.get("country", "US"),
+            )
+
+            order = service.submit_cart(
+                user_context=user_context,
+                shipping_address=shipping_address,
+            )
             order_dict = to_dict(order)
             order_dict["total"] = str(order.get_total())
             return Response(order_dict, status=status.HTTP_201_CREATED)

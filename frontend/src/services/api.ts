@@ -1,4 +1,5 @@
 import type {
+  AddressVerificationResult,
   AuthResponse,
   Cart,
   CreateFeatureFlagRequest,
@@ -10,6 +11,7 @@ import type {
   ProductFilters,
   ProductListResponse,
   SessionResponse,
+  ShippingAddress,
   UpdateFeatureFlagRequest,
 } from '../types';
 
@@ -197,11 +199,26 @@ export async function removeFromCart(productId: string): Promise<Cart> {
   return handleResponse<Cart>(response);
 }
 
-export async function submitCart(): Promise<Order> {
+export async function verifyAddress(
+  address: ShippingAddress
+): Promise<AddressVerificationResult> {
+  const response = await fetch(`${API_BASE}/cart/verify-address/`, {
+    method: 'POST',
+    headers: getHeaders(),
+    credentials: 'include',
+    body: JSON.stringify(address),
+  });
+  return handleResponse<AddressVerificationResult>(response);
+}
+
+export async function submitCart(
+  shippingAddress: ShippingAddress
+): Promise<Order> {
   const response = await fetch(`${API_BASE}/cart/submit/`, {
     method: 'POST',
     headers: getHeaders(),
     credentials: 'include',
+    body: JSON.stringify({ shipping_address: shippingAddress }),
   });
   return handleResponse<Order>(response);
 }
@@ -273,7 +290,7 @@ export async function deleteFeatureFlag(name: string): Promise<void> {
 // Debug API
 
 export async function triggerTestError(): Promise<void> {
-  const response = await fetch(`${API_BASE}/debug/trigger-error/`, {
+  await fetch(`${API_BASE}/debug/trigger-error/`, {
     method: 'POST',
     headers: getHeaders(),
     credentials: 'include',

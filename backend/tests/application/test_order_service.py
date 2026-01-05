@@ -5,13 +5,25 @@ import pytest
 from application.services.cart_service import CartService
 from application.services.order_service import OrderService
 from application.services.product_service import ProductService
+from domain.aggregates.order.value_objects import UnverifiedAddress
 from domain.user_context import Role, UserContext
+from infrastructure.django_app.address_verification import get_address_verification_adapter
 from infrastructure.django_app.unit_of_work import DjangoUnitOfWork
 
 
 def make_user_context(role: Role = Role.ADMIN) -> UserContext:
     """Create a test UserContext."""
     return UserContext(user_id=uuid4(), username="testuser", role=role)
+
+
+VALID_SHIPPING_ADDRESS = UnverifiedAddress(
+    street_line_1="123 Main St",
+    street_line_2=None,
+    city="Anytown",
+    state="CA",
+    postal_code="90210",
+    country="US",
+)
 
 
 @pytest.mark.django_db
@@ -28,7 +40,7 @@ class TestOrderService:
     def test_get_all_orders(self) -> None:
         uow = DjangoUnitOfWork()
         product_service = ProductService(uow)
-        cart_service = CartService(uow)
+        cart_service = CartService(uow, address_verification=get_address_verification_adapter())
         order_service = OrderService(uow)
         user_context = make_user_context()
 
@@ -40,7 +52,7 @@ class TestOrderService:
 
         for i in range(3):
             cart_service.add_item(str(product.id), quantity=1, user_context=user_context)
-            cart_service.submit_cart(user_context)
+            cart_service.submit_cart(user_context, shipping_address=VALID_SHIPPING_ADDRESS)
 
         orders = order_service.get_orders(user_context)
 
@@ -49,7 +61,7 @@ class TestOrderService:
     def test_orders_newest_first(self) -> None:
         uow = DjangoUnitOfWork()
         product_service = ProductService(uow)
-        cart_service = CartService(uow)
+        cart_service = CartService(uow, address_verification=get_address_verification_adapter())
         order_service = OrderService(uow)
         user_context = make_user_context()
 
@@ -61,7 +73,7 @@ class TestOrderService:
         # Create orders
         for _ in range(3):
             cart_service.add_item(str(product.id), quantity=1, user_context=user_context)
-            cart_service.submit_cart(user_context)
+            cart_service.submit_cart(user_context, shipping_address=VALID_SHIPPING_ADDRESS)
 
         orders = order_service.get_orders(user_context)
 

@@ -84,6 +84,7 @@ class CartItemModel(models.Model):
 class OrderModel(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user_id = models.UUIDField(db_index=True)
+    shipping_address = models.JSONField(default=dict)
     submitted_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

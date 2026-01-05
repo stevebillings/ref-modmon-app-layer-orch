@@ -29,6 +29,7 @@ urlpatterns = [
         views.cart_remove_item,
         name="cart-remove-item",
     ),
+    path("cart/verify-address/", views.cart_verify_address, name="cart-verify-address"),
     path("cart/submit/", views.cart_submit, name="cart-submit"),
     # Order endpoints
     path("orders/", views.orders_list, name="orders-list"),

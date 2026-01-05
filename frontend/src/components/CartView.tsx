@@ -8,17 +8,18 @@ import {
   Table,
   Text,
 } from '@chakra-ui/react';
-import type { Cart } from '../types';
+import type { Cart, ShippingAddress } from '../types';
 import { formatCurrency, calculateSubtotal } from '../services/currencyUtils';
 import { ConfirmationDialog } from './ConfirmationDialog';
 import { EmptyState } from './EmptyState';
 import { ErrorAlert } from './ErrorAlert';
+import { ShippingAddressForm } from './ShippingAddressForm';
 
 interface CartViewProps {
   cart: Cart;
   onUpdateQuantity: (productId: string, quantity: number) => Promise<void>;
   onRemoveItem: (productId: string) => Promise<void>;
-  onSubmit: () => Promise<void>;
+  onSubmit: (shippingAddress: ShippingAddress) => Promise<void>;
 }
 
 export function CartView({
@@ -32,6 +33,7 @@ export function CartView({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [updatingItemId, setUpdatingItemId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [shippingAddress, setShippingAddress] = useState<ShippingAddress | null>(null);
 
   const handleRemove = async () => {
     if (!removeItemId) return;
@@ -61,10 +63,14 @@ export function CartView({
   };
 
   const handleSubmit = async () => {
+    if (!shippingAddress) {
+      setError('Please enter and verify your shipping address');
+      return;
+    }
     setIsSubmitting(true);
     setError(null);
     try {
-      await onSubmit();
+      await onSubmit(shippingAddress);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to submit order');
     } finally {
@@ -141,17 +147,26 @@ export function CartView({
         </Table.Body>
       </Table.Root>
 
-      <Flex justifyContent="space-between" alignItems="center" mt={6} pt={4} borderTopWidth={1}>
-        <Heading size="md">Total: {formatCurrency(cart.total)}</Heading>
-        <Button
-          colorPalette="green"
-          size="lg"
-          onClick={handleSubmit}
-          loading={isSubmitting}
-        >
-          Submit Order
-        </Button>
-      </Flex>
+      <Box mt={6} pt={4} borderTopWidth={1}>
+        <Heading size="md" mb={4}>Total: {formatCurrency(cart.total)}</Heading>
+
+        <ShippingAddressForm
+          onAddressChange={setShippingAddress}
+          disabled={isSubmitting}
+        />
+
+        <Flex justifyContent="flex-end">
+          <Button
+            colorPalette="green"
+            size="lg"
+            onClick={handleSubmit}
+            loading={isSubmitting}
+            disabled={!shippingAddress}
+          >
+            Submit Order
+          </Button>
+        </Flex>
+      </Box>
 
       <ConfirmationDialog
         isOpen={removeItemId !== null}

@@ -7,7 +7,19 @@ import pytest
 from domain.aggregates.product.entity import Product
 from domain.aggregates.cart.entities import Cart, CartItem
 from domain.aggregates.order.entities import Order, OrderItem
+from domain.aggregates.order.value_objects import VerifiedAddress
 from infrastructure.django_app.serialization import to_dict
+
+
+TEST_SHIPPING_ADDRESS = VerifiedAddress(
+    street_line_1="123 MAIN ST",
+    street_line_2=None,
+    city="ANYTOWN",
+    state="CA",
+    postal_code="90210",
+    country="US",
+    verification_id="TEST-123",
+)
 
 
 class TestToDict:
@@ -113,6 +125,7 @@ class TestToDict:
                     quantity=3,
                 )
             ],
+            shipping_address=TEST_SHIPPING_ADDRESS,
             submitted_at=now,
         )
 

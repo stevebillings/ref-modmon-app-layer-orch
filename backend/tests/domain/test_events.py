@@ -10,6 +10,18 @@ from domain.aggregates.product.events import StockReserved, StockReleased
 from domain.aggregates.cart.events import CartItemAdded, CartSubmitted
 from domain.aggregates.product.entity import Product
 from domain.aggregates.cart.entities import Cart
+from domain.aggregates.order.value_objects import VerifiedAddress
+
+
+TEST_SHIPPING_ADDRESS = VerifiedAddress(
+    street_line_1="123 MAIN ST",
+    street_line_2=None,
+    city="ANYTOWN",
+    state="CA",
+    postal_code="90210",
+    country="US",
+    verification_id="TEST-123",
+)
 
 
 class TestDomainEvent:
@@ -166,7 +178,7 @@ class TestCartEvents:
         )
         cart.clear_domain_events()  # Clear the add_item event
 
-        order = cart.submit(actor_id="user-789")
+        order = cart.submit(shipping_address=TEST_SHIPPING_ADDRESS, actor_id="user-789")
 
         events = cart.get_domain_events()
         assert len(events) == 1

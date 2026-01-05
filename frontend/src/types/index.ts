@@ -52,11 +52,34 @@ export interface OrderItem {
   subtotal?: string;
 }
 
+// Shipping address types
+export interface ShippingAddress {
+  street_line_1: string;
+  street_line_2?: string;
+  city: string;
+  state: string;
+  postal_code: string;
+  country?: string;
+}
+
+export interface VerifiedShippingAddress extends ShippingAddress {
+  verification_id: string;
+}
+
+export interface AddressVerificationResult {
+  verified: boolean;
+  status: 'verified' | 'corrected' | 'invalid' | 'undeliverable' | 'service_unavailable';
+  standardized_address?: VerifiedShippingAddress;
+  error_message?: string;
+  field_errors?: Record<string, string>;
+}
+
 export interface Order {
   id: string;
   items: OrderItem[];
   submitted_at: string;
   total: string;
+  shipping_address?: VerifiedShippingAddress;
 }
 
 export interface ApiError {

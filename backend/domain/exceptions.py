@@ -89,3 +89,12 @@ class PermissionDeniedError(DomainError):
         self.action = action
         self.reason = reason
         super().__init__(f"Permission denied for '{action}': {reason}")
+
+
+class AddressVerificationError(DomainError):
+    """Raised when address verification fails."""
+
+    def __init__(self, reason: str, field: str | None = None) -> None:
+        self.reason = reason
+        self.field = field
+        super().__init__(f"Address verification failed: {reason}")

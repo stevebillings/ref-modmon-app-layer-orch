@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, List
 from uuid import UUID, uuid4
 
 from domain.aggregates.order.entities import Order, OrderItem
+from domain.aggregates.order.value_objects import VerifiedAddress
 from domain.exceptions import CartItemNotFoundError, EmptyCartError
 from domain.validation import validate_positive_quantity
 
@@ -228,9 +229,17 @@ class Cart:
 
         return item
 
-    def submit(self, actor_id: str = "anonymous") -> Order:
+    def submit(
+        self,
+        shipping_address: VerifiedAddress,
+        actor_id: str = "anonymous",
+    ) -> Order:
         """
         Create an Order from cart contents and clear the cart.
+
+        Args:
+            shipping_address: Verified shipping address for the order
+            actor_id: ID of the actor performing the action
 
         Returns:
             The created Order.
@@ -262,6 +271,7 @@ class Cart:
             id=order_id,
             user_id=self.user_id,
             items=order_items,
+            shipping_address=shipping_address,
             submitted_at=None,
         )
         self.items = []

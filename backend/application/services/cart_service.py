@@ -1,9 +1,16 @@
 from uuid import UUID
 
+from application.ports.address_verification import (
+    AddressVerificationPort,
+    AddressVerificationResult,
+    VerificationStatus,
+)
 from application.ports.unit_of_work import UnitOfWork
 from domain.aggregates.cart.entities import Cart
 from domain.aggregates.order.entities import Order
+from domain.aggregates.order.value_objects import UnverifiedAddress, VerifiedAddress
 from domain.exceptions import (
+    AddressVerificationError,
     CartItemNotFoundError,
     InsufficientStockError,
     ProductNotFoundError,
@@ -22,10 +29,16 @@ class CartService:
     - Concurrency control (pessimistic locking)
     - Event collection for dispatch after commit
     - User context for cart ownership and audit logging
+    - Address verification for order submission
     """
 
-    def __init__(self, uow: UnitOfWork):
+    def __init__(
+        self,
+        uow: UnitOfWork,
+        address_verification: AddressVerificationPort | None = None,
+    ):
         self.uow = uow
+        self.address_verification = address_verification
 
     def get_cart(self, user_context: UserContext) -> Cart:
         """Get the cart for the authenticated user."""
@@ -164,20 +177,87 @@ class CartService:
 
         return cart
 
-    def submit_cart(self, user_context: UserContext) -> Order:
+    def verify_address(
+        self,
+        address: UnverifiedAddress,
+    ) -> tuple[VerifiedAddress, AddressVerificationResult]:
+        """
+        Verify a shipping address using the address verification service.
+
+        Args:
+            address: The unverified address to check
+
+        Returns:
+            Tuple of (VerifiedAddress, AddressVerificationResult)
+
+        Raises:
+            AddressVerificationError: If verification fails or service unavailable
+            RuntimeError: If address verification port not configured
+        """
+        if self.address_verification is None:
+            raise RuntimeError("Address verification service not configured")
+
+        result = self.address_verification.verify(
+            street_line_1=address.street_line_1,
+            street_line_2=address.street_line_2,
+            city=address.city,
+            state=address.state,
+            postal_code=address.postal_code,
+            country=address.country,
+        )
+
+        if result.status == VerificationStatus.SERVICE_UNAVAILABLE:
+            raise AddressVerificationError(
+                result.error_message or "Service unavailable"
+            )
+
+        if result.status in (VerificationStatus.INVALID, VerificationStatus.UNDELIVERABLE):
+            field = None
+            if result.field_errors:
+                field = next(iter(result.field_errors.keys()), None)
+            raise AddressVerificationError(
+                result.error_message or "Invalid address",
+                field=field,
+            )
+
+        verified = VerifiedAddress.from_unverified(
+            original=address,
+            standardized=result.standardized_address or {},
+            verification_id=result.verification_id or "",
+        )
+
+        return verified, result
+
+    def submit_cart(
+        self,
+        user_context: UserContext,
+        shipping_address: UnverifiedAddress,
+    ) -> Order:
         """
         Submit the user's cart as an order.
 
         Creates an immutable Order from cart contents and clears the cart.
+        Verifies the shipping address before creating the order.
         Stock remains decremented (was reserved when added to cart).
+
+        Args:
+            user_context: The authenticated user context
+            shipping_address: The shipping address (will be verified)
 
         Raises:
             EmptyCartError: If cart has no items
+            AddressVerificationError: If address verification fails
         """
+        # Verify address first (fail fast before modifying cart)
+        verified_address, _ = self.verify_address(shipping_address)
+
         cart = self.uow.get_cart_repository().get_cart_for_user(user_context.user_id)
 
         # Delegate to cart aggregate - creates order and clears cart
-        order = cart.submit(actor_id=user_context.actor_id)
+        order = cart.submit(
+            shipping_address=verified_address,
+            actor_id=user_context.actor_id,
+        )
 
         # Persist order and cleared cart
         saved_order = self.uow.get_order_repository().save(order)

@@ -8,7 +8,7 @@ A minimal e-commerce web application demonstrating cross-aggregate operations. W
 
 - **Product**: Represents an item for sale with available stock
 - **Cart**: The user's shopping cart (one cart per user)
-- **Order**: A submitted, immutable record of a purchase (associated with the user who placed it)
+- **Order**: A submitted, immutable record of a purchase (associated with the user who placed it), including a verified shipping address
 
 ### Cross-Aggregate Operations
 
@@ -42,9 +42,11 @@ A minimal e-commerce web application demonstrating cross-aggregate operations. W
    - View current user's cart with items, quantities, unit prices, subtotals, and total
    - Remove items from cart — releases reserved stock
    - Adjust item quantity — adjusts stock reservation accordingly
-   - Submit Order button — creates an immutable Order and clears the cart
+   - **Shipping address form** — street, city, state, postal code, country
+   - Submit Order button — verifies shipping address, creates an immutable Order, and clears the cart
    - Cannot increase quantity beyond available stock
    - Cannot submit an empty cart
+   - Cannot submit without a valid shipping address
 
 5. **Order History Page** (requires login)
    - Admins see all orders; customers see only their own orders

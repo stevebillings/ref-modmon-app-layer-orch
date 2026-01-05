@@ -210,6 +210,71 @@ class TestCartRemoveItem:
         assert response.status_code == 404
 
 
+VALID_SHIPPING_ADDRESS = {
+    "street_line_1": "123 Main St",
+    "street_line_2": "Apt 4",
+    "city": "Anytown",
+    "state": "CA",
+    "postal_code": "90210",
+    "country": "US",
+}
+
+
+@pytest.mark.django_db
+class TestCartVerifyAddress:
+    def test_verify_valid_address(self, authenticated_admin_client: APIClient) -> None:
+        response = authenticated_admin_client.post(
+            "/api/cart/verify-address/",
+            VALID_SHIPPING_ADDRESS,
+            format="json",
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["verified"] is True
+        assert data["status"] == "verified"
+        assert "standardized_address" in data
+        # Stub adapter uppercases addresses
+        assert data["standardized_address"]["city"] == "ANYTOWN"
+
+    def test_verify_invalid_address(self, authenticated_admin_client: APIClient) -> None:
+        response = authenticated_admin_client.post(
+            "/api/cart/verify-address/",
+            {
+                "street_line_1": "Invalid Street Address",
+                "city": "Nowhere",
+                "state": "XX",
+                "postal_code": "00000",
+                "country": "US",
+            },
+            format="json",
+        )
+
+        assert response.status_code == 400
+        data = response.json()
+        assert data["verified"] is False
+        assert "error_message" in data
+
+    def test_verify_undeliverable_address(
+        self, authenticated_admin_client: APIClient
+    ) -> None:
+        response = authenticated_admin_client.post(
+            "/api/cart/verify-address/",
+            {
+                "street_line_1": "Undeliverable Address",
+                "city": "Somewhere",
+                "state": "CA",
+                "postal_code": "90210",
+                "country": "US",
+            },
+            format="json",
+        )
+
+        assert response.status_code == 400
+        data = response.json()
+        assert data["verified"] is False
+
+
 @pytest.mark.django_db
 class TestCartSubmit:
     def test_submit_cart(
@@ -221,13 +286,19 @@ class TestCartSubmit:
             format="json",
         )
 
-        response = authenticated_admin_client.post("/api/cart/submit/")
+        response = authenticated_admin_client.post(
+            "/api/cart/submit/",
+            {"shipping_address": VALID_SHIPPING_ADDRESS},
+            format="json",
+        )
 
         assert response.status_code == 201
         order = response.json()
         assert len(order["items"]) == 1
         assert order["items"][0]["product_name"] == "Test Product"
         assert order["total"] == "30.00"
+        assert "shipping_address" in order
+        assert order["shipping_address"]["city"] == "ANYTOWN"
 
     def test_submit_clears_cart(
         self, authenticated_admin_client: APIClient, product: dict[str, Any]
@@ -238,13 +309,61 @@ class TestCartSubmit:
             format="json",
         )
 
-        authenticated_admin_client.post("/api/cart/submit/")
+        authenticated_admin_client.post(
+            "/api/cart/submit/",
+            {"shipping_address": VALID_SHIPPING_ADDRESS},
+            format="json",
+        )
 
         response = authenticated_admin_client.get("/api/cart/")
         assert response.json()["items"] == []
 
     def test_submit_empty_cart(self, authenticated_admin_client: APIClient) -> None:
-        response = authenticated_admin_client.post("/api/cart/submit/")
+        response = authenticated_admin_client.post(
+            "/api/cart/submit/",
+            {"shipping_address": VALID_SHIPPING_ADDRESS},
+            format="json",
+        )
 
         assert response.status_code == 400
         assert "empty" in response.json()["error"].lower()
+
+    def test_submit_without_address(
+        self, authenticated_admin_client: APIClient, product: dict[str, Any]
+    ) -> None:
+        authenticated_admin_client.post(
+            "/api/cart/items/",
+            {"product_id": product["id"], "quantity": 1},
+            format="json",
+        )
+
+        response = authenticated_admin_client.post("/api/cart/submit/")
+
+        assert response.status_code == 400
+        assert "shipping_address" in response.json()["error"].lower()
+
+    def test_submit_with_invalid_address(
+        self, authenticated_admin_client: APIClient, product: dict[str, Any]
+    ) -> None:
+        authenticated_admin_client.post(
+            "/api/cart/items/",
+            {"product_id": product["id"], "quantity": 1},
+            format="json",
+        )
+
+        response = authenticated_admin_client.post(
+            "/api/cart/submit/",
+            {
+                "shipping_address": {
+                    "street_line_1": "Invalid Street",
+                    "city": "Nowhere",
+                    "state": "XX",
+                    "postal_code": "00000",
+                    "country": "US",
+                }
+            },
+            format="json",
+        )
+
+        assert response.status_code == 400
+        assert "verification" in response.json()["error"].lower()

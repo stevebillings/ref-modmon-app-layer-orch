@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Box, Button, Container, Heading, HStack } from '@chakra-ui/react';
-import type { Cart } from '../types';
+import type { Cart, ShippingAddress } from '../types';
 import { getCart, updateCartItem, removeFromCart, submitCart } from '../services/api';
 import { CartView } from '../components/CartView';
 import { ErrorAlert } from '../components/ErrorAlert';
@@ -38,8 +38,8 @@ export function CartPage() {
     setCart(updatedCart);
   };
 
-  const handleSubmit = async () => {
-    await submitCart();
+  const handleSubmit = async (shippingAddress: ShippingAddress) => {
+    await submitCart(shippingAddress);
     navigate('/orders');
   };
 

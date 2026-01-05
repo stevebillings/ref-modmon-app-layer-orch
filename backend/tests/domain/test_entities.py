@@ -7,10 +7,22 @@ import pytest
 from domain.aggregates.product.entity import Product
 from domain.aggregates.cart.entities import Cart, CartItem
 from domain.aggregates.order.entities import Order, OrderItem
+from domain.aggregates.order.value_objects import VerifiedAddress
 from domain.exceptions import (
     CartItemNotFoundError,
     EmptyCartError,
     InsufficientStockError,
+)
+
+
+TEST_SHIPPING_ADDRESS = VerifiedAddress(
+    street_line_1="123 MAIN ST",
+    street_line_2=None,
+    city="ANYTOWN",
+    state="CA",
+    postal_code="90210",
+    country="US",
+    verification_id="TEST-123",
 )
 
 
@@ -274,17 +286,18 @@ class TestCart:
         cart.add_item(uuid4(), "Product A", Decimal("10.00"), 2)
         cart.add_item(uuid4(), "Product B", Decimal("5.00"), 3)
 
-        order = cart.submit()
+        order = cart.submit(shipping_address=TEST_SHIPPING_ADDRESS)
 
         assert len(order.items) == 2
         assert order.get_total() == Decimal("35.00")
         assert len(cart.items) == 0  # Cart is cleared
+        assert order.shipping_address == TEST_SHIPPING_ADDRESS
 
     def test_submit_empty_cart_raises(self) -> None:
         cart = Cart(id=uuid4(), user_id=uuid4(), items=[], created_at=datetime.now())
 
         with pytest.raises(EmptyCartError):
-            cart.submit()
+            cart.submit(shipping_address=TEST_SHIPPING_ADDRESS)
 
 
 class TestOrderItem:
@@ -326,11 +339,18 @@ class TestOrder:
         order_id = uuid4()
         user_id = uuid4()
         now = datetime.now()
-        order = Order(id=order_id, user_id=user_id, items=[], submitted_at=now)
+        order = Order(
+            id=order_id,
+            user_id=user_id,
+            items=[],
+            shipping_address=TEST_SHIPPING_ADDRESS,
+            submitted_at=now,
+        )
 
         assert order.id == order_id
         assert order.user_id == user_id
         assert order.items == []
+        assert order.shipping_address == TEST_SHIPPING_ADDRESS
         assert order.submitted_at == now
 
     def test_total(self) -> None:
@@ -354,7 +374,13 @@ class TestOrder:
                 quantity=4,
             ),
         ]
-        order = Order(id=order_id, user_id=user_id, items=items, submitted_at=datetime.now())
+        order = Order(
+            id=order_id,
+            user_id=user_id,
+            items=items,
+            shipping_address=TEST_SHIPPING_ADDRESS,
+            submitted_at=datetime.now(),
+        )
 
         # 10*2 + 7.50*4 = 20 + 30 = 50
         assert order.get_total() == Decimal("50.00")

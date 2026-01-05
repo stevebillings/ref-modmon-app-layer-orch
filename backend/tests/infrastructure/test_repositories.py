@@ -7,6 +7,7 @@ import pytest
 from domain.aggregates.product.entity import Product
 from domain.aggregates.cart.entities import Cart, CartItem
 from domain.aggregates.order.entities import Order, OrderItem
+from domain.aggregates.order.value_objects import VerifiedAddress
 from infrastructure.django_app.repositories.product_repository import (
     DjangoProductRepository,
 )
@@ -15,6 +16,17 @@ from infrastructure.django_app.repositories.cart_repository import (
 )
 from infrastructure.django_app.repositories.order_repository import (
     DjangoOrderRepository,
+)
+
+
+TEST_SHIPPING_ADDRESS = VerifiedAddress(
+    street_line_1="123 MAIN ST",
+    street_line_2=None,
+    city="ANYTOWN",
+    state="CA",
+    postal_code="90210",
+    country="US",
+    verification_id="TEST-123",
 )
 
 
@@ -245,6 +257,7 @@ class TestOrderRepository:
                     quantity=2,
                 )
             ],
+            shipping_address=TEST_SHIPPING_ADDRESS,
             submitted_at=datetime.now(),
         )
 
@@ -254,6 +267,7 @@ class TestOrderRepository:
         assert saved.user_id == user_id
         assert len(saved.items) == 1
         assert saved.items[0].product_name == "Test Product"
+        assert saved.shipping_address.city == "ANYTOWN"
 
     def test_get_all_orders_newest_first(self) -> None:
         repo = DjangoOrderRepository()
@@ -275,6 +289,7 @@ class TestOrderRepository:
                         quantity=1,
                     )
                 ],
+                shipping_address=TEST_SHIPPING_ADDRESS,
                 submitted_at=datetime.now(),
             ))
 
@@ -339,6 +354,7 @@ class TestProductInCartAndOrder:
                     quantity=1,
                 )
             ],
+            shipping_address=TEST_SHIPPING_ADDRESS,
             submitted_at=datetime.now(),
         ))
 

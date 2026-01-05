@@ -7,7 +7,9 @@ from django.test import TestCase
 
 from application.services.cart_service import CartService
 from application.services.product_service import ProductService
+from domain.aggregates.order.value_objects import UnverifiedAddress
 from domain.user_context import Role, UserContext
+from infrastructure.django_app.address_verification import get_address_verification_adapter
 from infrastructure.django_app.models import AuditLogModel
 from infrastructure.django_app.unit_of_work import unit_of_work
 from infrastructure.events import get_event_dispatcher
@@ -16,6 +18,16 @@ from infrastructure.events import get_event_dispatcher
 def make_user_context(role: Role = Role.ADMIN) -> UserContext:
     """Create a test UserContext."""
     return UserContext(user_id=uuid4(), username="testuser", role=role)
+
+
+VALID_SHIPPING_ADDRESS = UnverifiedAddress(
+    street_line_1="123 Main St",
+    street_line_2=None,
+    city="Anytown",
+    state="CA",
+    postal_code="90210",
+    country="US",
+)
 
 
 class TestAuditLogging(TestCase):
@@ -72,8 +84,8 @@ class TestAuditLogging(TestCase):
 
         # Submit the cart
         with unit_of_work(get_event_dispatcher()) as uow:
-            cart_service = CartService(uow)
-            cart_service.submit_cart(user_context)
+            cart_service = CartService(uow, address_verification=get_address_verification_adapter())
+            cart_service.submit_cart(user_context, shipping_address=VALID_SHIPPING_ADDRESS)
 
         # Verify CartSubmitted event was logged
         submit_entries = AuditLogModel.objects.filter(

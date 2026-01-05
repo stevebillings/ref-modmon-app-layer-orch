@@ -4,6 +4,15 @@ import pytest
 from rest_framework.test import APIClient
 
 
+VALID_SHIPPING_ADDRESS = {
+    "street_line_1": "123 Main St",
+    "city": "Anytown",
+    "state": "CA",
+    "postal_code": "90210",
+    "country": "US",
+}
+
+
 @pytest.fixture
 def product(authenticated_admin_client: APIClient) -> dict[str, Any]:
     response = authenticated_admin_client.post(
@@ -31,7 +40,11 @@ class TestOrderList:
                 {"product_id": product["id"], "quantity": 1},
                 format="json",
             )
-            authenticated_admin_client.post("/api/cart/submit/")
+            authenticated_admin_client.post(
+                "/api/cart/submit/",
+                {"shipping_address": VALID_SHIPPING_ADDRESS},
+                format="json",
+            )
 
         response = authenticated_admin_client.get("/api/orders/")
         assert response.status_code == 200
@@ -46,7 +59,11 @@ class TestOrderList:
             {"product_id": product["id"], "quantity": 5},
             format="json",
         )
-        authenticated_admin_client.post("/api/cart/submit/")
+        authenticated_admin_client.post(
+            "/api/cart/submit/",
+            {"shipping_address": VALID_SHIPPING_ADDRESS},
+            format="json",
+        )
 
         response = authenticated_admin_client.get("/api/orders/")
         order = response.json()["results"][0]
@@ -61,7 +78,11 @@ class TestOrderList:
                 {"product_id": product["id"], "quantity": 1},
                 format="json",
             )
-            authenticated_admin_client.post("/api/cart/submit/")
+            authenticated_admin_client.post(
+                "/api/cart/submit/",
+                {"shipping_address": VALID_SHIPPING_ADDRESS},
+                format="json",
+            )
 
         response = authenticated_admin_client.get("/api/orders/")
         results = response.json()["results"]
@@ -112,9 +133,14 @@ class TestFullWorkflow:
         assert gadget["stock_quantity"] == 27
 
         # 4. Submit order
-        order = authenticated_admin_client.post("/api/cart/submit/").json()
+        order = authenticated_admin_client.post(
+            "/api/cart/submit/",
+            {"shipping_address": VALID_SHIPPING_ADDRESS},
+            format="json",
+        ).json()
         assert order["total"] == "105.00"
         assert len(order["items"]) == 2
+        assert "shipping_address" in order
 
         # 5. Verify cart is empty
         cart = authenticated_admin_client.get("/api/cart/").json()

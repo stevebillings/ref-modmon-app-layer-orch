@@ -3,6 +3,7 @@ from uuid import UUID
 
 from domain.aggregates.order.entities import Order, OrderItem
 from domain.aggregates.order.repository import OrderRepository
+from domain.aggregates.order.value_objects import VerifiedAddress
 from infrastructure.django_app.models import OrderItemModel, OrderModel
 
 
@@ -25,7 +26,11 @@ class DjangoOrderRepository(OrderRepository):
 
     def save(self, order: Order) -> Order:
         """Save an order and its items."""
-        model = OrderModel.objects.create(id=order.id, user_id=order.user_id)
+        model = OrderModel.objects.create(
+            id=order.id,
+            user_id=order.user_id,
+            shipping_address=order.shipping_address.to_dict(),
+        )
         for item in order.items:
             OrderItemModel.objects.create(
                 id=item.id,
@@ -41,10 +46,12 @@ class DjangoOrderRepository(OrderRepository):
     def _to_domain(self, model: OrderModel) -> Order:
         """Convert ORM model to domain entity."""
         items = [self._item_to_domain(item, model.id) for item in model.items.all()]
+        shipping_address = VerifiedAddress.from_dict(model.shipping_address)
         return Order(
             id=model.id,
             user_id=model.user_id,
             items=items,
+            shipping_address=shipping_address,
             submitted_at=model.submitted_at,
         )
 

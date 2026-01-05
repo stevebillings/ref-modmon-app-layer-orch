@@ -4,6 +4,7 @@ from decimal import Decimal
 from typing import List
 from uuid import UUID, uuid4
 
+from domain.aggregates.order.value_objects import VerifiedAddress
 from domain.validation import validate_positive_quantity
 
 
@@ -49,21 +50,29 @@ class Order:
     id: UUID
     user_id: UUID
     items: List[OrderItem]
+    shipping_address: VerifiedAddress
     submitted_at: datetime | None
 
     @classmethod
-    def create(cls, user_id: UUID, items: List[OrderItem]) -> "Order":
+    def create(
+        cls,
+        user_id: UUID,
+        items: List[OrderItem],
+        shipping_address: VerifiedAddress,
+    ) -> "Order":
         """
         Factory method to create a new Order.
 
         Args:
             user_id: The ID of the user who placed the order
             items: List of OrderItems (should be created via OrderItem.create())
+            shipping_address: Verified shipping address for delivery
         """
         return cls(
             id=uuid4(),
             user_id=user_id,
             items=items,
+            shipping_address=shipping_address,
             submitted_at=None,
         )
 
