@@ -32,4 +32,16 @@ urlpatterns = [
     path("cart/submit/", views.cart_submit, name="cart-submit"),
     # Order endpoints
     path("orders/", views.orders_list, name="orders-list"),
+    # Feature flag admin endpoints
+    path("admin/feature-flags/", views.feature_flags_list, name="feature-flags-list"),
+    path(
+        "admin/feature-flags/create/",
+        views.feature_flag_create,
+        name="feature-flag-create",
+    ),
+    path(
+        "admin/feature-flags/<str:flag_name>/",
+        views.feature_flag_detail,
+        name="feature-flag-detail",
+    ),
 ]

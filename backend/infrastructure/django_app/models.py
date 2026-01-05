@@ -138,3 +138,26 @@ class AuditLogModel(models.Model):
 
     def __str__(self) -> str:
         return f"{self.event_type} at {self.occurred_at}"
+
+
+class FeatureFlagModel(models.Model):
+    """
+    Feature flag for toggling features on/off.
+
+    Simple on/off toggles stored in the database.
+    Unknown flags default to disabled (False).
+    """
+
+    name = models.CharField(max_length=100, unique=True)
+    enabled = models.BooleanField(default=False)
+    description = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "feature_flag"
+        ordering = ["name"]
+
+    def __str__(self) -> str:
+        status = "enabled" if self.enabled else "disabled"
+        return f"{self.name} ({status})"

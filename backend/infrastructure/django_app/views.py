@@ -23,6 +23,7 @@ from domain.exceptions import (
 )
 from domain.user_context import UserContext
 from infrastructure.django_app.auth_decorators import require_auth
+from infrastructure.django_app.models import FeatureFlagModel
 from infrastructure.django_app.user_context_adapter import build_user_context
 from infrastructure.django_app.serialization import to_dict
 from infrastructure.django_app.unit_of_work import unit_of_work
@@ -344,3 +345,97 @@ def orders_list(request: Request, user_context: UserContext) -> Response:
             order_dict["total"] = str(order.get_total())
             results.append(order_dict)
         return Response({"results": results})
+
+
+# --- Feature Flag Admin Endpoints ---
+
+
+def _feature_flag_to_dict(flag: FeatureFlagModel) -> dict:
+    """Convert a FeatureFlagModel to a dictionary."""
+    return {
+        "name": flag.name,
+        "enabled": flag.enabled,
+        "description": flag.description,
+        "created_at": flag.created_at.isoformat(),
+        "updated_at": flag.updated_at.isoformat(),
+    }
+
+
+@api_view(["GET"])
+@require_auth
+def feature_flags_list(request: Request, user_context: UserContext) -> Response:
+    """List all feature flags. Admin only."""
+    if not user_context.is_admin():
+        return Response(
+            {"error": "Only admins can manage feature flags"},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+    flags = FeatureFlagModel.objects.all()
+    return Response({"results": [_feature_flag_to_dict(f) for f in flags]})
+
+
+@api_view(["POST"])
+@require_auth
+def feature_flag_create(request: Request, user_context: UserContext) -> Response:
+    """Create a new feature flag. Admin only."""
+    if not user_context.is_admin():
+        return Response(
+            {"error": "Only admins can manage feature flags"},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+    data = request.data
+    name = data.get("name", "").strip()
+    if not name:
+        return Response(
+            {"error": "Flag name is required"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    if FeatureFlagModel.objects.filter(name=name).exists():
+        return Response(
+            {"error": f"Flag '{name}' already exists"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    flag = FeatureFlagModel.objects.create(
+        name=name,
+        enabled=data.get("enabled", False),
+        description=data.get("description", ""),
+    )
+    return Response(_feature_flag_to_dict(flag), status=status.HTTP_201_CREATED)
+
+
+@api_view(["GET", "PUT", "DELETE"])
+@require_auth
+def feature_flag_detail(
+    request: Request, flag_name: str, user_context: UserContext
+) -> Response:
+    """Get, update, or delete a feature flag. Admin only."""
+    if not user_context.is_admin():
+        return Response(
+            {"error": "Only admins can manage feature flags"},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+    try:
+        flag = FeatureFlagModel.objects.get(name=flag_name)
+    except FeatureFlagModel.DoesNotExist:
+        return Response(
+            {"error": f"Flag '{flag_name}' not found"},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    if request.method == "GET":
+        return Response(_feature_flag_to_dict(flag))
+
+    if request.method == "PUT":
+        data = request.data
+        if "enabled" in data:
+            flag.enabled = data["enabled"]
+        if "description" in data:
+            flag.description = data["description"]
+        flag.save()
+        return Response(_feature_flag_to_dict(flag))
+
+    if request.method == "DELETE":
+        flag.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)

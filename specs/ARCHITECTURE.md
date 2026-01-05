@@ -51,6 +51,10 @@ project-root/
 │   │   │       └── repository.py          # Repository interface (ABC)
 │   │   └── services/              # Domain services (cross-aggregate business logic)
 │   ├── application/               # Application layer (use case orchestration)
+│   │   ├── ports/                 # Port interfaces (for infrastructure adapters)
+│   │   │   ├── unit_of_work.py    # Transaction management port
+│   │   │   ├── feature_flags.py   # Feature flag port
+│   │   │   └── email.py           # Email sending port
 │   │   └── services/              # Application services (thin orchestration)
 │   └── infrastructure/            # Framework-dependent code
 │       ├── events/                # Event dispatcher infrastructure
@@ -58,11 +62,15 @@ project-root/
 │       │   ├── dispatcher.py      # Sync/async event dispatcher
 │       │   └── audit_handler.py   # Audit logging handler
 │       └── django_app/            # Django project
-│           ├── models.py          # ORM models (including AuditLog)
+│           ├── models.py          # ORM models (including AuditLog, FeatureFlag)
 │           ├── views.py           # API views
 │           ├── serializers.py     # DRF serializers
 │           ├── repositories/      # Repository implementations (Django ORM)
-│           └── unit_of_work.py    # Unit of Work with event dispatch
+│           ├── unit_of_work.py    # Unit of Work with event dispatch
+│           ├── feature_flags.py   # Feature flag adapter
+│           ├── email.py           # Email adapter
+│           ├── incident_notifier.py  # Incident notification service
+│           └── middleware.py      # Request/response middleware
 ├── frontend/
 │   └── src/
 │       ├── components/            # Reusable UI components
