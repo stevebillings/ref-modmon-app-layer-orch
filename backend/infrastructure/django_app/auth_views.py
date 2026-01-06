@@ -55,6 +55,7 @@ def login_view(request: Request) -> Response:
                 "id": str(user_context.user_id),
                 "username": user_context.username,
                 "role": user_context.role.value,
+                "capabilities": [cap.value for cap in user_context.get_capabilities()],
             }
         }
     )
@@ -94,6 +95,7 @@ def session_view(request: Request) -> Response:
                         "id": str(user_context.user_id),
                         "username": user_context.username,
                         "role": user_context.role.value,
+                        "capabilities": [cap.value for cap in user_context.get_capabilities()],
                     },
                     "csrf_token": csrf_token,
                 }

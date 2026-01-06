@@ -3,6 +3,7 @@ export interface User {
   id: string;
   username: string;
   role: 'admin' | 'customer';
+  capabilities: string[];
 }
 
 export interface AuthResponse {

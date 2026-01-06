@@ -141,3 +141,73 @@ A default admin user is created during migration:
 - Role: Admin
 
 Additional users can be created via Django admin or management commands.
+
+## User Capabilities
+
+The API returns a `capabilities` list with each authenticated user response. This enables the frontend to show/hide UI elements based on what actions the user can perform, without needing to implement HATEOAS.
+
+### Capability Format
+
+Capabilities use the format `resource:action`:
+
+| Capability | Description |
+|------------|-------------|
+| `products:view` | View product list |
+| `products:create` | Create new products |
+| `products:delete` | Soft-delete products |
+| `products:restore` | Restore deleted products |
+| `products:view_deleted` | View soft-deleted products |
+| `products:report` | Access product report |
+| `cart:view` | View own cart |
+| `cart:modify` | Add/remove/update cart items |
+| `cart:submit` | Submit cart as order |
+| `orders:view_own` | View own orders |
+| `orders:view_all` | View all orders |
+| `feature_flags:manage` | CRUD operations on feature flags |
+
+### Capabilities by Role
+
+| Capability | Admin | Customer |
+|------------|-------|----------|
+| products:view | Yes | Yes |
+| products:create | Yes | No |
+| products:delete | Yes | No |
+| products:restore | Yes | No |
+| products:view_deleted | Yes | No |
+| products:report | Yes | No |
+| cart:view | Yes | Yes |
+| cart:modify | Yes | Yes |
+| cart:submit | Yes | Yes |
+| orders:view_own | Yes | Yes |
+| orders:view_all | Yes | No |
+| feature_flags:manage | Yes | No |
+
+### API Response Example
+
+```json
+{
+  "user": {
+    "id": "uuid-string",
+    "username": "testuser",
+    "role": "customer",
+    "capabilities": [
+      "products:view",
+      "cart:view",
+      "cart:modify",
+      "cart:submit",
+      "orders:view_own"
+    ]
+  }
+}
+```
+
+### Frontend Usage
+
+The `AuthContext` provides a `hasCapability` function for capability checks:
+
+```tsx
+const { hasCapability } = useAuth();
+
+// In a component
+{hasCapability('products:create') && <CreateProductButton />}
+```

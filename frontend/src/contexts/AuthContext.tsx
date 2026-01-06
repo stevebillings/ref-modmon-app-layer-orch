@@ -3,6 +3,7 @@ import {
   useContext,
   useState,
   useEffect,
+  useCallback,
   type ReactNode,
 } from 'react';
 import { getSession, login as apiLogin, logout as apiLogout } from '../services/api';
@@ -11,12 +12,14 @@ export interface User {
   id: string;
   username: string;
   role: 'admin' | 'customer';
+  capabilities: string[];
 }
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isAdmin: boolean;
+  hasCapability: (capability: string) => boolean;
   login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   loading: boolean;
@@ -55,12 +58,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
+  const hasCapability = useCallback(
+    (capability: string) => {
+      return user?.capabilities?.includes(capability) ?? false;
+    },
+    [user]
+  );
+
   return (
     <AuthContext.Provider
       value={{
         user,
         isAuthenticated: !!user,
         isAdmin: user?.role === 'admin',
+        hasCapability,
         login,
         logout,
         loading,

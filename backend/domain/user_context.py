@@ -17,6 +17,59 @@ class Role(Enum):
     CUSTOMER = "customer"
 
 
+class Capability(Enum):
+    """User capabilities for fine-grained UI control."""
+
+    # Product capabilities
+    PRODUCTS_VIEW = "products:view"
+    PRODUCTS_CREATE = "products:create"
+    PRODUCTS_DELETE = "products:delete"
+    PRODUCTS_RESTORE = "products:restore"
+    PRODUCTS_VIEW_DELETED = "products:view_deleted"
+    PRODUCTS_REPORT = "products:report"
+
+    # Cart capabilities
+    CART_VIEW = "cart:view"
+    CART_MODIFY = "cart:modify"
+    CART_SUBMIT = "cart:submit"
+
+    # Order capabilities
+    ORDERS_VIEW_OWN = "orders:view_own"
+    ORDERS_VIEW_ALL = "orders:view_all"
+
+    # Feature flag capabilities
+    FEATURE_FLAGS_MANAGE = "feature_flags:manage"
+
+
+ROLE_CAPABILITIES: dict[Role, frozenset["Capability"]] = {
+    Role.ADMIN: frozenset(
+        {
+            Capability.PRODUCTS_VIEW,
+            Capability.PRODUCTS_CREATE,
+            Capability.PRODUCTS_DELETE,
+            Capability.PRODUCTS_RESTORE,
+            Capability.PRODUCTS_VIEW_DELETED,
+            Capability.PRODUCTS_REPORT,
+            Capability.CART_VIEW,
+            Capability.CART_MODIFY,
+            Capability.CART_SUBMIT,
+            Capability.ORDERS_VIEW_OWN,
+            Capability.ORDERS_VIEW_ALL,
+            Capability.FEATURE_FLAGS_MANAGE,
+        }
+    ),
+    Role.CUSTOMER: frozenset(
+        {
+            Capability.PRODUCTS_VIEW,
+            Capability.CART_VIEW,
+            Capability.CART_MODIFY,
+            Capability.CART_SUBMIT,
+            Capability.ORDERS_VIEW_OWN,
+        }
+    ),
+}
+
+
 @dataclass(frozen=True)
 class UserContext:
     """
@@ -43,3 +96,11 @@ class UserContext:
     def actor_id(self) -> str:
         """Return user identifier for audit logging in domain events."""
         return str(self.user_id)
+
+    def get_capabilities(self) -> frozenset[Capability]:
+        """Return the set of capabilities for this user's role."""
+        return ROLE_CAPABILITIES.get(self.role, frozenset())
+
+    def has_capability(self, capability: Capability) -> bool:
+        """Check if user has a specific capability."""
+        return capability in self.get_capabilities()
