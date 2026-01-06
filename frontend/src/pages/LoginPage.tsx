@@ -80,7 +80,7 @@ export function LoginPage() {
 
             <Button
               type="submit"
-              colorPalette="blue"
+              variant="outline"
               width="100%"
               loading={isLoading}
             >

@@ -38,7 +38,7 @@ export function ConfirmationDialog({
                 {cancelText}
               </Button>
               <Button
-                colorPalette="red"
+                variant="outline"
                 onClick={onConfirm}
                 loading={isLoading}
                 ml={3}

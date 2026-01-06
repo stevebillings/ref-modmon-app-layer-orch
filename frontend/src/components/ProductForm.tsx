@@ -77,7 +77,7 @@ export function ProductForm({ onSubmit }: ProductFormProps) {
               required
             />
           </Field.Root>
-          <Button type="submit" colorPalette="blue" loading={isLoading}>
+          <Button type="submit" variant="outline" loading={isLoading}>
             Add Product
           </Button>
         </Stack>

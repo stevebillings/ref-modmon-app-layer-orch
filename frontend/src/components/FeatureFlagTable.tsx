@@ -114,7 +114,6 @@ export function FeatureFlagTable({
               <Table.Cell>
                 <Button
                   size="sm"
-                  colorPalette="red"
                   variant="outline"
                   onClick={() => setDeleteFlag(flag)}
                 >

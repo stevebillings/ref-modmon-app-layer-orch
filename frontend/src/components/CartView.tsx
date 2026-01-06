@@ -108,6 +108,7 @@ export function CartView({
                 <HStack gap={2}>
                   <Button
                     size="xs"
+                    variant="outline"
                     onClick={() =>
                       handleQuantityChange(item.product_id, item.quantity - 1)
                     }
@@ -120,6 +121,7 @@ export function CartView({
                   </Text>
                   <Button
                     size="xs"
+                    variant="outline"
                     onClick={() =>
                       handleQuantityChange(item.product_id, item.quantity + 1)
                     }
@@ -135,7 +137,6 @@ export function CartView({
               <Table.Cell>
                 <Button
                   size="sm"
-                  colorPalette="red"
                   variant="outline"
                   onClick={() => setRemoveItemId(item.product_id)}
                 >
@@ -157,7 +158,7 @@ export function CartView({
 
         <Flex justifyContent="flex-end">
           <Button
-            colorPalette="green"
+            variant="outline"
             size="lg"
             onClick={handleSubmit}
             loading={isSubmitting}

@@ -101,7 +101,7 @@ export function FeatureFlagAdminPage() {
         </Text>
         <HStack gap={4}>
           <Button
-            colorPalette="orange"
+            variant="outline"
             onClick={handleTriggerTestError}
             loading={isTriggering}
           >

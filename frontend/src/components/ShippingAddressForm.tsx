@@ -200,7 +200,6 @@ export function ShippingAddressForm({ onAddressChange, disabled }: ShippingAddre
 
         <Button
           onClick={handleVerify}
-          colorPalette="gray"
           variant="outline"
           loading={isVerifying}
           disabled={!isFormComplete || disabled}
@@ -221,7 +220,7 @@ export function ShippingAddressForm({ onAddressChange, disabled }: ShippingAddre
               {verifiedAddress.city}, {verifiedAddress.state} {verifiedAddress.postal_code}
             </Text>
             <HStack mt={2} gap={2}>
-              <Button size="sm" colorPalette="blue" onClick={() => setShowCorrected(false)}>
+              <Button size="sm" variant="outline" onClick={() => setShowCorrected(false)}>
                 Use Standardized
               </Button>
               <Button size="sm" variant="outline" onClick={handleUseOriginal}>

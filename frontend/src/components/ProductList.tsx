@@ -149,7 +149,7 @@ export function ProductList({
                     {isDeleted ? (
                       <Button
                         size="sm"
-                        colorPalette="green"
+                        variant="outline"
                         onClick={() => handleRestore(product)}
                         loading={restoringProduct === product.id}
                       >
@@ -159,7 +159,7 @@ export function ProductList({
                       <>
                         <Button
                           size="sm"
-                          colorPalette="green"
+                          variant="outline"
                           onClick={() => handleAddToCart(product)}
                           loading={addingToCart === product.id}
                           disabled={product.stock_quantity === 0}
@@ -168,7 +168,6 @@ export function ProductList({
                         </Button>
                         <Button
                           size="sm"
-                          colorPalette="red"
                           variant="outline"
                           onClick={() => setDeleteProduct(product)}
                         >

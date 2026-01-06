@@ -76,7 +76,7 @@ export function FeatureFlagForm({ onSubmit }: FeatureFlagFormProps) {
             <Checkbox.Control />
             <Checkbox.Label>Enable flag immediately</Checkbox.Label>
           </Checkbox.Root>
-          <Button type="submit" colorPalette="blue" loading={isLoading}>
+          <Button type="submit" variant="outline" loading={isLoading}>
             Create Flag
           </Button>
         </Stack>

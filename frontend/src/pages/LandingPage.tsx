@@ -48,7 +48,7 @@ export function LandingPage() {
             </HStack>
           ) : (
             <Link to="/login">
-              <Button size="sm" colorPalette="blue">
+              <Button size="sm" variant="outline">
                 Login
               </Button>
             </Link>
@@ -63,13 +63,13 @@ export function LandingPage() {
 
         <VStack gap={4} width="100%">
           <Link to="/products" style={{ width: '100%' }}>
-            <Button width="100%" size="lg" colorPalette="blue">
+            <Button width="100%" size="lg" variant="outline">
               Product Catalog
             </Button>
           </Link>
 
           <Link to="/cart" style={{ width: '100%' }}>
-            <Button width="100%" size="lg" colorPalette="green">
+            <Button width="100%" size="lg" variant="outline">
               Cart {cartItemCount > 0 && `(${cartItemCount} items)`}
             </Button>
           </Link>
@@ -83,12 +83,12 @@ export function LandingPage() {
           {isAdmin && (
             <>
               <Link to="/admin/report" style={{ width: '100%' }}>
-                <Button width="100%" size="lg" variant="outline" colorPalette="orange">
+                <Button width="100%" size="lg" variant="outline">
                   Product Report (Admin)
                 </Button>
               </Link>
               <Link to="/admin/flags" style={{ width: '100%' }}>
-                <Button width="100%" size="lg" variant="outline" colorPalette="purple">
+                <Button width="100%" size="lg" variant="outline">
                   Feature Flags (Admin)
                 </Button>
               </Link>
