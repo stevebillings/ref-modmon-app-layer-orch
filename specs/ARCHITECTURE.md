@@ -74,6 +74,8 @@ project-root/
 ├── frontend/
 │   └── src/
 │       ├── components/            # Reusable UI components
+│       ├── constants/             # Shared constants (e.g., capabilities)
+│       ├── contexts/              # React contexts (e.g., AuthContext)
 │       ├── pages/                 # Page-level components
 │       ├── services/              # API client functions
 │       └── types/                 # TypeScript type definitions
@@ -601,6 +603,75 @@ class ProductService:
 ```
 
 This centralizes authorization logic and keeps it testable without Django.
+
+### User capabilities for frontend authorization
+
+The frontend needs to know what actions a user can perform to show/hide UI elements. Rather than implementing full HATEOAS (which adds complexity and is often ignored by SPAs), the API returns a `capabilities` list with the user object.
+
+**Domain layer defines capabilities:**
+```python
+class Capability(Enum):
+    PRODUCTS_VIEW = "products:view"
+    PRODUCTS_CREATE = "products:create"
+    PRODUCTS_DELETE = "products:delete"
+    # ...
+
+ROLE_CAPABILITIES: dict[Role, frozenset[Capability]] = {
+    Role.ADMIN: frozenset({Capability.PRODUCTS_CREATE, Capability.PRODUCTS_DELETE, ...}),
+    Role.CUSTOMER: frozenset({Capability.PRODUCTS_VIEW, Capability.CART_MODIFY, ...}),
+}
+```
+
+**UserContext exposes capabilities:**
+```python
+@dataclass(frozen=True)
+class UserContext:
+    # ... existing fields ...
+
+    def get_capabilities(self) -> frozenset[Capability]:
+        return ROLE_CAPABILITIES.get(self.role, frozenset())
+
+    def has_capability(self, capability: Capability) -> bool:
+        return capability in self.get_capabilities()
+```
+
+**API includes capabilities in auth responses:**
+```json
+{
+  "user": {
+    "id": "uuid",
+    "username": "admin",
+    "role": "admin",
+    "capabilities": ["products:view", "products:create", "products:delete", ...]
+  }
+}
+```
+
+**Frontend uses typed constants and a wrapper component:**
+```typescript
+// constants/capabilities.ts
+export const Capabilities = {
+  PRODUCTS_CREATE: 'products:create',
+  // ...
+} as const;
+
+// components/RequireCapability.tsx
+function RequireCapability({ capability, children }: Props) {
+  const { hasCapability } = useAuth();
+  return hasCapability(capability) ? <>{children}</> : null;
+}
+
+// Usage
+<RequireCapability capability={Capabilities.PRODUCTS_CREATE}>
+  <CreateButton />
+</RequireCapability>
+```
+
+This approach provides:
+- **Simplicity**: Capabilities derived from role, no database lookups
+- **Type safety**: Frontend uses constants, not string literals
+- **Separation**: Domain defines capabilities, infrastructure serializes them
+- **Pragmatism**: Solves the same problem as HATEOAS with less complexity
 
 ## Future considerations
 

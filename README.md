@@ -184,7 +184,51 @@ class UserContext:
 
 Infrastructure converts Django's User to UserContext. Application services receive UserContext for authorization decisions. The domain layer remains completely auth-unaware.
 
-### 8. Concurrency Control
+### 8. Frontend Authorization Without HATEOAS
+
+**Problem**: The frontend needs to know what actions the current user can perform to show/hide UI elements. Full HATEOAS (embedding action links in every response) is complex to implement and often ignored by SPAs anyway.
+
+**Solution**: **Role-Based Capabilities**
+
+The API returns a `capabilities` list with the user object at login:
+```json
+{
+  "user": {
+    "id": "...",
+    "username": "admin",
+    "role": "admin",
+    "capabilities": ["products:create", "products:delete", "orders:view_all", ...]
+  }
+}
+```
+
+Capabilities are derived from the user's role in the domain layer:
+```python
+class Capability(Enum):
+    PRODUCTS_CREATE = "products:create"
+    PRODUCTS_DELETE = "products:delete"
+    # ...
+
+ROLE_CAPABILITIES = {
+    Role.ADMIN: frozenset({Capability.PRODUCTS_CREATE, Capability.PRODUCTS_DELETE, ...}),
+    Role.CUSTOMER: frozenset({Capability.PRODUCTS_VIEW, Capability.CART_MODIFY, ...}),
+}
+```
+
+The frontend uses a `RequireCapability` component for clean conditional rendering:
+```tsx
+<RequireCapability capability={Capabilities.PRODUCTS_CREATE}>
+  <CreateProductButton />
+</RequireCapability>
+```
+
+Benefits:
+- **Simple**: Single request gets all permissions upfront
+- **Type-safe**: Frontend uses constants, not string literals
+- **Cacheable**: Frontend can cache capabilities for the session
+- **Pragmatic**: Avoids HATEOAS complexity while solving the same problem
+
+### 9. Concurrency Control
 
 **Problem**: Concurrent requests can corrupt data (overselling stock, duplicate records, lost updates).
 
@@ -196,7 +240,7 @@ Infrastructure converts Django's User to UserContext. Application services recei
 | Singleton creation | Atomic get-or-create | `get_or_create()` |
 | Uniqueness validation | DB constraint + fallback | Unique constraint + catch `IntegrityError` |
 
-### 9. Feature Flags
+### 10. Feature Flags
 
 **Problem**: Deploying new features requires code changes. Rolling back problematic features means redeploying.
 
@@ -209,7 +253,7 @@ Infrastructure converts Django's User to UserContext. Application services recei
 
 Features can be toggled without deployment. The first use case demonstrated is incident email notifications.
 
-### 10. Soft Delete with History Preservation
+### 11. Soft Delete with History Preservation
 
 **Problem**: Hard deletes lose data permanently. Deleting products breaks order history.
 
@@ -220,7 +264,7 @@ Features can be toggled without deployment. The first use case demonstrated is i
 - Order items store product name and price as snapshots
 - Admins can view and restore soft-deleted products
 
-### 11. Third-Party API Integration
+### 12. Third-Party API Integration
 
 **Problem**: External service integrations (payment processors, address verification, shipping APIs) tightly couple infrastructure code to business logic, making testing difficult and creating vendor lock-in.
 
@@ -271,6 +315,8 @@ project-root/
 ├── frontend/
 │   └── src/
 │       ├── components/         # Reusable UI components
+│       ├── constants/          # Shared constants (e.g., capabilities)
+│       ├── contexts/           # React contexts (e.g., AuthContext)
 │       ├── pages/              # Page components
 │       ├── services/           # API client
 │       └── types/              # TypeScript types
