@@ -7,6 +7,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 from application.ports.feature_flag_repository import FeatureFlag
+from application.queries.product_report import ProductReportQuery
 from application.services.cart_service import CartService
 from application.services.feature_flag_service import (
     DuplicateFeatureFlagError,
@@ -34,6 +35,7 @@ from domain.user_context import UserContext
 from infrastructure.django_app.address_verification import get_address_verification_adapter
 from infrastructure.django_app.auth_decorators import require_auth
 from infrastructure.django_app.feature_flags import get_feature_flag_repository
+from infrastructure.django_app.readers.product_report_reader import DjangoProductReportReader
 from infrastructure.django_app.user_context_adapter import build_user_context
 from infrastructure.django_app.serialization import to_dict
 from infrastructure.django_app.unit_of_work import unit_of_work
@@ -243,6 +245,91 @@ def product_restore(request: Request, product_id: str, user_context: UserContext
             return Response(to_dict(product), status=status.HTTP_200_OK)
         except DomainError as e:
             return handle_domain_error(e)
+
+
+@api_view(["GET"])
+@require_auth
+def product_report(request: Request, user_context: UserContext) -> Response:
+    """
+    Get a product report with cross-aggregate data. Admin only.
+
+    This endpoint demonstrates Simple Query Separation - it bypasses the domain
+    layer and uses a dedicated reader to efficiently query data from multiple
+    aggregates (Product, Cart, Order) in a single database query.
+
+    Query parameters:
+        Pagination:
+            page: Page number (1-indexed, default 1)
+            page_size: Items per page (default 20, max 100)
+
+        Filters:
+            include_deleted: If "true", include soft-deleted products (default: false)
+            search: Search term for product name (case-insensitive)
+            low_stock_threshold: Only products with stock <= this value
+            has_sales: If "true", only products with sales; if "false", only products without sales
+            has_reservations: If "true", only products in carts; if "false", only products not in carts
+
+    Returns:
+        results: List of products with:
+            - product_id, name, price, stock_quantity, is_deleted (from Product)
+            - total_sold (sum of quantities from all orders)
+            - currently_reserved (sum of quantities in all carts)
+        page, page_size, total_count, total_pages, has_next, has_previous: Pagination metadata
+    """
+    if not user_context.is_admin():
+        return Response(
+            {"error": "Only admins can view product reports"},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    # Parse pagination parameters
+    page = _parse_int(request.query_params.get("page"), 1)
+    page_size = _parse_int(request.query_params.get("page_size"), 20)
+
+    # Parse filter parameters
+    include_deleted = _parse_bool(request.query_params.get("include_deleted")) or False
+    search = request.query_params.get("search") or None
+    low_stock_threshold_str = request.query_params.get("low_stock_threshold")
+    try:
+        low_stock_threshold = int(low_stock_threshold_str) if low_stock_threshold_str else None
+    except (ValueError, TypeError):
+        low_stock_threshold = None
+    has_sales = _parse_bool(request.query_params.get("has_sales"))
+    has_reservations = _parse_bool(request.query_params.get("has_reservations"))
+
+    query = ProductReportQuery(
+        page=page,
+        page_size=page_size,
+        include_deleted=include_deleted,
+        search=search,
+        low_stock_threshold=low_stock_threshold,
+        has_sales=has_sales,
+        has_reservations=has_reservations,
+    )
+
+    reader = DjangoProductReportReader()
+    result = reader.get_report(query)
+
+    return Response({
+        "results": [
+            {
+                "product_id": str(item.product_id),
+                "name": item.name,
+                "price": str(item.price),
+                "stock_quantity": item.stock_quantity,
+                "is_deleted": item.is_deleted,
+                "total_sold": item.total_sold,
+                "currently_reserved": item.currently_reserved,
+            }
+            for item in result.items
+        ],
+        "page": result.page,
+        "page_size": result.page_size,
+        "total_count": result.total_count,
+        "total_pages": result.total_pages,
+        "has_next": result.has_next,
+        "has_previous": result.has_previous,
+    })
 
 
 # --- Cart Endpoints ---

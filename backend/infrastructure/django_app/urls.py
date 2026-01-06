@@ -10,6 +10,7 @@ urlpatterns = [
     # Product endpoints
     path("products/", views.products_list, name="products-list"),
     path("products/create/", views.product_create, name="product-create"),
+    path("products/report/", views.product_report, name="product-report"),
     path("products/<str:product_id>/", views.product_delete, name="product-delete"),
     path(
         "products/<str:product_id>/restore/",

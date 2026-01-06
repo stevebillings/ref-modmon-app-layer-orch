@@ -10,6 +10,8 @@ import type {
   Product,
   ProductFilters,
   ProductListResponse,
+  ProductReportFilters,
+  ProductReportResponse,
   SessionResponse,
   ShippingAddress,
   UpdateFeatureFlagRequest,
@@ -150,6 +152,38 @@ export async function restoreProduct(productId: string): Promise<Product> {
     credentials: 'include',
   });
   return handleResponse<Product>(response);
+}
+
+export async function getProductReport(
+  filters?: ProductReportFilters
+): Promise<ProductReportResponse> {
+  const params = new URLSearchParams();
+
+  if (filters) {
+    if (filters.page) params.set('page', filters.page.toString());
+    if (filters.page_size) params.set('page_size', filters.page_size.toString());
+    if (filters.search) params.set('search', filters.search);
+    if (filters.low_stock_threshold !== undefined) {
+      params.set('low_stock_threshold', filters.low_stock_threshold.toString());
+    }
+    if (filters.has_sales !== undefined) {
+      params.set('has_sales', filters.has_sales.toString());
+    }
+    if (filters.has_reservations !== undefined) {
+      params.set('has_reservations', filters.has_reservations.toString());
+    }
+    if (filters.include_deleted) params.set('include_deleted', 'true');
+  }
+
+  const queryString = params.toString();
+  const url = queryString
+    ? `${API_BASE}/products/report/?${queryString}`
+    : `${API_BASE}/products/report/`;
+
+  const response = await fetch(url, {
+    credentials: 'include',
+  });
+  return handleResponse<ProductReportResponse>(response);
 }
 
 // Cart API

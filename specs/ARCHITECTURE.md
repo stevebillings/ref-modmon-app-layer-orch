@@ -429,6 +429,117 @@ Sync handlers complete before the response returns. Async handlers are submitted
 
 Handler failures are logged but don't break operations or prevent other handlers from running. This ensures the business transaction succeeds even if a handler fails.
 
+## Simple Query Separation
+
+Aggregates are optimized for enforcing invariants during writes, but queries often need to join or aggregate data across aggregate boundaries. Rather than forcing all reads through the domain layer, the application uses **Simple Query Separation** - a pragmatic approach that treats reads and writes differently without the full complexity of CQRS.
+
+### The pattern
+
+**Commands (writes)** continue through the domain layer:
+```
+API → Application Service → Aggregates → Repository → DB
+```
+
+**Queries (reads)** that span aggregates use a dedicated read path:
+```
+API → Reader → DB (direct joins/aggregations)
+```
+
+### Why bypass the domain for cross-aggregate reads?
+
+- **Queries don't need aggregates** - no invariants to enforce, no state changes
+- **Queries benefit from joins** - crossing "aggregate boundaries" in the DB is fine for reads
+- **Keeps domain model clean** - aggregates stay focused on behavior, not reporting
+- **Simpler than full CQRS** - no separate read database, no event projections
+
+### Directory structure for queries
+
+```
+backend/
+  application/
+    queries/                          # Query definitions
+      product_report.py               # Query params + result dataclasses
+    ports/
+      product_report_reader.py        # Abstract reader interface
+  infrastructure/
+    django_app/
+      readers/                        # Reader implementations
+        product_report_reader.py      # Django ORM with joins
+```
+
+### Example: Product report
+
+The product report aggregates data from three aggregates:
+
+| Data | Source |
+|------|--------|
+| Product details | Product aggregate |
+| Total sold | Sum of OrderItem quantities |
+| Currently reserved | Sum of CartItem quantities |
+
+**Query definition** (application layer):
+```python
+@dataclass(frozen=True)
+class ProductReportQuery:
+    include_deleted: bool = False
+
+@dataclass(frozen=True)
+class ProductReportItem:
+    product_id: UUID
+    name: str
+    price: Decimal
+    stock_quantity: int
+    total_sold: int
+    currently_reserved: int
+```
+
+**Reader port** (application layer):
+```python
+class ProductReportReader(ABC):
+    @abstractmethod
+    def get_report(self, query: ProductReportQuery) -> list[ProductReportItem]:
+        pass
+```
+
+**Django implementation** (infrastructure layer):
+```python
+class DjangoProductReportReader(ProductReportReader):
+    def get_report(self, query: ProductReportQuery) -> list[ProductReportItem]:
+        # Use subqueries to aggregate from related tables
+        total_sold_subquery = (
+            OrderItemModel.objects.filter(product_id=OuterRef("id"))
+            .values("product_id")
+            .annotate(total=Sum("quantity"))
+            .values("total")
+        )
+
+        queryset = ProductModel.objects.annotate(
+            total_sold=Coalesce(Subquery(total_sold_subquery), 0),
+            # ... similar for currently_reserved
+        )
+
+        return [self._to_report_item(p) for p in queryset]
+```
+
+### When to use readers vs repositories
+
+| Scenario | Use |
+|----------|-----|
+| Load aggregate for modification | Repository |
+| Simple lookup by ID | Repository |
+| Cross-aggregate reporting | Reader |
+| Dashboard/analytics queries | Reader |
+| Search with complex filters | Reader (or Repository, depending on complexity) |
+
+### Relationship to CQRS
+
+This is a simplified version of CQRS. Full CQRS typically involves:
+- Separate read/write databases
+- Event-sourced projections for read models
+- Eventual consistency between write and read sides
+
+Simple Query Separation provides the key benefit (optimized read paths) without the infrastructure complexity, making it appropriate for small-to-medium applications.
+
 ## Authentication and authorization
 
 The application uses Django session-based authentication with role-based access control. The key architectural pattern is `UserContext` - a framework-agnostic representation of the authenticated user.

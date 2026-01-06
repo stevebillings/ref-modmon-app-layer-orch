@@ -81,11 +81,18 @@ export function LandingPage() {
           </Link>
 
           {isAdmin && (
-            <Link to="/admin/flags" style={{ width: '100%' }}>
-              <Button width="100%" size="lg" variant="outline" colorPalette="purple">
-                Feature Flags (Admin)
-              </Button>
-            </Link>
+            <>
+              <Link to="/admin/report" style={{ width: '100%' }}>
+                <Button width="100%" size="lg" variant="outline" colorPalette="orange">
+                  Product Report (Admin)
+                </Button>
+              </Link>
+              <Link to="/admin/flags" style={{ width: '100%' }}>
+                <Button width="100%" size="lg" variant="outline" colorPalette="purple">
+                  Feature Flags (Admin)
+                </Button>
+              </Link>
+            </>
           )}
         </VStack>
 

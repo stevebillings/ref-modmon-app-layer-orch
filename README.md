@@ -133,7 +133,41 @@ Events are dispatched after the transaction commits. Handlers (sync or async) pr
 
 Handler failures are logged but don't break the business operation.
 
-### 6. Authentication Without Domain Pollution
+### 6. Cross-Aggregate Queries (Simple Query Separation)
+
+**Problem**: Reporting and dashboard queries need to aggregate data from multiple aggregates. Forcing these through the domain layer is awkward and inefficient - aggregates are designed for write consistency, not read optimization.
+
+**Solution**: **Simple Query Separation** - treat reads and writes differently
+
+Commands (writes) go through the domain:
+```
+API → Application Service → Aggregates → Repository → DB
+```
+
+Cross-aggregate queries bypass the domain:
+```
+API → Reader → DB (direct joins/aggregations)
+```
+
+Example: Product report combining data from Product, Cart, and Order aggregates:
+```python
+class DjangoProductReportReader(ProductReportReader):
+    def get_report(self, query: ProductReportQuery) -> list[ProductReportItem]:
+        # Single query with subqueries aggregating from related tables
+        queryset = ProductModel.objects.annotate(
+            total_sold=Coalesce(Subquery(order_items_sum), 0),
+            currently_reserved=Coalesce(Subquery(cart_items_sum), 0),
+        )
+        return [self._to_report_item(p) for p in queryset]
+```
+
+Benefits:
+- **Queries don't need aggregates** - no invariants to enforce for reads
+- **Efficient** - single optimized database query with joins
+- **Simpler than full CQRS** - no separate read database or event projections
+- **Clean separation** - domain stays focused on business rules
+
+### 7. Authentication Without Domain Pollution
 
 **Problem**: Authentication concerns (sessions, tokens, user objects) leak into domain logic, coupling it to the web framework.
 
@@ -150,7 +184,7 @@ class UserContext:
 
 Infrastructure converts Django's User to UserContext. Application services receive UserContext for authorization decisions. The domain layer remains completely auth-unaware.
 
-### 7. Concurrency Control
+### 8. Concurrency Control
 
 **Problem**: Concurrent requests can corrupt data (overselling stock, duplicate records, lost updates).
 
@@ -162,7 +196,7 @@ Infrastructure converts Django's User to UserContext. Application services recei
 | Singleton creation | Atomic get-or-create | `get_or_create()` |
 | Uniqueness validation | DB constraint + fallback | Unique constraint + catch `IntegrityError` |
 
-### 8. Feature Flags
+### 9. Feature Flags
 
 **Problem**: Deploying new features requires code changes. Rolling back problematic features means redeploying.
 
@@ -175,7 +209,7 @@ Infrastructure converts Django's User to UserContext. Application services recei
 
 Features can be toggled without deployment. The first use case demonstrated is incident email notifications.
 
-### 9. Soft Delete with History Preservation
+### 10. Soft Delete with History Preservation
 
 **Problem**: Hard deletes lose data permanently. Deleting products breaks order history.
 
@@ -186,7 +220,7 @@ Features can be toggled without deployment. The first use case demonstrated is i
 - Order items store product name and price as snapshots
 - Admins can view and restore soft-deleted products
 
-### 10. Third-Party API Integration
+### 11. Third-Party API Integration
 
 **Problem**: External service integrations (payment processors, address verification, shipping APIs) tightly couple infrastructure code to business logic, making testing difficult and creating vendor lock-in.
 

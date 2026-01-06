@@ -8,6 +8,7 @@ import { ProductCatalogPage } from './pages/ProductCatalogPage';
 import { CartPage } from './pages/CartPage';
 import { OrderHistoryPage } from './pages/OrderHistoryPage';
 import { FeatureFlagAdminPage } from './pages/FeatureFlagAdminPage';
+import { ProductReportPage } from './pages/ProductReportPage';
 
 function App() {
   return (
@@ -39,6 +40,14 @@ function App() {
               element={
                 <ProtectedRoute requireAdmin>
                   <FeatureFlagAdminPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/report"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <ProductReportPage />
                 </ProtectedRoute>
               }
             />

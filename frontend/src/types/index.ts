@@ -134,3 +134,34 @@ export interface UpdateFeatureFlagRequest {
   enabled?: boolean;
   description?: string;
 }
+
+// Product Report types
+export interface ProductReportItem {
+  product_id: string;
+  name: string;
+  price: string;
+  stock_quantity: number;
+  is_deleted: boolean;
+  total_sold: number;
+  currently_reserved: number;
+}
+
+export interface ProductReportFilters {
+  page?: number;
+  page_size?: number;
+  search?: string;
+  low_stock_threshold?: number;
+  has_sales?: boolean;
+  has_reservations?: boolean;
+  include_deleted?: boolean;
+}
+
+export interface ProductReportResponse {
+  results: ProductReportItem[];
+  page: number;
+  page_size: number;
+  total_count: number;
+  total_pages: number;
+  has_next: boolean;
+  has_previous: boolean;
+}

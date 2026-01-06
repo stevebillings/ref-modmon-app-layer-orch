@@ -27,7 +27,11 @@ project-root/
 │   │   │       └── repository.py          # Repository interface (ABC)
 │   │   └── services/              # Domain services (cross-aggregate business logic)
 │   ├── application/               # Application layer (use case orchestration)
-│   │   └── services/              # Application services
+│   │   ├── services/              # Application services
+│   │   ├── queries/               # Query definitions (Simple Query Separation)
+│   │   │   └── product_report.py  # Product report query + result types
+│   │   └── ports/                 # Port interfaces
+│   │       └── product_report_reader.py  # Reader interface
 │   └── infrastructure/            # Framework-dependent code
 │       ├── events/                # Event dispatcher infrastructure
 │       │   ├── __init__.py        # Dispatcher setup
@@ -41,6 +45,8 @@ project-root/
 │           │   ├── product_repository.py
 │           │   ├── cart_repository.py
 │           │   └── order_repository.py
+│           ├── readers/           # Reader implementations (Simple Query Separation)
+│           │   └── product_report_reader.py
 │           └── unit_of_work.py    # Unit of Work with event dispatch
 ├── frontend/
 │   └── src/
@@ -69,6 +75,18 @@ project-root/
 - **POST /api/products/{id}/restore/** - Restore a soft-deleted product (Admin only)
   - Response: Restored Product object
   - Error: 400 if product is not deleted, 404 if not found
+- **GET /api/products/report/** - Get product report with cross-aggregate data (Admin only)
+  - Response: Paginated array of report items with product details plus aggregated data
+  - Each item includes: `product_id`, `name`, `price`, `stock_quantity`, `is_deleted`, `total_sold`, `currently_reserved`
+  - Pagination: `page` (1-indexed, default 1), `page_size` (default 20, max 100)
+  - Query params:
+    - `include_deleted=true` - Include soft-deleted products
+    - `search=<term>` - Filter by product name (case-insensitive)
+    - `low_stock_threshold=<n>` - Only products with stock <= n
+    - `has_sales=true|false` - Filter by whether product has been sold
+    - `has_reservations=true|false` - Filter by whether product is in any cart
+  - Response includes pagination metadata: `page`, `page_size`, `total_count`, `total_pages`, `has_next`, `has_previous`
+  - Note: Uses Simple Query Separation pattern - bypasses domain layer for efficient cross-aggregate query
 
 ### Cart Endpoints
 - **GET /api/cart/** - Get current cart
