@@ -114,7 +114,7 @@ export function ProductCatalogPage() {
       <HStack justifyContent="space-between" mb={6}>
         <Heading>Product Catalog</Heading>
         <Link to="/">
-          <Button variant="outline">Back to Home</Button>
+          <Button variant="outline">Home</Button>
         </Link>
       </HStack>
 

@@ -115,7 +115,7 @@ export function ProductReportPage() {
           </Text>
         </Box>
         <Link to="/">
-          <Button variant="outline">Back to Home</Button>
+          <Button variant="outline">Home</Button>
         </Link>
       </HStack>
 

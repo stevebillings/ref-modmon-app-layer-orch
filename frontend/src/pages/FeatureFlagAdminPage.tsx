@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Alert, Box, Button, Container, Heading, HStack, Text } from '@chakra-ui/react';
 import type { FeatureFlag } from '../types';
 import {
@@ -65,14 +66,19 @@ export function FeatureFlagAdminPage() {
 
   return (
     <Container maxW="container.xl" py={6}>
-      <Box mb={6}>
-        <Heading size="xl" mb={2}>
-          Feature Flags
-        </Heading>
-        <Text color="gray.600">
-          Manage feature flags to control feature availability without code deployments.
-        </Text>
-      </Box>
+      <HStack justifyContent="space-between" mb={6}>
+        <Box>
+          <Heading size="xl" mb={2}>
+            Feature Flags
+          </Heading>
+          <Text color="gray.600">
+            Manage feature flags to control feature availability without code deployments.
+          </Text>
+        </Box>
+        <Link to="/">
+          <Button variant="outline">Home</Button>
+        </Link>
+      </HStack>
 
       {error && <ErrorAlert message={error} onClose={() => setError(null)} />}
 
