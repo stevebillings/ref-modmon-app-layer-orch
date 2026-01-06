@@ -12,7 +12,7 @@ Architecture goals:
 
 The core business logic should have no dependencies on Django, and be clearly separate from the Django-dependent code (in its own directory).
 
-The backend architecture should follow Domain Driven Design. We'll choose some simplifications noted below to reduce complexity.
+The backend architecture should follow Domain Driven Design with rich domain models. Within that framework, we'll make some choices (described below) keep things simple while preserving a healthy degree of separation of concerns.
 
 The backend should be a modular monolith that uses an application layer to achieve strong consistency by orchestrating operations that make changes across multiple aggregates (as opposed to using events for eventual consistency). It should use the Repository Pattern and the Unit of Work Pattern to keep the core business logic free of dependencies on low level concerns like the database. It should use a single database transaction per request that includes all database activity within that request (which may span multiple aggregates).
 
