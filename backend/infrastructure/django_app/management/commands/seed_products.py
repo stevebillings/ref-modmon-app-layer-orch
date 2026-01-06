@@ -106,7 +106,7 @@ class Command(BaseCommand):
             )
         )
 
-    def _generate_unique_name(self, used_names: set, max_attempts: int = 100) -> str | None:
+    def _generate_unique_name(self, used_names: set[str], max_attempts: int = 100) -> str | None:
         """Generate a unique product name not already in used_names."""
         for _ in range(max_attempts):
             adj = random.choice(self.ADJECTIVES)

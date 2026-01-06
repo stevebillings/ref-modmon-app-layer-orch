@@ -1,6 +1,7 @@
 """Value objects for the Order aggregate."""
 
 from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -41,7 +42,7 @@ class VerifiedAddress:
     def from_unverified(
         cls,
         original: UnverifiedAddress,
-        standardized: dict,
+        standardized: dict[str, Any],
         verification_id: str,
     ) -> "VerifiedAddress":
         """
@@ -65,7 +66,7 @@ class VerifiedAddress:
             verification_id=verification_id,
         )
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, str | None]:
         """Convert to dictionary for serialization."""
         return {
             "street_line_1": self.street_line_1,
@@ -78,7 +79,7 @@ class VerifiedAddress:
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> "VerifiedAddress":
+    def from_dict(cls, data: dict[str, Any]) -> "VerifiedAddress":
         """Create from dictionary (for deserialization from database)."""
         return cls(
             street_line_1=data.get("street_line_1", ""),

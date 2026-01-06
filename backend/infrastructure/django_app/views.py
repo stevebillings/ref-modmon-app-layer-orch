@@ -1,11 +1,18 @@
 from decimal import Decimal, InvalidOperation
+from typing import Any
 
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.request import Request
 from rest_framework.response import Response
 
+from application.ports.feature_flag_repository import FeatureFlag
 from application.services.cart_service import CartService
+from application.services.feature_flag_service import (
+    DuplicateFeatureFlagError,
+    FeatureFlagNotFoundError,
+    FeatureFlagService,
+)
 from application.services.order_service import OrderService
 from application.services.product_service import ProductService
 from domain.aggregates.order.value_objects import UnverifiedAddress
@@ -26,7 +33,7 @@ from domain.exceptions import (
 from domain.user_context import UserContext
 from infrastructure.django_app.address_verification import get_address_verification_adapter
 from infrastructure.django_app.auth_decorators import require_auth
-from infrastructure.django_app.models import FeatureFlagModel
+from infrastructure.django_app.feature_flags import get_feature_flag_repository
 from infrastructure.django_app.user_context_adapter import build_user_context
 from infrastructure.django_app.serialization import to_dict
 from infrastructure.django_app.unit_of_work import unit_of_work
@@ -447,8 +454,8 @@ def orders_list(request: Request, user_context: UserContext) -> Response:
 # --- Feature Flag Admin Endpoints ---
 
 
-def _feature_flag_to_dict(flag: FeatureFlagModel) -> dict:
-    """Convert a FeatureFlagModel to a dictionary."""
+def _feature_flag_to_dict(flag: FeatureFlag) -> dict[str, Any]:
+    """Convert a FeatureFlag to a dictionary."""
     return {
         "name": flag.name,
         "enabled": flag.enabled,
@@ -458,46 +465,46 @@ def _feature_flag_to_dict(flag: FeatureFlagModel) -> dict:
     }
 
 
+def _get_feature_flag_service() -> FeatureFlagService:
+    """Get the feature flag service with its dependencies."""
+    return FeatureFlagService(get_feature_flag_repository())
+
+
 @api_view(["GET"])
 @require_auth
 def feature_flags_list(request: Request, user_context: UserContext) -> Response:
     """List all feature flags. Admin only."""
-    if not user_context.is_admin():
-        return Response(
-            {"error": "Only admins can manage feature flags"},
-            status=status.HTTP_403_FORBIDDEN,
-        )
-    flags = FeatureFlagModel.objects.all()
-    return Response({"results": [_feature_flag_to_dict(f) for f in flags]})
+    try:
+        service = _get_feature_flag_service()
+        flags = service.get_all(user_context)
+        return Response({"results": [_feature_flag_to_dict(f) for f in flags]})
+    except PermissionDeniedError as e:
+        return Response({"error": str(e)}, status=status.HTTP_403_FORBIDDEN)
 
 
 @api_view(["POST"])
 @require_auth
 def feature_flag_create(request: Request, user_context: UserContext) -> Response:
     """Create a new feature flag. Admin only."""
-    if not user_context.is_admin():
-        return Response(
-            {"error": "Only admins can manage feature flags"},
-            status=status.HTTP_403_FORBIDDEN,
+    try:
+        service = _get_feature_flag_service()
+        data = request.data
+        flag = service.create(
+            name=data.get("name", ""),
+            enabled=data.get("enabled", False),
+            description=data.get("description", ""),
+            user_context=user_context,
         )
-    data = request.data
-    name = data.get("name", "").strip()
-    if not name:
+        return Response(_feature_flag_to_dict(flag), status=status.HTTP_201_CREATED)
+    except PermissionDeniedError as e:
+        return Response({"error": str(e)}, status=status.HTTP_403_FORBIDDEN)
+    except ValueError as e:
+        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    except DuplicateFeatureFlagError as e:
         return Response(
-            {"error": "Flag name is required"},
+            {"error": f"Flag '{e.flag_name}' already exists"},
             status=status.HTTP_400_BAD_REQUEST,
         )
-    if FeatureFlagModel.objects.filter(name=name).exists():
-        return Response(
-            {"error": f"Flag '{name}' already exists"},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
-    flag = FeatureFlagModel.objects.create(
-        name=name,
-        enabled=data.get("enabled", False),
-        description=data.get("description", ""),
-    )
-    return Response(_feature_flag_to_dict(flag), status=status.HTTP_201_CREATED)
 
 
 @api_view(["GET", "PUT", "DELETE"])
@@ -506,36 +513,36 @@ def feature_flag_detail(
     request: Request, flag_name: str, user_context: UserContext
 ) -> Response:
     """Get, update, or delete a feature flag. Admin only."""
-    if not user_context.is_admin():
-        return Response(
-            {"error": "Only admins can manage feature flags"},
-            status=status.HTTP_403_FORBIDDEN,
-        )
     try:
-        flag = FeatureFlagModel.objects.get(name=flag_name)
-    except FeatureFlagModel.DoesNotExist:
+        service = _get_feature_flag_service()
+
+        if request.method == "GET":
+            flag = service.get_by_name(flag_name, user_context)
+            return Response(_feature_flag_to_dict(flag))
+
+        if request.method == "PUT":
+            data = request.data
+            flag = service.update(
+                flag_name=flag_name,
+                enabled=data.get("enabled"),
+                description=data.get("description"),
+                user_context=user_context,
+            )
+            return Response(_feature_flag_to_dict(flag))
+
+        if request.method == "DELETE":
+            service.delete(flag_name, user_context)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    except PermissionDeniedError as e:
+        return Response({"error": str(e)}, status=status.HTTP_403_FORBIDDEN)
+    except FeatureFlagNotFoundError:
         return Response(
             {"error": f"Flag '{flag_name}' not found"},
             status=status.HTTP_404_NOT_FOUND,
         )
-
-    if request.method == "GET":
-        return Response(_feature_flag_to_dict(flag))
-
-    if request.method == "PUT":
-        data = request.data
-        if "enabled" in data:
-            flag.enabled = data["enabled"]
-        if "description" in data:
-            flag.description = data["description"]
-        flag.save()
-        return Response(_feature_flag_to_dict(flag))
-
-    if request.method == "DELETE":
-        flag.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
-    return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
 
 # --- Debug/Test Endpoints ---

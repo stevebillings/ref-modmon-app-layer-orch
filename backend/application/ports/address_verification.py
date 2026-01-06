@@ -3,6 +3,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any
 
 
 class VerificationStatus(Enum):
@@ -25,7 +26,7 @@ class AddressVerificationResult:
     """
 
     status: VerificationStatus
-    standardized_address: dict | None  # Standardized address fields if verified
+    standardized_address: dict[str, Any] | None  # Standardized address fields if verified
     verification_id: str | None  # Tracking ID from the service for audit
     error_message: str | None  # Human-readable error message if failed
     field_errors: dict[str, str] | None  # Field-specific errors (e.g., {"city": "Not found"})

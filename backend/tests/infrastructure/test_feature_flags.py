@@ -4,7 +4,10 @@ import pytest
 from django.contrib.auth.models import User
 from rest_framework.test import APIClient
 
-from infrastructure.django_app.feature_flags import DjangoFeatureFlagAdapter
+from infrastructure.django_app.feature_flags import (
+    DjangoFeatureFlagAdapter,
+    DjangoFeatureFlagRepository,
+)
 from infrastructure.django_app.models import FeatureFlagModel, UserProfile
 
 
@@ -226,3 +229,97 @@ class TestFeatureFlagAPI:
         # DELETE
         response = customer_client.delete("/api/admin/feature-flags/admin_only/")
         assert response.status_code == 403
+
+
+@pytest.mark.django_db
+class TestDjangoFeatureFlagRepository:
+    """Tests for the feature flag repository."""
+
+    def test_get_all_empty(self) -> None:
+        repo = DjangoFeatureFlagRepository()
+        flags = repo.get_all()
+        assert flags == []
+
+    def test_get_all_returns_all_flags(self) -> None:
+        FeatureFlagModel.objects.create(name="flag_a", enabled=True)
+        FeatureFlagModel.objects.create(name="flag_b", enabled=False)
+
+        repo = DjangoFeatureFlagRepository()
+        flags = repo.get_all()
+
+        assert len(flags) == 2
+        names = [f.name for f in flags]
+        assert "flag_a" in names
+        assert "flag_b" in names
+
+    def test_get_by_name_returns_flag(self) -> None:
+        FeatureFlagModel.objects.create(
+            name="get_me",
+            enabled=True,
+            description="Test flag",
+        )
+
+        repo = DjangoFeatureFlagRepository()
+        flag = repo.get_by_name("get_me")
+
+        assert flag is not None
+        assert flag.name == "get_me"
+        assert flag.enabled is True
+        assert flag.description == "Test flag"
+
+    def test_get_by_name_not_found(self) -> None:
+        repo = DjangoFeatureFlagRepository()
+        flag = repo.get_by_name("nonexistent")
+        assert flag is None
+
+    def test_exists_returns_true_for_existing(self) -> None:
+        FeatureFlagModel.objects.create(name="exists", enabled=True)
+
+        repo = DjangoFeatureFlagRepository()
+        assert repo.exists("exists") is True
+
+    def test_exists_returns_false_for_nonexistent(self) -> None:
+        repo = DjangoFeatureFlagRepository()
+        assert repo.exists("nonexistent") is False
+
+    def test_save_creates_new_flag(self) -> None:
+        repo = DjangoFeatureFlagRepository()
+
+        flag = repo.save("new_flag", enabled=True, description="Created via repo")
+
+        assert flag.name == "new_flag"
+        assert flag.enabled is True
+        assert flag.description == "Created via repo"
+        assert FeatureFlagModel.objects.filter(name="new_flag").exists()
+
+    def test_save_updates_existing_flag(self) -> None:
+        FeatureFlagModel.objects.create(
+            name="update_me",
+            enabled=False,
+            description="Original",
+        )
+
+        repo = DjangoFeatureFlagRepository()
+        flag = repo.save("update_me", enabled=True, description="Updated")
+
+        assert flag.enabled is True
+        assert flag.description == "Updated"
+
+        # Verify DB was updated
+        model = FeatureFlagModel.objects.get(name="update_me")
+        assert model.enabled is True
+        assert model.description == "Updated"
+
+    def test_delete_removes_flag(self) -> None:
+        FeatureFlagModel.objects.create(name="delete_me", enabled=True)
+
+        repo = DjangoFeatureFlagRepository()
+        result = repo.delete("delete_me")
+
+        assert result is True
+        assert not FeatureFlagModel.objects.filter(name="delete_me").exists()
+
+    def test_delete_nonexistent_returns_false(self) -> None:
+        repo = DjangoFeatureFlagRepository()
+        result = repo.delete("nonexistent")
+        assert result is False
