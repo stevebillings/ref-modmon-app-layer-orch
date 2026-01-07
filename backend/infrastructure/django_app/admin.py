@@ -50,7 +50,6 @@ class AuditLogAdmin(admin.ModelAdmin):
         "aggregate_type",
         "aggregate_id",
         "event_data",
-        "data",
         "created_at",
     ]
     ordering = ["-occurred_at"]
