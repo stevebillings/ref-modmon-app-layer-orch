@@ -178,3 +178,58 @@ else:
 # Incident notification settings
 # List of email addresses to notify on server errors (500s)
 INCIDENT_NOTIFICATION_RECIPIENTS = ['billings.steve@gmail.com']
+
+# Logging configuration - structured JSON logging
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'json': {
+            '()': 'infrastructure.django_app.logging.JSONFormatter',
+        },
+        'simple': {
+            'format': '%(asctime)s %(levelname)s %(name)s %(message)s',
+        },
+    },
+    'handlers': {
+        'console_json': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'json',
+        },
+        'console_simple': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+    },
+    'root': {
+        'handlers': ['console_json'],
+        'level': 'INFO',
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console_json'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'django.request': {
+            'handlers': ['console_json'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'infrastructure': {
+            'handlers': ['console_json'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'application': {
+            'handlers': ['console_json'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'domain': {
+            'handlers': ['console_json'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+    },
+}

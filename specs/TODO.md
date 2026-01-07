@@ -40,7 +40,7 @@ This document tracks additional patterns and solutions typical of medium complex
 
 1. ~~**Health check endpoint**~~ - Simple `/health` that checks DB connectivity. Essential for any deployment (k8s, load balancers). Implemented at `/api/health/`.
 
-1. **Structured logging** - Consistent JSON format makes logs searchable. Useful even locally, essential in production.
+1. ~~**Structured logging**~~ - Consistent JSON format makes logs searchable. Useful even locally, essential in production. Implemented via `JSONFormatter` in `infrastructure/django_app/logging.py`.
 
 1. **Request logging middleware** - Log request/response timing, status codes, user ID. Helps debug issues without full tracing infrastructure.
 
