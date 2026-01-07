@@ -3,6 +3,7 @@ import traceback
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from typing import Callable
+from uuid import uuid4
 
 from django.http import HttpRequest, HttpResponse
 
@@ -36,7 +37,8 @@ class IncidentNotificationMiddleware:
         """
         Called when a view raises an exception.
 
-        Captures exception details and dispatches notification asynchronously.
+        Captures exception details, writes to audit log, and dispatches
+        notification asynchronously.
         Returns None to let Django's normal error handling continue.
         """
         # Build incident details
@@ -44,21 +46,58 @@ class IncidentNotificationMiddleware:
         if hasattr(request, "user") and request.user.is_authenticated:
             user_id = str(request.user.id)
 
+        now = datetime.now(timezone.utc)
+        stack_trace = traceback.format_exc()
+
         incident = IncidentDetails(
             error_type=type(exception).__name__,
             error_message=str(exception),
             request_path=request.path,
             request_method=request.method or "UNKNOWN",
-            timestamp=datetime.now(timezone.utc),
-            traceback=traceback.format_exc(),
+            timestamp=now,
+            traceback=stack_trace,
             user_id=user_id,
         )
+
+        # Write to audit log
+        self._write_audit_log(exception, stack_trace, user_id, now)
 
         # Dispatch notification asynchronously
         _executor.submit(self._send_notification, incident)
 
         # Return None to let Django's normal error handling continue
         return None
+
+    def _write_audit_log(
+        self,
+        exception: Exception,
+        stack_trace: str,
+        user_id: str | None,
+        occurred_at: datetime,
+    ) -> None:
+        """Write exception to audit log."""
+        try:
+            from infrastructure.django_app.repositories.audit_log_repository import (
+                get_audit_log_repository,
+            )
+
+            repository = get_audit_log_repository()
+            event_id = uuid4()
+            repository.save(
+                event_type="UnhandledException",
+                event_id=event_id,
+                occurred_at=occurred_at,
+                actor_id=user_id or "anonymous",
+                aggregate_type="System",
+                aggregate_id=None,
+                event_data={
+                    "error_type": type(exception).__name__,
+                    "message": str(exception),
+                    "stacktrace": stack_trace,
+                },
+            )
+        except Exception as e:
+            logger.error(f"Failed to write exception to audit log: {e}")
 
     def _send_notification(self, incident: IncidentDetails) -> None:
         """Send notification in background thread."""
