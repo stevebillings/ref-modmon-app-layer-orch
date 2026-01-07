@@ -326,6 +326,50 @@ Benefits:
 - **Fail-closed**: Reject operations if external service unavailable
 - **Separation**: Business logic doesn't know about HTTP, retries, or API keys
 
+### 14. Monitoring and Observability
+
+**Problem**: Production applications need visibility into health, performance, and behavior. Without structured logging, request correlation, and metrics, debugging issues across distributed operations becomes extremely difficult.
+
+**Solution**: **Layered Observability with Request Correlation**
+
+| Component | Purpose | Endpoint/Location |
+|-----------|---------|-------------------|
+| Health Check | Liveness/readiness probes | `GET /api/health/` |
+| Metrics | Prometheus-format counters, gauges, histograms | `GET /api/metrics/` |
+| Structured Logging | JSON logs with consistent fields | `JSONFormatter` |
+| Request Correlation | Track requests across all operations | `X-Request-ID` header |
+
+**Request ID Correlation**: Every request gets a unique ID (from `X-Request-ID` header or auto-generated). This ID flows through:
+- All log entries via `request_id` field
+- Domain event dispatch and audit logs
+- Response header for client-side correlation
+
+```python
+# Request context using Python's contextvars (thread-safe)
+_request_id: ContextVar[Optional[str]] = ContextVar("request_id", default=None)
+
+# Middleware sets it at request start
+request_id = request.META.get("HTTP_X_REQUEST_ID") or generate_request_id()
+set_request_id(request_id)
+
+# Available anywhere in the request lifecycle
+logger.info("Processing order", extra={"request_id": get_request_id()})
+```
+
+**Cross-Aggregate Operation Timing**: Application services instrument multi-aggregate operations:
+```python
+def add_item(self, product_id: str, quantity: int, user_context: UserContext) -> Cart:
+    with time_operation("cart_add_item"):
+        # Coordinates Cart and Product aggregates
+        # Duration recorded to metrics as histogram
+```
+
+Benefits:
+- **Debuggability**: Trace any request through logs, events, and metrics
+- **Production-ready**: Health checks for container orchestration
+- **Standards-based**: Prometheus metrics format for monitoring tools
+- **DDD-aware**: Timing specifically targets cross-aggregate operations
+
 ## Project Structure
 
 ```
