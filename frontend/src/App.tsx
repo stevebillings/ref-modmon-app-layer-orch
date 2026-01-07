@@ -7,8 +7,8 @@ import { LoginPage } from './pages/LoginPage';
 import { ProductCatalogPage } from './pages/ProductCatalogPage';
 import { CartPage } from './pages/CartPage';
 import { OrderHistoryPage } from './pages/OrderHistoryPage';
-import { FeatureFlagAdminPage } from './pages/FeatureFlagAdminPage';
 import { ProductReportPage } from './pages/ProductReportPage';
+import { SystemPage } from './pages/SystemPage';
 
 function App() {
   return (
@@ -36,18 +36,18 @@ function App() {
               }
             />
             <Route
-              path="/admin/flags"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <FeatureFlagAdminPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
               path="/admin/report"
               element={
                 <ProtectedRoute requireAdmin>
                   <ProductReportPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/system"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <SystemPage />
                 </ProtectedRoute>
               }
             />

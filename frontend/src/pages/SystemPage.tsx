@@ -13,7 +13,7 @@ import { FeatureFlagForm } from '../components/FeatureFlagForm';
 import { FeatureFlagTable } from '../components/FeatureFlagTable';
 import { ErrorAlert } from '../components/ErrorAlert';
 
-export function FeatureFlagAdminPage() {
+export function SystemPage() {
   const [flags, setFlags] = useState<FeatureFlag[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -69,10 +69,10 @@ export function FeatureFlagAdminPage() {
       <HStack justifyContent="space-between" mb={6}>
         <Box>
           <Heading size="xl" mb={2}>
-            Feature Flags
+            System
           </Heading>
           <Text color="gray.600">
-            Manage feature flags to control feature availability without code deployments.
+            System administration and configuration tools.
           </Text>
         </Box>
         <Link to="/">

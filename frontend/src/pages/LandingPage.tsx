@@ -87,9 +87,9 @@ export function LandingPage() {
                   Product Report (Admin)
                 </Button>
               </Link>
-              <Link to="/admin/flags" style={{ width: '100%' }}>
+              <Link to="/admin/system" style={{ width: '100%' }}>
                 <Button width="100%" size="lg" variant="outline">
-                  Feature Flags (Admin)
+                  System (Admin)
                 </Button>
               </Link>
             </>
