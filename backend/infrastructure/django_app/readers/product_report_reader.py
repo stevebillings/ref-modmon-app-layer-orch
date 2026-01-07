@@ -5,6 +5,8 @@ This reader uses Django ORM with annotations to efficiently query data
 from multiple aggregates in a single database query.
 """
 
+from typing import Optional
+
 from django.db.models import OuterRef, Q, Subquery, Sum
 from django.db.models.functions import Coalesce
 
@@ -130,3 +132,21 @@ class DjangoProductReportReader(ProductReportReader):
             total_sold=product.total_sold,  # type: ignore[attr-defined]
             currently_reserved=product.currently_reserved,  # type: ignore[attr-defined]
         )
+
+
+# Singleton instance for dependency injection
+_reader: Optional[ProductReportReader] = None
+
+
+def get_product_report_reader() -> ProductReportReader:
+    """
+    Get the product report reader instance.
+
+    Returns a singleton instance of the Django implementation.
+    This follows the same pattern as other adapters (get_email_adapter,
+    get_feature_flags, etc.) for consistent dependency injection.
+    """
+    global _reader
+    if _reader is None:
+        _reader = DjangoProductReportReader()
+    return _reader

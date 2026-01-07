@@ -35,7 +35,7 @@ from domain.user_context import UserContext
 from infrastructure.django_app.address_verification import get_address_verification_adapter
 from infrastructure.django_app.auth_decorators import require_auth
 from infrastructure.django_app.feature_flags import get_feature_flag_repository
-from infrastructure.django_app.readers.product_report_reader import DjangoProductReportReader
+from infrastructure.django_app.readers.product_report_reader import get_product_report_reader
 from infrastructure.django_app.user_context_adapter import build_user_context
 from infrastructure.django_app.serialization import to_dict
 from infrastructure.django_app.unit_of_work import unit_of_work
@@ -307,7 +307,7 @@ def product_report(request: Request, user_context: UserContext) -> Response:
         has_reservations=has_reservations,
     )
 
-    reader = DjangoProductReportReader()
+    reader = get_product_report_reader()
     result = reader.get_report(query)
 
     return Response({
