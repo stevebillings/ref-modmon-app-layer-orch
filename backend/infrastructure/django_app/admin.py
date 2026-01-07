@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import User
 
-from infrastructure.django_app.models import UserProfile
+from infrastructure.django_app.models import AuditLogModel, UserProfile
 
 
 class UserProfileInline(admin.StackedInline):
@@ -32,3 +32,25 @@ class UserProfileAdmin(admin.ModelAdmin):
     list_filter = ["role"]
     search_fields = ["user__username"]
     readonly_fields = ["id", "created_at"]
+
+
+@admin.register(AuditLogModel)
+class AuditLogAdmin(admin.ModelAdmin):
+    """Admin for viewing audit logs."""
+
+    list_display = ["event_type", "actor_id", "aggregate_type", "aggregate_id", "occurred_at"]
+    list_filter = ["event_type", "aggregate_type"]
+    search_fields = ["actor_id", "event_type"]
+    readonly_fields = [
+        "id",
+        "event_type",
+        "event_id",
+        "occurred_at",
+        "actor_id",
+        "aggregate_type",
+        "aggregate_id",
+        "event_data",
+        "data",
+        "created_at",
+    ]
+    ordering = ["-occurred_at"]
