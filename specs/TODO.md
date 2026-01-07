@@ -35,3 +35,17 @@ This document tracks additional patterns and solutions typical of medium complex
 1. **Multi-tenancy** - If relevant to your target audience.
 
 1. **File Uploads** - Product images, for example.
+
+## Observability and Monitoring
+
+1. **Health check endpoint** - Simple `/health` that checks DB connectivity. Essential for any deployment (k8s, load balancers).
+
+1. **Structured logging** - Consistent JSON format makes logs searchable. Useful even locally, essential in production.
+
+1. **Request logging middleware** - Log request/response timing, status codes, user ID. Helps debug issues without full tracing infrastructure.
+
+1. **Basic metrics endpoint** - Expose counts like requests, errors, maybe domain metrics (orders placed, carts submitted). Could use Prometheus format for compatibility.
+
+1. **Correlate domain events with request IDs** - Associate domain events with the HTTP request that triggered them for end-to-end traceability.
+
+1. **Time cross-aggregate operations** - Measure and expose timing for operations that span aggregates to show where complexity lives.
