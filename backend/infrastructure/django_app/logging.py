@@ -53,6 +53,16 @@ class JSONFormatter(logging.Formatter):
         }
         for key, value in record.__dict__.items():
             if key not in standard_attrs:
-                log_data[key] = value
+                # Only include JSON-serializable values
+                if self._is_json_serializable(value):
+                    log_data[key] = value
 
         return json.dumps(log_data)
+
+    def _is_json_serializable(self, value: object) -> bool:
+        """Check if a value can be serialized to JSON."""
+        try:
+            json.dumps(value)
+            return True
+        except (TypeError, ValueError):
+            return False

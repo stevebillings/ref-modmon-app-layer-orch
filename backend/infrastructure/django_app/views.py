@@ -632,7 +632,7 @@ def feature_flag_detail(
         )
 
 
-# --- Health Check ---
+# --- Health Check and Metrics ---
 
 
 @api_view(["GET"])
@@ -663,6 +663,21 @@ def health_check(request: Request) -> Response:
 
     http_status = status.HTTP_200_OK if health_status["status"] == "healthy" else status.HTTP_503_SERVICE_UNAVAILABLE
     return Response(health_status, status=http_status)
+
+
+@api_view(["GET"])
+def metrics(request: Request) -> Response:
+    """
+    Metrics endpoint exposing application metrics in Prometheus format.
+
+    Returns counters for HTTP requests, errors, and domain events.
+    """
+    from django.http import HttpResponse as DjangoHttpResponse
+
+    from infrastructure.django_app.metrics import get_metrics
+
+    metrics_output = get_metrics().to_prometheus()
+    return DjangoHttpResponse(metrics_output, content_type="text/plain; charset=utf-8")
 
 
 # --- Debug/Test Endpoints ---

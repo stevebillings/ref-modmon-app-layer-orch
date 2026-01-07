@@ -150,4 +150,9 @@ class RequestLoggingMiddleware:
             },
         )
 
+        # Record metrics
+        from infrastructure.django_app.metrics import record_request
+
+        record_request(request.method or "UNKNOWN", request.path, response.status_code)
+
         return response

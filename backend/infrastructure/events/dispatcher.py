@@ -91,7 +91,10 @@ class SyncEventDispatcher(EventDispatcher):
         Sync handlers run first (in order), then async handlers are
         submitted to the thread pool and return immediately.
         """
+        from infrastructure.django_app.metrics import record_domain_event
+
         for event in events:
+            record_domain_event(event.get_event_type())
             self._dispatch_sync(event)
             self._dispatch_async(event)
 
