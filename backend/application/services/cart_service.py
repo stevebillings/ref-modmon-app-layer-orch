@@ -58,38 +58,41 @@ class CartService:
             ValidationError: If quantity is invalid
             InsufficientStockError: If not enough stock available
         """
-        try:
-            pid = UUID(product_id)
-        except ValueError:
-            raise ProductNotFoundError(product_id)
+        from infrastructure.django_app.metrics import time_operation
 
-        # Acquire row-level lock to prevent concurrent stock modifications
-        product = self.uow.get_product_repository().get_by_id_for_update(pid)
-        if product is None:
-            raise ProductNotFoundError(product_id)
+        with time_operation("cart_add_item"):
+            try:
+                pid = UUID(product_id)
+            except ValueError:
+                raise ProductNotFoundError(product_id)
 
-        # Check stock availability (cross-aggregate concern handled by service)
-        if not product.has_sufficient_stock(quantity):
-            raise InsufficientStockError(
-                product.name, product.stock_quantity, quantity
+            # Acquire row-level lock to prevent concurrent stock modifications
+            product = self.uow.get_product_repository().get_by_id_for_update(pid)
+            if product is None:
+                raise ProductNotFoundError(product_id)
+
+            # Check stock availability (cross-aggregate concern handled by service)
+            if not product.has_sufficient_stock(quantity):
+                raise InsufficientStockError(
+                    product.name, product.stock_quantity, quantity
+                )
+
+            # Delegate to aggregates
+            cart = self.uow.get_cart_repository().get_cart_for_user(user_context.user_id)
+            cart.add_item(
+                pid, product.name, product.price, quantity, actor_id=user_context.actor_id
             )
+            product.reserve_stock(quantity, actor_id=user_context.actor_id)
 
-        # Delegate to aggregates
-        cart = self.uow.get_cart_repository().get_cart_for_user(user_context.user_id)
-        cart.add_item(
-            pid, product.name, product.price, quantity, actor_id=user_context.actor_id
-        )
-        product.reserve_stock(quantity, actor_id=user_context.actor_id)
+            # Persist both aggregates
+            self.uow.get_cart_repository().save(cart)
+            self.uow.get_product_repository().save(product)
 
-        # Persist both aggregates
-        self.uow.get_cart_repository().save(cart)
-        self.uow.get_product_repository().save(product)
+            # Collect events from modified aggregates
+            self.uow.collect_events_from(cart)
+            self.uow.collect_events_from(product)
 
-        # Collect events from modified aggregates
-        self.uow.collect_events_from(cart)
-        self.uow.collect_events_from(product)
-
-        return cart
+            return cart
 
     def update_item_quantity(
         self, product_id: str, quantity: int, user_context: UserContext
@@ -154,28 +157,31 @@ class CartService:
         Raises:
             CartItemNotFoundError: If item not in cart
         """
-        try:
-            pid = UUID(product_id)
-        except ValueError:
-            raise CartItemNotFoundError(product_id)
+        from infrastructure.django_app.metrics import time_operation
 
-        cart = self.uow.get_cart_repository().get_cart_for_user(user_context.user_id)
+        with time_operation("cart_remove_item"):
+            try:
+                pid = UUID(product_id)
+            except ValueError:
+                raise CartItemNotFoundError(product_id)
 
-        # Delegate to cart aggregate - returns removed item for stock release
-        removed_item = cart.remove_item(pid, actor_id=user_context.actor_id)
+            cart = self.uow.get_cart_repository().get_cart_for_user(user_context.user_id)
 
-        # Acquire row-level lock and release stock
-        product = self.uow.get_product_repository().get_by_id_for_update(pid)
-        if product:
-            product.release_stock(removed_item.quantity, actor_id=user_context.actor_id)
-            self.uow.get_product_repository().save(product)
-            self.uow.collect_events_from(product)
+            # Delegate to cart aggregate - returns removed item for stock release
+            removed_item = cart.remove_item(pid, actor_id=user_context.actor_id)
 
-        # Persist cart
-        self.uow.get_cart_repository().save(cart)
-        self.uow.collect_events_from(cart)
+            # Acquire row-level lock and release stock
+            product = self.uow.get_product_repository().get_by_id_for_update(pid)
+            if product:
+                product.release_stock(removed_item.quantity, actor_id=user_context.actor_id)
+                self.uow.get_product_repository().save(product)
+                self.uow.collect_events_from(product)
 
-        return cart
+            # Persist cart
+            self.uow.get_cart_repository().save(cart)
+            self.uow.collect_events_from(cart)
+
+            return cart
 
     def verify_address(
         self,
@@ -248,22 +254,25 @@ class CartService:
             EmptyCartError: If cart has no items
             AddressVerificationError: If address verification fails
         """
-        # Verify address first (fail fast before modifying cart)
-        verified_address, _ = self.verify_address(shipping_address)
+        from infrastructure.django_app.metrics import time_operation
 
-        cart = self.uow.get_cart_repository().get_cart_for_user(user_context.user_id)
+        with time_operation("cart_submit"):
+            # Verify address first (fail fast before modifying cart)
+            verified_address, _ = self.verify_address(shipping_address)
 
-        # Delegate to cart aggregate - creates order and clears cart
-        order = cart.submit(
-            shipping_address=verified_address,
-            actor_id=user_context.actor_id,
-        )
+            cart = self.uow.get_cart_repository().get_cart_for_user(user_context.user_id)
 
-        # Persist order and cleared cart
-        saved_order = self.uow.get_order_repository().save(order)
-        self.uow.get_cart_repository().save(cart)
+            # Delegate to cart aggregate - creates order and clears cart
+            order = cart.submit(
+                shipping_address=verified_address,
+                actor_id=user_context.actor_id,
+            )
 
-        # Collect events from cart (includes CartSubmitted event)
-        self.uow.collect_events_from(cart)
+            # Persist order and cleared cart
+            saved_order = self.uow.get_order_repository().save(order)
+            self.uow.get_cart_repository().save(cart)
 
-        return saved_order
+            # Collect events from cart (includes CartSubmitted event)
+            self.uow.collect_events_from(cart)
+
+            return saved_order

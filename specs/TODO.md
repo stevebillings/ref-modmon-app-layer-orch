@@ -48,4 +48,4 @@ This document tracks additional patterns and solutions typical of medium complex
 
 1. ~~**Correlate domain events with request IDs**~~ - Associate domain events with the HTTP request that triggered them for end-to-end traceability. Implemented via `request_context.py` using contextvars.
 
-1. **Time cross-aggregate operations** - Measure and expose timing for operations that span aggregates to show where complexity lives.
+1. ~~**Time cross-aggregate operations**~~ - Measure and expose timing for operations that span aggregates to show where complexity lives. Implemented via `time_operation()` context manager in `metrics.py`, instrumented in `CartService`.

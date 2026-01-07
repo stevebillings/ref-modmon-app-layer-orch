@@ -5,22 +5,28 @@ Provides counters and gauges that can be exposed via a Prometheus-compatible end
 For production use, consider using prometheus_client library instead.
 """
 
+import logging
 import threading
+import time
 from collections import defaultdict
-from typing import Dict
+from contextlib import contextmanager
+from typing import Dict, Generator, List
+
+logger = logging.getLogger(__name__)
 
 
 class Metrics:
     """
     Thread-safe metrics collector.
 
-    Tracks counters and gauges for application observability.
+    Tracks counters, gauges, and histograms for application observability.
     """
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
         self._counters: Dict[str, int] = defaultdict(int)
         self._gauges: Dict[str, float] = {}
+        self._histograms: Dict[str, List[float]] = defaultdict(list)
 
     def increment(self, name: str, value: int = 1, labels: Dict[str, str] | None = None) -> None:
         """Increment a counter metric."""
@@ -46,6 +52,12 @@ class Metrics:
         with self._lock:
             return self._gauges.get(key, 0.0)
 
+    def observe(self, name: str, value: float, labels: Dict[str, str] | None = None) -> None:
+        """Record an observation for a histogram metric."""
+        key = self._make_key(name, labels)
+        with self._lock:
+            self._histograms[key].append(value)
+
     def _make_key(self, name: str, labels: Dict[str, str] | None) -> str:
         """Create a unique key for a metric with labels."""
         if not labels:
@@ -65,6 +77,20 @@ class Metrics:
             # Export gauges
             for key, value in sorted(self._gauges.items()):
                 lines.append(f"{key} {value}")
+
+            # Export histogram summaries (count, sum, avg, min, max)
+            for key, values in sorted(self._histograms.items()):
+                if values:
+                    count = len(values)
+                    total = sum(values)
+                    avg = total / count
+                    min_val = min(values)
+                    max_val = max(values)
+                    lines.append(f"{key}_count {count}")
+                    lines.append(f"{key}_sum {total:.2f}")
+                    lines.append(f"{key}_avg {avg:.2f}")
+                    lines.append(f"{key}_min {min_val:.2f}")
+                    lines.append(f"{key}_max {max_val:.2f}")
 
         return "\n".join(lines)
 
@@ -102,3 +128,55 @@ def record_order_created() -> None:
 def record_cart_submitted() -> None:
     """Record a cart submission."""
     _metrics.increment("carts_submitted_total")
+
+
+@contextmanager
+def time_operation(operation_name: str) -> Generator[None, None, None]:
+    """
+    Context manager to time an operation and record metrics.
+
+    Usage:
+        with time_operation("cart_submission"):
+            # do the operation
+            pass
+
+    Records duration in milliseconds to operation_duration_ms histogram.
+    Also logs the timing with request correlation.
+    """
+    from infrastructure.django_app.request_context import get_request_id
+
+    start_time = time.perf_counter()
+    try:
+        yield
+    finally:
+        duration_ms = (time.perf_counter() - start_time) * 1000
+        _metrics.observe(
+            "operation_duration_ms",
+            duration_ms,
+            labels={"operation": operation_name},
+        )
+        _metrics.increment(
+            "operations_total",
+            labels={"operation": operation_name},
+        )
+        logger.info(
+            f"Operation completed: {operation_name}",
+            extra={
+                "operation": operation_name,
+                "duration_ms": round(duration_ms, 2),
+                "request_id": get_request_id(),
+            },
+        )
+
+
+def record_operation_timing(operation_name: str, duration_ms: float) -> None:
+    """Record timing for an operation directly (alternative to context manager)."""
+    _metrics.observe(
+        "operation_duration_ms",
+        duration_ms,
+        labels={"operation": operation_name},
+    )
+    _metrics.increment(
+        "operations_total",
+        labels={"operation": operation_name},
+    )
