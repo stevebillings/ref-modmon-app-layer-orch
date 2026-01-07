@@ -285,7 +285,7 @@ class TestProductSoftDelete:
 class TestProductPagination:
     """Tests for product list pagination and filtering."""
 
-    def _create_products(self, admin_client: APIClient, products: list[dict]) -> None:
+    def _create_products(self, admin_client: APIClient, products: list[dict[str, object]]) -> None:
         """Helper to create multiple products."""
         for p in products:
             admin_client.post("/api/products/create/", p, format="json")

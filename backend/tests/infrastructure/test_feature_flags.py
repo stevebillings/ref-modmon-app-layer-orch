@@ -1,5 +1,7 @@
 """Tests for feature flag infrastructure."""
 
+from typing import Any
+
 import pytest
 from django.contrib.auth.models import User
 from rest_framework.test import APIClient
@@ -12,7 +14,7 @@ from infrastructure.django_app.models import FeatureFlagModel, UserProfile
 
 
 @pytest.fixture
-def admin_client(db) -> APIClient:
+def admin_client(db: Any) -> APIClient:
     """Create an authenticated admin API client."""
     user = User.objects.create_user(username="flagadmin", password="testpass123")
     UserProfile.objects.create(user=user, role="admin")
@@ -22,7 +24,7 @@ def admin_client(db) -> APIClient:
 
 
 @pytest.fixture
-def customer_client(db) -> APIClient:
+def customer_client(db: Any) -> APIClient:
     """Create an authenticated customer API client."""
     user = User.objects.create_user(username="flagcustomer", password="testpass123")
     UserProfile.objects.create(user=user, role="customer")

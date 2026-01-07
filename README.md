@@ -264,7 +264,36 @@ Features can be toggled without deployment. The first use case demonstrated is i
 - Order items store product name and price as snapshots
 - Admins can view and restore soft-deleted products
 
-### 12. Third-Party API Integration
+### 12. Use Case Documentation and Testing
+
+**Problem**: Use cases live in developers' heads or scattered documentation. No single source of truth connects requirements, tests, and domain language. New team members struggle to understand what the system does.
+
+**Solution**: **Behavior Driven Development (BDD) with pytest-bdd**
+
+Feature files document use cases in Gherkin syntax using the project's ubiquitous language:
+```gherkin
+Feature: Add Item to Cart
+  As a Customer
+  I want to add products to my cart
+  So that I can purchase them later
+
+  Scenario: Successfully add item to cart
+    Given I am logged in as a Customer
+    And a product "Laptop" exists with price "$999.99" and stock quantity 10
+    When I add 2 "Laptop" to my cart
+    Then my cart should contain 2 "Laptop" at "$999.99" each
+    And the product "Laptop" should have stock quantity 8
+```
+
+Benefits:
+- **Living documentation** - Feature files are both requirements and executable tests
+- **Ubiquitous language** - Scenarios use domain terms from [GLOSSARY.md](specs/GLOSSARY.md)
+- **Use case traceability** - Each scenario maps to a specific user action
+- **Onboarding aid** - New developers understand behavior by reading features
+
+See [BDD-APPROACH.md](specs/BDD-APPROACH.md) for full details.
+
+### 13. Third-Party API Integration
 
 **Problem**: External service integrations (payment processors, address verification, shipping APIs) tightly couple infrastructure code to business logic, making testing difficult and creating vendor lock-in.
 
@@ -342,6 +371,8 @@ npm test
 - [Architecture](specs/ARCHITECTURE.md) - Detailed architectural patterns
 - [Design](specs/DESIGN.md) - API design and data entities
 - [Requirements](specs/REQUIREMENTS.md) - Functional requirements
+- [Glossary](specs/GLOSSARY.md) - Ubiquitous language and domain terms
+- [BDD Approach](specs/BDD-APPROACH.md) - Behavior Driven Development testing
 - [Domain Events](specs/features/DOMAIN-EVENTS-AND-AUDIT-LOGGING.md) - Event system implementation
 - [Authentication](specs/features/AUTHENTICATION-AND-AUTHORIZATION.md) - Auth implementation
 - [Feature Flags](specs/features/FEATURE-FLAGS-AND-INCIDENT-NOTIFICATION.md) - Feature flag system

@@ -58,7 +58,16 @@ class MockAuditLogRepository(AuditLogRepository):
 class FailingAuditLogRepository(AuditLogRepository):
     """Mock that always fails - for testing error handling."""
 
-    def save(self, **kwargs: Any) -> AuditLogEntry:
+    def save(
+        self,
+        event_type: str,
+        event_id: UUID,
+        occurred_at: datetime,
+        actor_id: str,
+        aggregate_type: str,
+        aggregate_id: UUID | None,
+        event_data: dict[str, Any],
+    ) -> AuditLogEntry:
         raise Exception("Database connection failed")
 
 

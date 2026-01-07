@@ -1,5 +1,7 @@
 """Shared test fixtures."""
 
+from typing import Any
+
 import pytest
 from django.contrib.auth.models import User
 from rest_framework.test import APIClient
@@ -8,7 +10,7 @@ from infrastructure.django_app.models import UserProfile
 
 
 @pytest.fixture
-def admin_user(db):
+def admin_user(db: Any) -> User:
     """Create an admin user with profile."""
     user = User.objects.create_user(
         username="testadmin",
@@ -20,7 +22,7 @@ def admin_user(db):
 
 
 @pytest.fixture
-def customer_user(db):
+def customer_user(db: Any) -> User:
     """Create a customer user with profile."""
     user = User.objects.create_user(
         username="testcustomer",
@@ -32,7 +34,7 @@ def customer_user(db):
 
 
 @pytest.fixture
-def authenticated_admin_client(admin_user) -> APIClient:
+def authenticated_admin_client(admin_user: User) -> APIClient:
     """API client authenticated as admin."""
     client = APIClient()
     client.force_authenticate(user=admin_user)
@@ -40,7 +42,7 @@ def authenticated_admin_client(admin_user) -> APIClient:
 
 
 @pytest.fixture
-def authenticated_customer_client(customer_user) -> APIClient:
+def authenticated_customer_client(customer_user: User) -> APIClient:
     """API client authenticated as customer."""
     client = APIClient()
     client.force_authenticate(user=customer_user)

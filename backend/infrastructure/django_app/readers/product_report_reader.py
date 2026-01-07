@@ -5,7 +5,7 @@ This reader uses Django ORM with annotations to efficiently query data
 from multiple aggregates in a single database query.
 """
 
-from typing import Optional
+from typing import Any, Optional
 
 from django.db.models import OuterRef, Q, Subquery, Sum
 from django.db.models.functions import Coalesce
@@ -92,8 +92,8 @@ class DjangoProductReportReader(ProductReportReader):
         )
 
     def _apply_filters(
-        self, queryset: "QuerySet[ProductModel]", query: ProductReportQuery
-    ) -> "QuerySet[ProductModel]":
+        self, queryset: Any, query: ProductReportQuery
+    ) -> Any:
         """Apply filters from query to queryset."""
         # Filter out deleted products unless requested
         if not query.include_deleted:

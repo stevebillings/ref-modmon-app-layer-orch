@@ -49,8 +49,8 @@ class TestAuditLogging(TestCase):
 
         # Add to cart
         with unit_of_work(get_event_dispatcher()) as uow:
-            service = CartService(uow)
-            service.add_item(str(product.id), quantity=2, user_context=user_context)
+            cart_service = CartService(uow)
+            cart_service.add_item(str(product.id), quantity=2, user_context=user_context)
 
         # Verify audit log entries were created
         entries = AuditLogModel.objects.filter(
@@ -94,6 +94,7 @@ class TestAuditLogging(TestCase):
         )
         assert submit_entries.count() == 1
         entry = submit_entries.first()
+        assert entry is not None
         assert entry.event_data["item_count"] == 1
 
     def test_audit_log_contains_event_details(self) -> None:
@@ -110,8 +111,8 @@ class TestAuditLogging(TestCase):
             )
 
         with unit_of_work(get_event_dispatcher()) as uow:
-            service = CartService(uow)
-            service.add_item(str(product.id), quantity=5, user_context=user_context)
+            cart_service = CartService(uow)
+            cart_service.add_item(str(product.id), quantity=5, user_context=user_context)
 
         entry = AuditLogModel.objects.filter(
             event_type="StockReserved",

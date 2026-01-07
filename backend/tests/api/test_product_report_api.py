@@ -39,7 +39,7 @@ def _create_product(admin_client: APIClient, name: str, price: str, stock: int) 
         {"name": name, "price": price, "stock_quantity": stock},
         format="json",
     )
-    return response.json()["id"]
+    return str(response.json()["id"])
 
 
 def _add_to_cart(customer_client: APIClient, product_id: str, quantity: int) -> None:
