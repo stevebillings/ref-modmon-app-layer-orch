@@ -38,7 +38,7 @@ This document tracks additional patterns and solutions typical of medium complex
 
 ## Observability and Monitoring
 
-1. **Health check endpoint** - Simple `/health` that checks DB connectivity. Essential for any deployment (k8s, load balancers).
+1. ~~**Health check endpoint**~~ - Simple `/health` that checks DB connectivity. Essential for any deployment (k8s, load balancers). Implemented at `/api/health/`.
 
 1. **Structured logging** - Consistent JSON format makes logs searchable. Useful even locally, essential in production.
 

@@ -632,6 +632,39 @@ def feature_flag_detail(
         )
 
 
+# --- Health Check ---
+
+
+@api_view(["GET"])
+def health_check(request: Request) -> Response:
+    """
+    Health check endpoint for load balancers and orchestration systems.
+
+    Checks database connectivity and returns status.
+    """
+    from datetime import datetime, timezone
+
+    from django.db import connection
+
+    health_status = {
+        "status": "healthy",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "checks": {},
+    }
+
+    # Check database connectivity
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+        health_status["checks"]["database"] = "ok"
+    except Exception as e:
+        health_status["status"] = "unhealthy"
+        health_status["checks"]["database"] = f"error: {str(e)}"
+
+    http_status = status.HTTP_200_OK if health_status["status"] == "healthy" else status.HTTP_503_SERVICE_UNAVAILABLE
+    return Response(health_status, status=http_status)
+
+
 # --- Debug/Test Endpoints ---
 
 

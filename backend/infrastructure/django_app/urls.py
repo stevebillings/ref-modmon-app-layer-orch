@@ -48,4 +48,6 @@ urlpatterns = [
     ),
     # Debug/test endpoints
     path("debug/trigger-error/", views.trigger_test_error, name="trigger-test-error"),
+    # Health check
+    path("health/", views.health_check, name="health-check"),
 ]
