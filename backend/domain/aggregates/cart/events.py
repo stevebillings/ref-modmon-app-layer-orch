@@ -46,10 +46,9 @@ class CartItemRemoved(DomainEvent):
 
 @dataclass(frozen=True, kw_only=True)
 class CartSubmitted(DomainEvent):
-    """Raised when the cart is submitted as an order."""
+    """Raised when the cart is submitted for order creation."""
 
     cart_id: UUID
-    order_id: UUID
     total: Decimal
     item_count: int
     actor_id: str

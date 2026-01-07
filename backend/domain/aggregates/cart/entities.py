@@ -4,8 +4,6 @@ from decimal import Decimal
 from typing import TYPE_CHECKING, List
 from uuid import UUID, uuid4
 
-from domain.aggregates.order.entities import Order, OrderItem
-from domain.aggregates.order.value_objects import VerifiedAddress
 from domain.exceptions import CartItemNotFoundError, EmptyCartError
 from domain.validation import validate_positive_quantity
 
@@ -231,18 +229,20 @@ class Cart:
 
     def submit(
         self,
-        shipping_address: VerifiedAddress,
         actor_id: str = "anonymous",
-    ) -> Order:
+    ) -> List[CartItem]:
         """
-        Create an Order from cart contents and clear the cart.
+        Submit the cart by clearing items and returning them for order creation.
+
+        The application layer is responsible for creating the Order from the
+        returned items. This maintains aggregate isolation - Cart doesn't know
+        about Order internals.
 
         Args:
-            shipping_address: Verified shipping address for the order
             actor_id: ID of the actor performing the action
 
         Returns:
-            The created Order.
+            List of CartItems that were in the cart (for order creation).
 
         Raises:
             EmptyCartError: If cart has no items
@@ -252,41 +252,23 @@ class Cart:
         if not self.items:
             raise EmptyCartError()
 
-        order_id = uuid4()
         total = self.get_total()
         item_count = self.get_item_count()
 
-        order_items = [
-            OrderItem.create(
-                order_id=order_id,
-                product_id=item.product_id,
-                product_name=item.product_name,
-                unit_price=item.unit_price,
-                quantity=item.quantity,
-            )
-            for item in self.items
-        ]
-
-        order = Order(
-            id=order_id,
-            user_id=self.user_id,
-            items=order_items,
-            shipping_address=shipping_address,
-            submitted_at=None,
-        )
+        # Capture items before clearing
+        submitted_items = list(self.items)
         self.items = []
 
         self._raise_event(
             CartSubmitted(
                 cart_id=self.id,
-                order_id=order_id,
                 total=total,
                 item_count=item_count,
                 actor_id=actor_id,
             )
         )
 
-        return order
+        return submitted_items
 
     def _raise_event(self, event: "DomainEvent") -> None:
         """Record a domain event."""

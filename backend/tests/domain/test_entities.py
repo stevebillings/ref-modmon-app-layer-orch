@@ -281,23 +281,28 @@ class TestCart:
         with pytest.raises(CartItemNotFoundError):
             cart.remove_item(uuid4())
 
-    def test_submit_creates_order(self) -> None:
+    def test_submit_returns_items_and_clears_cart(self) -> None:
         cart = Cart(id=uuid4(), user_id=uuid4(), items=[], created_at=datetime.now())
-        cart.add_item(uuid4(), "Product A", Decimal("10.00"), 2)
-        cart.add_item(uuid4(), "Product B", Decimal("5.00"), 3)
+        product_a_id = uuid4()
+        product_b_id = uuid4()
+        cart.add_item(product_a_id, "Product A", Decimal("10.00"), 2)
+        cart.add_item(product_b_id, "Product B", Decimal("5.00"), 3)
 
-        order = cart.submit(shipping_address=TEST_SHIPPING_ADDRESS)
+        # Submit returns the cart items for order creation by the application layer
+        submitted_items = cart.submit()
 
-        assert len(order.items) == 2
-        assert order.get_total() == Decimal("35.00")
+        assert len(submitted_items) == 2
+        assert submitted_items[0].product_name == "Product A"
+        assert submitted_items[0].quantity == 2
+        assert submitted_items[1].product_name == "Product B"
+        assert submitted_items[1].quantity == 3
         assert len(cart.items) == 0  # Cart is cleared
-        assert order.shipping_address == TEST_SHIPPING_ADDRESS
 
     def test_submit_empty_cart_raises(self) -> None:
         cart = Cart(id=uuid4(), user_id=uuid4(), items=[], created_at=datetime.now())
 
         with pytest.raises(EmptyCartError):
-            cart.submit(shipping_address=TEST_SHIPPING_ADDRESS)
+            cart.submit()
 
 
 class TestOrderItem:

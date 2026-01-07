@@ -178,13 +178,12 @@ class TestCartEvents:
         )
         cart.clear_domain_events()  # Clear the add_item event
 
-        order = cart.submit(shipping_address=TEST_SHIPPING_ADDRESS, actor_id="user-789")
+        cart.submit(actor_id="user-789")
 
         events = cart.get_domain_events()
         assert len(events) == 1
         assert isinstance(events[0], CartSubmitted)
         assert events[0].cart_id == cart.id
-        assert events[0].order_id == order.id
         assert events[0].total == Decimal("10.00")
         assert events[0].item_count == 1
         assert events[0].actor_id == "user-789"

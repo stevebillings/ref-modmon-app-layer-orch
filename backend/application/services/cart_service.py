@@ -1,4 +1,4 @@
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from application.ports.address_verification import (
     AddressVerificationPort,
@@ -7,7 +7,7 @@ from application.ports.address_verification import (
 )
 from application.ports.unit_of_work import UnitOfWork
 from domain.aggregates.cart.entities import Cart
-from domain.aggregates.order.entities import Order
+from domain.aggregates.order.entities import Order, OrderItem
 from domain.aggregates.order.value_objects import UnverifiedAddress, VerifiedAddress
 from domain.exceptions import (
     AddressVerificationError,
@@ -242,8 +242,12 @@ class CartService:
         """
         Submit the user's cart as an order.
 
-        Creates an immutable Order from cart contents and clears the cart.
-        Verifies the shipping address before creating the order.
+        Orchestrates cross-aggregate operation:
+        1. Verifies the shipping address
+        2. Submits the cart (clears items, returns them for order creation)
+        3. Creates an Order from the cart items
+        4. Persists both aggregates
+
         Stock remains decremented (was reserved when added to cart).
 
         Args:
@@ -262,10 +266,29 @@ class CartService:
 
             cart = self.uow.get_cart_repository().get_cart_for_user(user_context.user_id)
 
-            # Delegate to cart aggregate - creates order and clears cart
-            order = cart.submit(
+            # Submit cart - returns items for order creation and clears cart
+            cart_items = cart.submit(actor_id=user_context.actor_id)
+
+            # Application layer orchestrates Order creation from cart items
+            # Generate order_id first so OrderItems can reference it
+            order_id = uuid4()
+            order_items = [
+                OrderItem.create(
+                    order_id=order_id,
+                    product_id=item.product_id,
+                    product_name=item.product_name,
+                    unit_price=item.unit_price,
+                    quantity=item.quantity,
+                )
+                for item in cart_items
+            ]
+
+            order = Order(
+                id=order_id,
+                user_id=user_context.user_id,
+                items=order_items,
                 shipping_address=verified_address,
-                actor_id=user_context.actor_id,
+                submitted_at=None,
             )
 
             # Persist order and cleared cart
