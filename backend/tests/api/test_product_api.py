@@ -16,7 +16,8 @@ def api_client() -> APIClient:
 def admin_client() -> APIClient:
     """Create an authenticated admin API client."""
     user = User.objects.create_user(username="testadmin", password="testpass123")
-    UserProfile.objects.create(user=user, role="admin")
+    # Signal auto-creates profile with role="customer", update to admin
+    UserProfile.objects.filter(user=user).update(role="admin")
     client = APIClient()
     client.force_login(user)
     return client
@@ -26,7 +27,7 @@ def admin_client() -> APIClient:
 def customer_client() -> APIClient:
     """Create an authenticated customer API client."""
     user = User.objects.create_user(username="testcustomer", password="testpass123")
-    UserProfile.objects.create(user=user, role="customer")
+    # Signal auto-creates profile with role="customer", no action needed
     client = APIClient()
     client.force_login(user)
     return client

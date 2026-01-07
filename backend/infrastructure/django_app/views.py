@@ -643,10 +643,11 @@ def health_check(request: Request) -> Response:
     Checks database connectivity and returns status.
     """
     from datetime import datetime, timezone
+    from typing import Any, Dict
 
     from django.db import connection
 
-    health_status = {
+    health_status: Dict[str, Any] = {
         "status": "healthy",
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "checks": {},
@@ -672,12 +673,10 @@ def metrics(request: Request) -> Response:
 
     Returns counters for HTTP requests, errors, and domain events.
     """
-    from django.http import HttpResponse as DjangoHttpResponse
-
     from infrastructure.django_app.metrics import get_metrics
 
     metrics_output = get_metrics().to_prometheus()
-    return DjangoHttpResponse(metrics_output, content_type="text/plain; charset=utf-8")
+    return Response(metrics_output, content_type="text/plain; charset=utf-8")
 
 
 # --- Debug/Test Endpoints ---

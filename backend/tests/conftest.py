@@ -17,7 +17,10 @@ def admin_user(db: Any) -> User:
         password="testpass123",
         email="admin@test.com",
     )
-    UserProfile.objects.create(user=user, role="admin")
+    # Signal auto-creates profile with role="customer", update to admin
+    UserProfile.objects.filter(user=user).update(role="admin")
+    # Refresh user from DB to ensure profile relation is fresh
+    user.refresh_from_db()
     return user
 
 
@@ -29,7 +32,7 @@ def customer_user(db: Any) -> User:
         password="testpass123",
         email="customer@test.com",
     )
-    UserProfile.objects.create(user=user, role="customer")
+    # Signal auto-creates profile with role="customer", no action needed
     return user
 
 

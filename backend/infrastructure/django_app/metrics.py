@@ -71,12 +71,12 @@ class Metrics:
 
         with self._lock:
             # Export counters
-            for key, value in sorted(self._counters.items()):
-                lines.append(f"{key} {value}")
+            for key, count_value in sorted(self._counters.items()):
+                lines.append(f"{key} {count_value}")
 
             # Export gauges
-            for key, value in sorted(self._gauges.items()):
-                lines.append(f"{key} {value}")
+            for key, gauge_value in sorted(self._gauges.items()):
+                lines.append(f"{key} {gauge_value}")
 
             # Export histogram summaries (count, sum, avg, min, max)
             for key, values in sorted(self._histograms.items()):

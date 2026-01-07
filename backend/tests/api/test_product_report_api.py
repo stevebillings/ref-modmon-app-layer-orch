@@ -16,7 +16,8 @@ def api_client() -> APIClient:
 def admin_client() -> APIClient:
     """Create an authenticated admin API client."""
     user = User.objects.create_user(username="reportadmin", password="testpass123")
-    UserProfile.objects.create(user=user, role="admin")
+    # Signal auto-creates profile with role="customer", update to admin
+    UserProfile.objects.filter(user=user).update(role="admin")
     client = APIClient()
     client.force_login(user)
     return client
@@ -26,7 +27,7 @@ def admin_client() -> APIClient:
 def customer_client() -> APIClient:
     """Create an authenticated customer API client."""
     user = User.objects.create_user(username="reportcustomer", password="testpass123")
-    UserProfile.objects.create(user=user, role="customer")
+    # Signal auto-creates profile with role="customer", no action needed
     client = APIClient()
     client.force_login(user)
     return client
@@ -164,7 +165,7 @@ class TestProductReportBasicFunctionality:
             user = User.objects.create_user(
                 username=f"customer{i}", password="testpass"
             )
-            UserProfile.objects.create(user=user, role="customer")
+            # Signal auto-creates profile with role="customer"
             customer = APIClient()
             customer.force_login(user)
 
@@ -186,7 +187,7 @@ class TestProductReportBasicFunctionality:
             user = User.objects.create_user(
                 username=f"cartcustomer{i}", password="testpass"
             )
-            UserProfile.objects.create(user=user, role="customer")
+            # Signal auto-creates profile with role="customer"
             customer = APIClient()
             customer.force_login(user)
 
@@ -409,7 +410,7 @@ class TestProductReportFiltering:
 
         # Create another customer and make another sale
         user = User.objects.create_user(username="buyer2", password="testpass")
-        UserProfile.objects.create(user=user, role="customer")
+        # Signal auto-creates profile with role="customer", no action needed
         buyer2 = APIClient()
         buyer2.force_login(user)
         _add_to_cart(buyer2, desktop_sold, 1)

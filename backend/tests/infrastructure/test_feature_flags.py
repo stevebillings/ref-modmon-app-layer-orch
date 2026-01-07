@@ -17,7 +17,8 @@ from infrastructure.django_app.models import FeatureFlagModel, UserProfile
 def admin_client(db: Any) -> APIClient:
     """Create an authenticated admin API client."""
     user = User.objects.create_user(username="flagadmin", password="testpass123")
-    UserProfile.objects.create(user=user, role="admin")
+    # Signal auto-creates profile with role="customer", update to admin
+    UserProfile.objects.filter(user=user).update(role="admin")
     client = APIClient()
     client.force_login(user)
     return client
@@ -27,7 +28,7 @@ def admin_client(db: Any) -> APIClient:
 def customer_client(db: Any) -> APIClient:
     """Create an authenticated customer API client."""
     user = User.objects.create_user(username="flagcustomer", password="testpass123")
-    UserProfile.objects.create(user=user, role="customer")
+    # Signal auto-creates profile with role="customer", no action needed
     client = APIClient()
     client.force_login(user)
     return client

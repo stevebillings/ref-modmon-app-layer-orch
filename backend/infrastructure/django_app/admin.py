@@ -5,7 +5,7 @@ from django.contrib.auth.models import User
 from infrastructure.django_app.models import AuditLogModel, UserProfile
 
 
-class UserProfileInline(admin.StackedInline):
+class UserProfileInline(admin.StackedInline):  # type: ignore[type-arg]
     """Inline admin for UserProfile, shown on User admin page."""
 
     model = UserProfile
@@ -13,7 +13,7 @@ class UserProfileInline(admin.StackedInline):
     verbose_name_plural = "Profile"
 
 
-class UserAdmin(BaseUserAdmin):
+class UserAdmin(BaseUserAdmin):  # type: ignore[type-arg]
     """Extended User admin with UserProfile inline."""
 
     inlines = [UserProfileInline]
@@ -25,7 +25,7 @@ admin.site.register(User, UserAdmin)
 
 
 @admin.register(UserProfile)
-class UserProfileAdmin(admin.ModelAdmin):
+class UserProfileAdmin(admin.ModelAdmin):  # type: ignore[type-arg]
     """Standalone admin for UserProfile."""
 
     list_display = ["user", "role", "created_at"]
@@ -35,7 +35,7 @@ class UserProfileAdmin(admin.ModelAdmin):
 
 
 @admin.register(AuditLogModel)
-class AuditLogAdmin(admin.ModelAdmin):
+class AuditLogAdmin(admin.ModelAdmin):  # type: ignore[type-arg]
     """Admin for viewing audit logs."""
 
     list_display = ["event_type", "actor_id", "aggregate_type", "aggregate_id", "occurred_at"]
