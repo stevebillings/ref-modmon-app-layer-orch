@@ -121,38 +121,55 @@ class RequestLoggingMiddleware:
     Middleware to log HTTP requests with timing information.
 
     Logs method, path, status code, duration, and user ID for each request.
-    Useful for debugging and monitoring without full distributed tracing.
+    Also generates a unique request ID for correlation across logs and events.
     """
 
     def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]):
         self.get_response = get_response
 
     def __call__(self, request: HttpRequest) -> HttpResponse:
-        start_time = time.perf_counter()
-
-        response = self.get_response(request)
-
-        duration_ms = (time.perf_counter() - start_time) * 1000
-
-        user_id = None
-        if hasattr(request, "user") and request.user.is_authenticated:
-            user_id = str(request.user.id)
-
-        request_logger.info(
-            "Request completed",
-            extra={
-                "method": request.method,
-                "path": request.path,
-                "status_code": response.status_code,
-                "duration_ms": round(duration_ms, 2),
-                "user_id": user_id,
-                "query_string": request.META.get("QUERY_STRING", ""),
-            },
+        from infrastructure.django_app.request_context import (
+            clear_request_id,
+            generate_request_id,
+            set_request_id,
         )
 
-        # Record metrics
-        from infrastructure.django_app.metrics import record_request
+        # Generate and set request ID for this request
+        request_id = request.META.get("HTTP_X_REQUEST_ID") or generate_request_id()
+        set_request_id(request_id)
 
-        record_request(request.method or "UNKNOWN", request.path, response.status_code)
+        start_time = time.perf_counter()
 
-        return response
+        try:
+            response = self.get_response(request)
+
+            duration_ms = (time.perf_counter() - start_time) * 1000
+
+            user_id = None
+            if hasattr(request, "user") and request.user.is_authenticated:
+                user_id = str(request.user.id)
+
+            request_logger.info(
+                "Request completed",
+                extra={
+                    "request_id": request_id,
+                    "method": request.method,
+                    "path": request.path,
+                    "status_code": response.status_code,
+                    "duration_ms": round(duration_ms, 2),
+                    "user_id": user_id,
+                    "query_string": request.META.get("QUERY_STRING", ""),
+                },
+            )
+
+            # Record metrics
+            from infrastructure.django_app.metrics import record_request
+
+            record_request(request.method or "UNKNOWN", request.path, response.status_code)
+
+            # Add request ID to response headers for client correlation
+            response["X-Request-ID"] = request_id
+
+            return response
+        finally:
+            clear_request_id()

@@ -59,6 +59,8 @@ class AuditLogHandler:
         Called after transaction commit for each domain event.
         Failures are logged but don't break operations.
         """
+        from infrastructure.django_app.request_context import get_request_id
+
         try:
             aggregate_info = EVENT_AGGREGATE_MAP.get(type(event))
             if aggregate_info:
@@ -68,6 +70,12 @@ class AuditLogHandler:
                 aggregate_type = "Unknown"
                 aggregate_id = None
 
+            # Include request_id in event_data for correlation
+            event_data = event.to_dict()
+            request_id = get_request_id()
+            if request_id:
+                event_data["request_id"] = request_id
+
             self.repository.save(
                 event_type=event.get_event_type(),
                 event_id=event.event_id,
@@ -75,7 +83,7 @@ class AuditLogHandler:
                 actor_id=getattr(event, "actor_id", "unknown"),
                 aggregate_type=aggregate_type,
                 aggregate_id=aggregate_id,
-                event_data=event.to_dict(),
+                event_data=event_data,
             )
         except Exception as e:
             # Log but don't fail - audit logging shouldn't break operations

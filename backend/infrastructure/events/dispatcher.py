@@ -92,9 +92,20 @@ class SyncEventDispatcher(EventDispatcher):
         submitted to the thread pool and return immediately.
         """
         from infrastructure.django_app.metrics import record_domain_event
+        from infrastructure.django_app.request_context import get_request_id
+
+        request_id = get_request_id()
 
         for event in events:
             record_domain_event(event.get_event_type())
+            logger.info(
+                f"Dispatching domain event: {event.get_event_type()}",
+                extra={
+                    "event_type": event.get_event_type(),
+                    "event_id": str(event.event_id),
+                    "request_id": request_id,
+                },
+            )
             self._dispatch_sync(event)
             self._dispatch_async(event)
 

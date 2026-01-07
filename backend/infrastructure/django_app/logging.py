@@ -20,12 +20,19 @@ class JSONFormatter(logging.Formatter):
     """
 
     def format(self, record: logging.LogRecord) -> str:
+        from infrastructure.django_app.request_context import get_request_id
+
         log_data = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),
         }
+
+        # Add request ID if available
+        request_id = get_request_id()
+        if request_id:
+            log_data["request_id"] = request_id
 
         # Add module and function info
         if record.module:
