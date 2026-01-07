@@ -42,7 +42,7 @@ This document tracks additional patterns and solutions typical of medium complex
 
 1. ~~**Structured logging**~~ - Consistent JSON format makes logs searchable. Useful even locally, essential in production. Implemented via `JSONFormatter` in `infrastructure/django_app/logging.py`.
 
-1. **Request logging middleware** - Log request/response timing, status codes, user ID. Helps debug issues without full tracing infrastructure.
+1. ~~**Request logging middleware**~~ - Log request/response timing, status codes, user ID. Helps debug issues without full tracing infrastructure. Implemented via `RequestLoggingMiddleware` in `infrastructure/django_app/middleware.py`.
 
 1. **Basic metrics endpoint** - Expose counts like requests, errors, maybe domain metrics (orders placed, carts submitted). Could use Prometheus format for compatibility.
 

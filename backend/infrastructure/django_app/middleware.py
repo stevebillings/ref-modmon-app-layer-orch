@@ -1,4 +1,5 @@
 import logging
+import time
 import traceback
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
@@ -10,6 +11,7 @@ from django.http import HttpRequest, HttpResponse
 from application.ports.email import IncidentDetails
 
 logger = logging.getLogger(__name__)
+request_logger = logging.getLogger("infrastructure.request")
 
 # Thread pool for async notification dispatch
 _executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="incident_notify")
@@ -112,3 +114,40 @@ class IncidentNotificationMiddleware:
             notifier.notify_if_enabled(incident)
         except Exception as e:
             logger.error(f"Failed to send incident notification: {e}")
+
+
+class RequestLoggingMiddleware:
+    """
+    Middleware to log HTTP requests with timing information.
+
+    Logs method, path, status code, duration, and user ID for each request.
+    Useful for debugging and monitoring without full distributed tracing.
+    """
+
+    def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]):
+        self.get_response = get_response
+
+    def __call__(self, request: HttpRequest) -> HttpResponse:
+        start_time = time.perf_counter()
+
+        response = self.get_response(request)
+
+        duration_ms = (time.perf_counter() - start_time) * 1000
+
+        user_id = None
+        if hasattr(request, "user") and request.user.is_authenticated:
+            user_id = str(request.user.id)
+
+        request_logger.info(
+            "Request completed",
+            extra={
+                "method": request.method,
+                "path": request.path,
+                "status_code": response.status_code,
+                "duration_ms": round(duration_ms, 2),
+                "user_id": user_id,
+                "query_string": request.META.get("QUERY_STRING", ""),
+            },
+        )
+
+        return response
