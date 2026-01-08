@@ -23,6 +23,7 @@ export function OrderList({ orders }: OrderListProps) {
       {orders.map((order) => (
         <Box
           key={order.id}
+          data-testid={`order-item-${order.id}`}
           borderWidth={1}
           borderRadius="md"
           p={4}

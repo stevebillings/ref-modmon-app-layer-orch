@@ -17,7 +17,8 @@ import type {
   UpdateFeatureFlagRequest,
 } from '../types';
 
-const API_BASE = 'http://localhost:8000/api';
+// Use relative path - Vite proxies /api to the backend
+const API_BASE = '/api';
 
 // Store CSRF token for authenticated requests
 let csrfToken: string | null = null;

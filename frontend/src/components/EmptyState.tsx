@@ -7,6 +7,7 @@ interface EmptyStateProps {
 export function EmptyState({ message }: EmptyStateProps) {
   return (
     <Box
+      data-testid="empty-state"
       py={10}
       textAlign="center"
       color="gray.500"

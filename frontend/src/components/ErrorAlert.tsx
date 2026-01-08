@@ -7,7 +7,7 @@ interface ErrorAlertProps {
 
 export function ErrorAlert({ message, onClose }: ErrorAlertProps) {
   return (
-    <Alert.Root status="error" mb={4}>
+    <Alert.Root status="error" mb={4} data-testid="error-alert">
       <Alert.Indicator />
       <Alert.Content>
         <Alert.Title>Error</Alert.Title>

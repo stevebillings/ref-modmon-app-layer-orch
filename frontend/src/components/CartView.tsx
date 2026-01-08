@@ -101,7 +101,7 @@ export function CartView({
         </Table.Header>
         <Table.Body>
           {cart.items.map((item) => (
-            <Table.Row key={item.id}>
+            <Table.Row key={item.id} data-testid={`cart-item-${item.id}`}>
               <Table.Cell>{item.product_name}</Table.Cell>
               <Table.Cell>{formatCurrency(item.unit_price)}</Table.Cell>
               <Table.Cell>

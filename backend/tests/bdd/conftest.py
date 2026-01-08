@@ -3,7 +3,21 @@
 from typing import Any, Generator
 
 import pytest
+from pytest_bdd import parser
 from uuid import uuid4
+
+
+def pytest_bdd_apply_tag(tag: str, function: Any) -> Any:
+    """Filter scenarios by tag for backend tests.
+
+    This hook allows us to skip frontend-only scenarios when running
+    backend BDD tests. The shared feature files use tags to indicate
+    which layer(s) should execute each scenario.
+    """
+    if tag == "frontend-only":
+        return pytest.mark.skip(reason="Frontend-only scenario")
+    # All other tags (backend, frontend, backend-only) run normally
+    return None
 
 from application.ports.address_verification import AddressVerificationPort
 from application.services.cart_service import CartService

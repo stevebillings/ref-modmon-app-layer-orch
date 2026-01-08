@@ -111,6 +111,7 @@ export function ProductList({
             return (
               <Table.Row
                 key={product.id}
+                data-testid={`product-row-${product.id}`}
                 opacity={isDeleted ? 0.6 : 1}
                 bg={isDeleted ? 'red.50' : undefined}
               >

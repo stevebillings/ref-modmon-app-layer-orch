@@ -8,6 +8,7 @@ Feature: Submit Cart
     And a product "Monitor" exists with price "$299.99" and stock quantity 15
     And my cart contains 2 "Monitor"
 
+  @backend @frontend
   Scenario: Successfully submit cart with verified address
     Given I have a valid shipping address:
       | street_line_1 | city     | state | postal_code | country |
@@ -17,6 +18,7 @@ Feature: Submit Cart
     And my cart should be empty
     And the order should have a verified shipping address
 
+  @backend-only
   Scenario: Order preserves item details as snapshots
     Given I have a valid shipping address:
       | street_line_1 | city     | state | postal_code | country |
@@ -24,6 +26,7 @@ Feature: Submit Cart
     When I submit my cart
     Then the order should contain "Monitor" at "$299.99" each
 
+  @backend-only
   Scenario: Cannot submit empty cart
     Given my cart is empty
     And I have a valid shipping address:
@@ -32,6 +35,7 @@ Feature: Submit Cart
     When I try to submit my cart
     Then I should receive an "EmptyCartError"
 
+  @backend-only
   Scenario: Cannot submit with invalid address
     Given I have an invalid shipping address:
       | street_line_1          | city    | state | postal_code | country |
@@ -39,6 +43,7 @@ Feature: Submit Cart
     When I try to submit my cart
     Then I should receive an "AddressVerificationError"
 
+  @backend-only
   Scenario: Stock remains decremented after order
     Given I have a valid shipping address:
       | street_line_1 | city     | state | postal_code | country |

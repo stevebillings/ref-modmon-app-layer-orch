@@ -8,3 +8,8 @@ frontend/dist/
 .pytest_cache/
 .mypy_cache/
 *.pyc
+frontend/playwright-report/
+frontend/cucumber-report/
+frontend/test-results/
+.features-gen/
+
