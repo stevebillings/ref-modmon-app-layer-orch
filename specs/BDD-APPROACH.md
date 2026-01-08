@@ -351,6 +351,157 @@ jobs:
           path: frontend/playwright-report/
 ```
 
+## Test Isolation Strategy
+
+Frontend E2E tests use a **data isolation** approach rather than resetting the database between each scenario:
+
+1. **Database resets once** before all tests via `global-setup.ts`
+2. **Each test uses unique data** with a `testSuffix` (e.g., `Product-1767887829452-7fw3k`)
+3. **Assertions filter by suffix** to only verify data from the current test
+4. **Dedicated users** (e.g., `noorders`) handle scenarios requiring specific state
+
+This approach is faster than per-scenario database resets and avoids container restart overhead.
+
+## E2E Testing with Separate Repositories
+
+When frontend and backend are in different Git repositories, additional coordination is needed for E2E tests. Here are the main approaches:
+
+### Option 1: Docker Compose (Recommended)
+
+Backend repo publishes a Docker image. Frontend repo uses docker-compose to spin up the backend:
+
+```yaml
+# frontend/.github/workflows/e2e.yml
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start backend
+        run: docker-compose -f docker-compose.test.yml up -d --wait
+      - name: Install dependencies
+        run: npm ci && npx playwright install --with-deps chromium
+      - name: Run E2E tests
+        run: npm run test:e2e
+```
+
+```yaml
+# frontend/docker-compose.test.yml
+services:
+  backend:
+    image: ghcr.io/your-org/backend:latest
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=sqlite:///test.db
+      - DJANGO_SETTINGS_MODULE=infrastructure.django_app.settings
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py reset_test_db &&
+             python manage.py runserver 0.0.0.0:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health/"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+```
+
+**Pros**: Clean separation, backend team controls their image, simple frontend CI setup
+**Cons**: Backend must publish Docker images, slight delay waiting for container
+
+### Option 2: Checkout Both Repos
+
+Clone both repositories in the CI workflow:
+
+```yaml
+# frontend/.github/workflows/e2e.yml
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: your-org/backend
+          path: backend
+          token: ${{ secrets.BACKEND_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Start backend
+        run: |
+          cd backend
+          pip install -r requirements.txt
+          python manage.py migrate
+          python manage.py reset_test_db
+          python manage.py runserver 8000 &
+      - name: Run E2E tests
+        run: npm run test:e2e
+```
+
+**Pros**: No Docker image publishing required, always uses latest backend code
+**Cons**: Requires cross-repo access token, tighter coupling between repos
+
+### Option 3: Deployed Test Environment
+
+Point E2E tests at a staging/test backend deployment:
+
+```yaml
+- name: Run E2E tests
+  run: npm run test:e2e
+  env:
+    API_BASE_URL: https://api-staging.yourapp.com
+```
+
+**Pros**: Simple setup, tests real deployment
+**Cons**: Shared state between test runs, cannot easily reset database, network latency
+
+### Option 4: Dedicated E2E Repository
+
+A third repository orchestrates both services:
+
+```
+e2e-tests/
+├── docker-compose.yml      # Pulls frontend + backend images
+├── tests/
+│   └── features/           # Shared feature files
+├── playwright.config.ts
+└── .github/workflows/
+    └── e2e.yml
+```
+
+**Pros**: E2E tests are fully independent, clear ownership
+**Cons**: Another repository to maintain, coordination overhead
+
+### Enabling Per-Scenario Database Resets
+
+If you need to reset the database between scenarios (rather than using data isolation), the backend should expose a test-only endpoint:
+
+```python
+# backend/infrastructure/django_app/views.py (only enabled in test/CI mode)
+@api_view(['POST'])
+def reset_test_database(request):
+    if not settings.ENABLE_TEST_ENDPOINTS:
+        return Response(status=404)
+    call_command('reset_test_db')
+    return Response({'status': 'reset complete'})
+```
+
+```typescript
+// frontend/e2e/fixtures/test-fixtures.ts
+test.beforeEach(async ({ request }) => {
+  await request.post('http://localhost:8000/api/test/reset-db/');
+});
+```
+
+### Recommendation
+
+**Docker Compose** is the cleanest approach for separate repositories:
+- Backend team maintains their image and test data seeding
+- Frontend team has a stable, versioned contract to test against
+- Database resets happen at container startup (fast)
+- CI is self-contained with no external dependencies
+
 ## Same Scenario, Different Implementations
 
 The same Gherkin scenario runs differently on each layer:
