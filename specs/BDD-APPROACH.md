@@ -244,6 +244,28 @@ Feature: View Orders
     And I should see orders from both "alice" and "bob"
 ```
 
+## How Step Matching Works
+
+The `@given`, `@when`, and `@then` decorators are **functional, not just documentation**. They register each Python function with pytest-bdd's step matching system.
+
+**At runtime, pytest-bdd:**
+
+1. Reads the `.feature` file
+2. For each step (e.g., `When I add 2 "Laptop" to my cart`), scans all imported step definitions for a matching decorator pattern
+3. Extracts values using `parsers.parse()` placeholders (e.g., `{qty:d}` extracts `2`, `"{product_name}"` extracts `"Laptop"`)
+4. Calls the decorated function with those extracted values plus any pytest fixtures
+
+**If no matching decorator is found**, pytest-bdd raises:
+```
+StepDefNotFound: Step "When I add 2 'Laptop' to my cart" is not defined
+```
+
+**Analogy:** Think of it like Flask/FastAPI route decorators:
+- `@app.route("/users/{id}")` connects a function to a URL pattern
+- `@when(parsers.parse('I add {qty:d} "{name}" to my cart'))` connects a function to a Gherkin step pattern
+
+Both are functional decorators that register the function in a framework's routing/matching system.
+
 ## Step Definition Examples
 
 ```python
