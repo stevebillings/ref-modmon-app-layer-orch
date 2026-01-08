@@ -11,5 +11,5 @@ frontend/dist/
 frontend/playwright-report/
 frontend/cucumber-report/
 frontend/test-results/
-.features-gen/
+**/.features-gen/
 
