@@ -1,0 +1,78 @@
+[importlinter]
+root_packages =
+    domain
+    application
+    infrastructure
+include_external_packages = True
+
+# =============================================================================
+# Contract 1: Domain layer independence
+# The domain layer is the core of the application and must have no dependencies
+# on application services, infrastructure, or any framework (Django).
+# =============================================================================
+[importlinter:contract:domain-layer-independence]
+name = Domain layer must not import from application or infrastructure
+type = forbidden
+source_modules =
+    domain
+forbidden_modules =
+    application
+    infrastructure
+    django
+    rest_framework
+
+# =============================================================================
+# Contract 2: Application layer independence
+# The application layer orchestrates use cases but must not depend on
+# infrastructure implementations. It should only depend on domain and its own
+# port interfaces.
+# =============================================================================
+[importlinter:contract:application-layer-independence]
+name = Application layer must not import from infrastructure
+type = forbidden
+source_modules =
+    application
+forbidden_modules =
+    infrastructure
+    django
+    rest_framework
+
+# =============================================================================
+# Contract 3: Aggregate isolation - Cart
+# The Cart aggregate must not import from other aggregates.
+# Cross-aggregate coordination happens in the application layer.
+# =============================================================================
+[importlinter:contract:cart-aggregate-isolation]
+name = Cart aggregate must not import from other aggregates
+type = forbidden
+source_modules =
+    domain.aggregates.cart
+forbidden_modules =
+    domain.aggregates.product
+    domain.aggregates.order
+
+# =============================================================================
+# Contract 4: Aggregate isolation - Product
+# The Product aggregate must not import from other aggregates.
+# =============================================================================
+[importlinter:contract:product-aggregate-isolation]
+name = Product aggregate must not import from other aggregates
+type = forbidden
+source_modules =
+    domain.aggregates.product
+forbidden_modules =
+    domain.aggregates.cart
+    domain.aggregates.order
+
+# =============================================================================
+# Contract 5: Aggregate isolation - Order
+# The Order aggregate must not import from other aggregates.
+# =============================================================================
+[importlinter:contract:order-aggregate-isolation]
+name = Order aggregate must not import from other aggregates
+type = forbidden
+source_modules =
+    domain.aggregates.order
+forbidden_modules =
+    domain.aggregates.cart
+    domain.aggregates.product
