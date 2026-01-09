@@ -5,7 +5,7 @@ This module provides a framework-agnostic representation of the authenticated
 user for use in application services. It contains no Django dependencies.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from uuid import UUID
 
@@ -76,13 +76,14 @@ class UserContext:
     Immutable user context for authorization decisions.
 
     Passed from infrastructure layer through application layer to domain
-    operations. Contains only the information needed for authorization
-    and audit logging.
+    operations. Contains only the information needed for authorization,
+    audit logging, and feature flag targeting.
     """
 
     user_id: UUID
     username: str
     role: Role
+    group_ids: frozenset[UUID] = field(default_factory=frozenset)
 
     def is_admin(self) -> bool:
         """Check if user has admin role."""
@@ -104,3 +105,11 @@ class UserContext:
     def has_capability(self, capability: Capability) -> bool:
         """Check if user has a specific capability."""
         return capability in self.get_capabilities()
+
+    def is_in_group(self, group_id: UUID) -> bool:
+        """Check if user belongs to a specific group."""
+        return group_id in self.group_ids
+
+    def is_in_any_group(self, group_ids: set[UUID]) -> bool:
+        """Check if user belongs to any of the specified groups."""
+        return bool(self.group_ids & group_ids)

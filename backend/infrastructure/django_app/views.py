@@ -14,6 +14,11 @@ from application.services.feature_flag_service import (
     FeatureFlagNotFoundError,
     FeatureFlagService,
 )
+from application.services.user_group_service import (
+    DuplicateUserGroupError,
+    UserGroupNotFoundError,
+    UserGroupService,
+)
 from application.services.order_service import OrderService
 from application.services.product_service import ProductService
 from domain.aggregates.order.value_objects import UnverifiedAddress
@@ -34,7 +39,11 @@ from domain.exceptions import (
 from domain.user_context import UserContext
 from infrastructure.django_app.address_verification import get_address_verification_adapter
 from infrastructure.django_app.auth_decorators import require_auth
+from domain.user_groups import UserGroup
 from infrastructure.django_app.feature_flags import get_feature_flag_repository
+from infrastructure.django_app.repositories.user_group_repository import (
+    get_user_group_repository,
+)
 from infrastructure.django_app.readers.product_report_reader import get_product_report_reader
 from infrastructure.django_app.user_context_adapter import build_user_context
 from infrastructure.django_app.serialization import to_dict
@@ -549,6 +558,7 @@ def _feature_flag_to_dict(flag: FeatureFlag) -> dict[str, Any]:
         "description": flag.description,
         "created_at": flag.created_at.isoformat(),
         "updated_at": flag.updated_at.isoformat(),
+        "target_group_ids": [str(gid) for gid in flag.target_group_ids],
     }
 
 
@@ -630,6 +640,237 @@ def feature_flag_detail(
             {"error": f"Flag '{flag_name}' not found"},
             status=status.HTTP_404_NOT_FOUND,
         )
+
+
+@api_view(["PUT"])
+@require_auth
+def feature_flag_set_targets(
+    request: Request, flag_name: str, user_context: UserContext
+) -> Response:
+    """
+    Set the target groups for a feature flag (replaces existing). Admin only.
+
+    Request body:
+        group_ids: list[str] - List of group UUIDs to target
+    """
+    from uuid import UUID
+
+    try:
+        service = _get_feature_flag_service()
+        data = request.data
+        group_ids_raw = data.get("group_ids", [])
+        group_ids = [UUID(gid) for gid in group_ids_raw]
+        flag = service.set_target_groups(flag_name, group_ids, user_context)
+        return Response(_feature_flag_to_dict(flag))
+    except PermissionDeniedError as e:
+        return Response({"error": str(e)}, status=status.HTTP_403_FORBIDDEN)
+    except FeatureFlagNotFoundError:
+        return Response(
+            {"error": f"Flag '{flag_name}' not found"},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+    except ValueError as e:
+        return Response({"error": f"Invalid UUID: {e}"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(["POST"])
+@require_auth
+def feature_flag_add_target(
+    request: Request, flag_name: str, user_context: UserContext
+) -> Response:
+    """
+    Add a target group to a feature flag. Admin only.
+
+    Request body:
+        group_id: str - Group UUID to add as target
+    """
+    from uuid import UUID
+
+    try:
+        service = _get_feature_flag_service()
+        data = request.data
+        group_id = UUID(data.get("group_id", ""))
+        flag = service.add_target_group(flag_name, group_id, user_context)
+        return Response(_feature_flag_to_dict(flag))
+    except PermissionDeniedError as e:
+        return Response({"error": str(e)}, status=status.HTTP_403_FORBIDDEN)
+    except FeatureFlagNotFoundError:
+        return Response(
+            {"error": f"Flag '{flag_name}' not found"},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+    except ValueError as e:
+        return Response({"error": f"Invalid UUID: {e}"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(["DELETE"])
+@require_auth
+def feature_flag_remove_target(
+    request: Request, flag_name: str, group_id: str, user_context: UserContext
+) -> Response:
+    """Remove a target group from a feature flag. Admin only."""
+    from uuid import UUID
+
+    try:
+        service = _get_feature_flag_service()
+        gid = UUID(group_id)
+        flag = service.remove_target_group(flag_name, gid, user_context)
+        return Response(_feature_flag_to_dict(flag))
+    except PermissionDeniedError as e:
+        return Response({"error": str(e)}, status=status.HTTP_403_FORBIDDEN)
+    except FeatureFlagNotFoundError:
+        return Response(
+            {"error": f"Flag '{flag_name}' not found"},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+    except ValueError as e:
+        return Response({"error": f"Invalid UUID: {e}"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+# --- User Group Admin Endpoints ---
+
+
+def _user_group_to_dict(group: UserGroup) -> dict[str, Any]:
+    """Convert a UserGroup to a dictionary."""
+    return {
+        "id": str(group.id),
+        "name": group.name,
+        "description": group.description,
+    }
+
+
+def _get_user_group_service() -> UserGroupService:
+    """Get the user group service with its dependencies."""
+    return UserGroupService(get_user_group_repository())
+
+
+@api_view(["GET"])
+@require_auth
+def user_groups_list(request: Request, user_context: UserContext) -> Response:
+    """List all user groups. Admin only."""
+    try:
+        service = _get_user_group_service()
+        groups = service.get_all(user_context)
+        return Response({"results": [_user_group_to_dict(g) for g in groups]})
+    except PermissionDeniedError as e:
+        return Response({"error": str(e)}, status=status.HTTP_403_FORBIDDEN)
+
+
+@api_view(["POST"])
+@require_auth
+def user_group_create(request: Request, user_context: UserContext) -> Response:
+    """Create a new user group. Admin only."""
+    try:
+        service = _get_user_group_service()
+        data = request.data
+        group = service.create(
+            name=data.get("name", ""),
+            description=data.get("description", ""),
+            user_context=user_context,
+        )
+        return Response(_user_group_to_dict(group), status=status.HTTP_201_CREATED)
+    except PermissionDeniedError as e:
+        return Response({"error": str(e)}, status=status.HTTP_403_FORBIDDEN)
+    except ValueError as e:
+        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    except DuplicateUserGroupError as e:
+        return Response(
+            {"error": f"Group '{e.name}' already exists"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+
+@api_view(["GET", "DELETE"])
+@require_auth
+def user_group_detail(
+    request: Request, group_id: str, user_context: UserContext
+) -> Response:
+    """Get or delete a user group. Admin only."""
+    from uuid import UUID
+
+    try:
+        service = _get_user_group_service()
+        gid = UUID(group_id)
+
+        if request.method == "GET":
+            group = service.get_by_id(gid, user_context)
+            return Response(_user_group_to_dict(group))
+
+        if request.method == "DELETE":
+            service.delete(gid, user_context)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    except PermissionDeniedError as e:
+        return Response({"error": str(e)}, status=status.HTTP_403_FORBIDDEN)
+    except UserGroupNotFoundError:
+        return Response(
+            {"error": f"Group '{group_id}' not found"},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+    except ValueError as e:
+        return Response({"error": f"Invalid UUID: {e}"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(["GET", "POST"])
+@require_auth
+def user_group_users(
+    request: Request, group_id: str, user_context: UserContext
+) -> Response:
+    """List users in a group or add a user to a group. Admin only."""
+    from uuid import UUID
+
+    try:
+        service = _get_user_group_service()
+        gid = UUID(group_id)
+
+        if request.method == "GET":
+            user_ids = service.get_users_in_group(gid, user_context)
+            return Response({"user_ids": [str(uid) for uid in user_ids]})
+
+        if request.method == "POST":
+            data = request.data
+            target_user_id = UUID(data.get("user_id", ""))
+            service.add_user(gid, target_user_id, user_context)
+            return Response({"status": "added"}, status=status.HTTP_201_CREATED)
+
+        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    except PermissionDeniedError as e:
+        return Response({"error": str(e)}, status=status.HTTP_403_FORBIDDEN)
+    except UserGroupNotFoundError:
+        return Response(
+            {"error": f"Group '{group_id}' not found"},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+    except ValueError as e:
+        return Response({"error": f"Invalid UUID: {e}"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(["DELETE"])
+@require_auth
+def user_group_remove_user(
+    request: Request, group_id: str, target_user_id: str, user_context: UserContext
+) -> Response:
+    """Remove a user from a group. Admin only."""
+    from uuid import UUID
+
+    try:
+        service = _get_user_group_service()
+        gid = UUID(group_id)
+        uid = UUID(target_user_id)
+        service.remove_user(gid, uid, user_context)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    except PermissionDeniedError as e:
+        return Response({"error": str(e)}, status=status.HTTP_403_FORBIDDEN)
+    except UserGroupNotFoundError:
+        return Response(
+            {"error": f"Group '{group_id}' not found"},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+    except ValueError as e:
+        return Response({"error": f"Invalid UUID: {e}"}, status=status.HTTP_400_BAD_REQUEST)
 
 
 # --- Health Check and Metrics ---

@@ -9,6 +9,7 @@ import { CartPage } from './pages/CartPage';
 import { OrderHistoryPage } from './pages/OrderHistoryPage';
 import { ProductReportPage } from './pages/ProductReportPage';
 import { SystemPage } from './pages/SystemPage';
+import { UserGroupsPage } from './pages/UserGroupsPage';
 
 function App() {
   return (
@@ -48,6 +49,14 @@ function App() {
               element={
                 <ProtectedRoute requireAdmin>
                   <SystemPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/user-groups"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <UserGroupsPage />
                 </ProtectedRoute>
               }
             />

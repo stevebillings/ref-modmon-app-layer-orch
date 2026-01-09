@@ -4,6 +4,7 @@ export interface User {
   username: string;
   role: 'admin' | 'customer';
   capabilities: string[];
+  enabled_flags: string[];
 }
 
 export interface AuthResponse {
@@ -119,6 +120,7 @@ export interface FeatureFlag {
   description: string;
   created_at: string;
   updated_at: string;
+  target_group_ids: string[];
 }
 
 export interface FeatureFlagListResponse {
@@ -134,6 +136,26 @@ export interface CreateFeatureFlagRequest {
 export interface UpdateFeatureFlagRequest {
   enabled?: boolean;
   description?: string;
+}
+
+// User Group types
+export interface UserGroup {
+  id: string;
+  name: string;
+  description: string;
+}
+
+export interface UserGroupListResponse {
+  results: UserGroup[];
+}
+
+export interface CreateUserGroupRequest {
+  name: string;
+  description?: string;
+}
+
+export interface UserGroupUsersResponse {
+  user_ids: string[];
 }
 
 // Product Report types

@@ -17,12 +17,14 @@ interface FeatureFlagTableProps {
   flags: FeatureFlag[];
   onToggle: (name: string, enabled: boolean) => Promise<void>;
   onDelete: (name: string) => Promise<void>;
+  onManageTargets: (flag: FeatureFlag) => void;
 }
 
 export function FeatureFlagTable({
   flags,
   onToggle,
   onDelete,
+  onManageTargets,
 }: FeatureFlagTableProps) {
   const [deleteFlag, setDeleteFlag] = useState<FeatureFlag | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -73,6 +75,7 @@ export function FeatureFlagTable({
           <Table.Row>
             <Table.ColumnHeader>Name</Table.ColumnHeader>
             <Table.ColumnHeader>Status</Table.ColumnHeader>
+            <Table.ColumnHeader>Targeting</Table.ColumnHeader>
             <Table.ColumnHeader>Description</Table.ColumnHeader>
             <Table.ColumnHeader>Last Updated</Table.ColumnHeader>
             <Table.ColumnHeader>Actions</Table.ColumnHeader>
@@ -102,6 +105,17 @@ export function FeatureFlagTable({
                 </HStack>
               </Table.Cell>
               <Table.Cell>
+                {flag.target_group_ids.length === 0 ? (
+                  <Badge colorPalette="blue" variant="subtle">
+                    All users
+                  </Badge>
+                ) : (
+                  <Badge colorPalette="purple" variant="subtle">
+                    {flag.target_group_ids.length} group{flag.target_group_ids.length !== 1 ? 's' : ''}
+                  </Badge>
+                )}
+              </Table.Cell>
+              <Table.Cell>
                 <Text fontSize="sm" color="gray.600">
                   {flag.description || '—'}
                 </Text>
@@ -112,13 +126,22 @@ export function FeatureFlagTable({
                 </Text>
               </Table.Cell>
               <Table.Cell>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setDeleteFlag(flag)}
-                >
-                  Delete
-                </Button>
+                <HStack gap={2}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onManageTargets(flag)}
+                  >
+                    Targets
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setDeleteFlag(flag)}
+                  >
+                    Delete
+                  </Button>
+                </HStack>
               </Table.Cell>
             </Table.Row>
           ))}

@@ -1,7 +1,7 @@
 """Unit tests for FeatureFlagService with mock repository."""
 
 from datetime import datetime, timezone
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 
@@ -20,6 +20,7 @@ class MockFeatureFlagRepository(FeatureFlagRepository):
 
     def __init__(self) -> None:
         self._flags: dict[str, FeatureFlag] = {}
+        self._targets: dict[str, set[UUID]] = {}
 
     def get_all(self) -> list[FeatureFlag]:
         return list(self._flags.values())
@@ -32,12 +33,15 @@ class MockFeatureFlagRepository(FeatureFlagRepository):
 
     def save(self, name: str, enabled: bool, description: str = "") -> FeatureFlag:
         now = datetime.now(timezone.utc)
+        existing = self._flags.get(name)
+        target_groups = self._targets.get(name, set())
         flag = FeatureFlag(
             name=name,
             enabled=enabled,
             description=description,
-            created_at=self._flags.get(name, FeatureFlag(name, False, "", now, now)).created_at,
+            created_at=existing.created_at if existing else now,
             updated_at=now,
+            target_group_ids=frozenset(target_groups),
         )
         self._flags[name] = flag
         return flag
@@ -45,8 +49,34 @@ class MockFeatureFlagRepository(FeatureFlagRepository):
     def delete(self, name: str) -> bool:
         if name in self._flags:
             del self._flags[name]
+            self._targets.pop(name, None)
             return True
         return False
+
+    def set_target_groups(self, flag_name: str, group_ids: set[UUID]) -> FeatureFlag:
+        self._targets[flag_name] = group_ids
+        flag = self._flags[flag_name]
+        updated_flag = FeatureFlag(
+            name=flag.name,
+            enabled=flag.enabled,
+            description=flag.description,
+            created_at=flag.created_at,
+            updated_at=datetime.now(timezone.utc),
+            target_group_ids=frozenset(group_ids),
+        )
+        self._flags[flag_name] = updated_flag
+        return updated_flag
+
+    def add_target_group(self, flag_name: str, group_id: UUID) -> FeatureFlag:
+        if flag_name not in self._targets:
+            self._targets[flag_name] = set()
+        self._targets[flag_name].add(group_id)
+        return self.set_target_groups(flag_name, self._targets[flag_name])
+
+    def remove_target_group(self, flag_name: str, group_id: UUID) -> FeatureFlag:
+        if flag_name in self._targets:
+            self._targets[flag_name].discard(group_id)
+        return self.set_target_groups(flag_name, self._targets.get(flag_name, set()))
 
 
 def make_admin_context() -> UserContext:

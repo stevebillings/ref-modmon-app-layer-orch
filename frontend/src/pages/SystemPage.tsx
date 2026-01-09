@@ -1,55 +1,83 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Alert, Box, Button, Container, Heading, HStack, Text } from '@chakra-ui/react';
-import type { FeatureFlag } from '../types';
+import type { FeatureFlag, UserGroup } from '../types';
 import {
+  addFeatureFlagTarget,
   createFeatureFlag,
   deleteFeatureFlag,
   getFeatureFlags,
+  getUserGroups,
+  removeFeatureFlagTarget,
   triggerTestError,
   updateFeatureFlag,
 } from '../services/api';
 import { FeatureFlagForm } from '../components/FeatureFlagForm';
 import { FeatureFlagTable } from '../components/FeatureFlagTable';
+import { FeatureFlagTargetsDialog } from '../components/FeatureFlagTargetsDialog';
 import { ErrorAlert } from '../components/ErrorAlert';
 
 export function SystemPage() {
   const [flags, setFlags] = useState<FeatureFlag[]>([]);
+  const [groups, setGroups] = useState<UserGroup[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isTriggering, setIsTriggering] = useState(false);
   const [testErrorTriggered, setTestErrorTriggered] = useState(false);
+  const [selectedFlag, setSelectedFlag] = useState<FeatureFlag | null>(null);
 
-  const loadFlags = useCallback(async () => {
+  const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const data = await getFeatureFlags();
-      setFlags(data);
+      const [flagsData, groupsData] = await Promise.all([
+        getFeatureFlags(),
+        getUserGroups(),
+      ]);
+      setFlags(flagsData);
+      setGroups(groupsData);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load feature flags');
+      setError(err instanceof Error ? err.message : 'Failed to load data');
     } finally {
       setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadFlags();
-  }, [loadFlags]);
+    loadData();
+  }, [loadData]);
 
   const handleCreate = async (name: string, enabled: boolean, description: string) => {
     await createFeatureFlag({ name, enabled, description });
-    await loadFlags();
+    await loadData();
   };
 
   const handleToggle = async (name: string, enabled: boolean) => {
     await updateFeatureFlag(name, { enabled });
-    await loadFlags();
+    await loadData();
   };
 
   const handleDelete = async (name: string) => {
     await deleteFeatureFlag(name);
-    await loadFlags();
+    await loadData();
+  };
+
+  const handleManageTargets = (flag: FeatureFlag) => {
+    setSelectedFlag(flag);
+  };
+
+  const handleAddTarget = async (flagName: string, groupId: string) => {
+    await addFeatureFlagTarget(flagName, groupId);
+    await loadData();
+  };
+
+  const handleRemoveTarget = async (flagName: string, groupId: string) => {
+    await removeFeatureFlagTarget(flagName, groupId);
+    await loadData();
+  };
+
+  const handleCloseTargetsDialog = () => {
+    setSelectedFlag(null);
   };
 
   const handleTriggerTestError = async () => {
@@ -64,6 +92,11 @@ export function SystemPage() {
     setIsTriggering(false);
   };
 
+  // Keep selectedFlag in sync with updated flags data
+  const currentSelectedFlag = selectedFlag
+    ? flags.find((f) => f.name === selectedFlag.name) || selectedFlag
+    : null;
+
   return (
     <Container maxW="container.xl" py={6}>
       <HStack justifyContent="space-between" mb={6}>
@@ -75,9 +108,14 @@ export function SystemPage() {
             System administration and configuration tools.
           </Text>
         </Box>
-        <Link to="/">
-          <Button variant="outline">Home</Button>
-        </Link>
+        <HStack gap={2}>
+          <Link to="/admin/user-groups">
+            <Button variant="outline">User Groups</Button>
+          </Link>
+          <Link to="/">
+            <Button variant="outline">Home</Button>
+          </Link>
+        </HStack>
       </HStack>
 
       {error && <ErrorAlert message={error} onClose={() => setError(null)} />}
@@ -93,8 +131,18 @@ export function SystemPage() {
           flags={flags}
           onToggle={handleToggle}
           onDelete={handleDelete}
+          onManageTargets={handleManageTargets}
         />
       )}
+
+      <FeatureFlagTargetsDialog
+        flag={currentSelectedFlag}
+        groups={groups}
+        isOpen={selectedFlag !== null}
+        onClose={handleCloseTargetsDialog}
+        onAddTarget={handleAddTarget}
+        onRemoveTarget={handleRemoveTarget}
+      />
 
       {/* Test Error Section */}
       <Box mt={10} p={4} borderWidth={1} borderRadius="md" bg="gray.50">

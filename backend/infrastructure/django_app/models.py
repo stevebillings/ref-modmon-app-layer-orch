@@ -147,6 +147,7 @@ class FeatureFlagModel(models.Model):
 
     Simple on/off toggles stored in the database.
     Unknown flags default to disabled (False).
+    Flags can target specific user groups for granular rollouts.
     """
 
     name = models.CharField(max_length=100, unique=True)
@@ -162,3 +163,90 @@ class FeatureFlagModel(models.Model):
     def __str__(self) -> str:
         status = "enabled" if self.enabled else "disabled"
         return f"{self.name} ({status})"
+
+
+class UserGroupModel(models.Model):
+    """
+    User group for feature flag targeting.
+
+    Groups are separate from roles - roles are for authorization (what you can do),
+    while groups are for targeting (which features you see).
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=100, unique=True)
+    description = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "user_group"
+        ordering = ["name"]
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class UserGroupMembershipModel(models.Model):
+    """
+    Many-to-many relationship between users and groups.
+
+    A user can belong to multiple groups for feature flag targeting.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user_profile = models.ForeignKey(
+        UserProfile,
+        on_delete=models.CASCADE,
+        related_name="group_memberships",
+    )
+    group = models.ForeignKey(
+        UserGroupModel,
+        on_delete=models.CASCADE,
+        related_name="memberships",
+    )
+    added_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "user_group_membership"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user_profile", "group"],
+                name="unique_user_group_membership",
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.user_profile} in {self.group}"
+
+
+class FeatureFlagTargetModel(models.Model):
+    """
+    Many-to-many relationship between feature flags and target groups.
+
+    When a flag has target groups, it is only enabled for users in those groups.
+    When a flag has no target groups, it is enabled for everyone (if enabled=True).
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    feature_flag = models.ForeignKey(
+        FeatureFlagModel,
+        on_delete=models.CASCADE,
+        related_name="target_groups",
+    )
+    group = models.ForeignKey(
+        UserGroupModel,
+        on_delete=models.CASCADE,
+        related_name="targeted_flags",
+    )
+
+    class Meta:
+        db_table = "feature_flag_target"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["feature_flag", "group"],
+                name="unique_flag_target",
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.feature_flag.name} -> {self.group.name}"

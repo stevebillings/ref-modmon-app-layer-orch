@@ -46,6 +46,43 @@ urlpatterns = [
         views.feature_flag_detail,
         name="feature-flag-detail",
     ),
+    path(
+        "admin/feature-flags/<str:flag_name>/targets/",
+        views.feature_flag_set_targets,
+        name="feature-flag-set-targets",
+    ),
+    path(
+        "admin/feature-flags/<str:flag_name>/targets/add/",
+        views.feature_flag_add_target,
+        name="feature-flag-add-target",
+    ),
+    path(
+        "admin/feature-flags/<str:flag_name>/targets/<str:group_id>/",
+        views.feature_flag_remove_target,
+        name="feature-flag-remove-target",
+    ),
+    # User group admin endpoints
+    path("admin/user-groups/", views.user_groups_list, name="user-groups-list"),
+    path(
+        "admin/user-groups/create/",
+        views.user_group_create,
+        name="user-group-create",
+    ),
+    path(
+        "admin/user-groups/<str:group_id>/",
+        views.user_group_detail,
+        name="user-group-detail",
+    ),
+    path(
+        "admin/user-groups/<str:group_id>/users/",
+        views.user_group_users,
+        name="user-group-users",
+    ),
+    path(
+        "admin/user-groups/<str:group_id>/users/<str:target_user_id>/",
+        views.user_group_remove_user,
+        name="user-group-remove-user",
+    ),
     # Debug/test endpoints
     path("debug/trigger-error/", views.trigger_test_error, name="trigger-test-error"),
     # Health check and metrics

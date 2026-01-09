@@ -3,6 +3,7 @@ import type {
   AuthResponse,
   Cart,
   CreateFeatureFlagRequest,
+  CreateUserGroupRequest,
   FeatureFlag,
   FeatureFlagListResponse,
   Order,
@@ -15,6 +16,9 @@ import type {
   SessionResponse,
   ShippingAddress,
   UpdateFeatureFlagRequest,
+  UserGroup,
+  UserGroupListResponse,
+  UserGroupUsersResponse,
 } from '../types';
 
 // Use relative path - Vite proxies /api to the backend
@@ -319,6 +323,118 @@ export async function deleteFeatureFlag(name: string): Promise<void> {
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.error || 'Failed to delete feature flag');
+  }
+}
+
+export async function setFeatureFlagTargets(
+  flagName: string,
+  groupIds: string[]
+): Promise<FeatureFlag> {
+  const response = await fetch(`${API_BASE}/admin/feature-flags/${flagName}/targets/`, {
+    method: 'PUT',
+    headers: getHeaders(),
+    credentials: 'include',
+    body: JSON.stringify({ group_ids: groupIds }),
+  });
+  return handleResponse<FeatureFlag>(response);
+}
+
+export async function addFeatureFlagTarget(
+  flagName: string,
+  groupId: string
+): Promise<FeatureFlag> {
+  const response = await fetch(`${API_BASE}/admin/feature-flags/${flagName}/targets/add/`, {
+    method: 'POST',
+    headers: getHeaders(),
+    credentials: 'include',
+    body: JSON.stringify({ group_id: groupId }),
+  });
+  return handleResponse<FeatureFlag>(response);
+}
+
+export async function removeFeatureFlagTarget(
+  flagName: string,
+  groupId: string
+): Promise<FeatureFlag> {
+  const response = await fetch(`${API_BASE}/admin/feature-flags/${flagName}/targets/${groupId}/`, {
+    method: 'DELETE',
+    headers: getHeaders(),
+    credentials: 'include',
+  });
+  return handleResponse<FeatureFlag>(response);
+}
+
+// User Group API
+
+export async function getUserGroups(): Promise<UserGroup[]> {
+  const response = await fetch(`${API_BASE}/admin/user-groups/`, {
+    credentials: 'include',
+  });
+  const data = await handleResponse<UserGroupListResponse>(response);
+  return data.results;
+}
+
+export async function getUserGroup(id: string): Promise<UserGroup> {
+  const response = await fetch(`${API_BASE}/admin/user-groups/${id}/`, {
+    credentials: 'include',
+  });
+  return handleResponse<UserGroup>(response);
+}
+
+export async function createUserGroup(
+  request: CreateUserGroupRequest
+): Promise<UserGroup> {
+  const response = await fetch(`${API_BASE}/admin/user-groups/create/`, {
+    method: 'POST',
+    headers: getHeaders(),
+    credentials: 'include',
+    body: JSON.stringify(request),
+  });
+  return handleResponse<UserGroup>(response);
+}
+
+export async function deleteUserGroup(id: string): Promise<void> {
+  const response = await fetch(`${API_BASE}/admin/user-groups/${id}/`, {
+    method: 'DELETE',
+    headers: getHeaders(),
+    credentials: 'include',
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to delete user group');
+  }
+}
+
+export async function getUsersInGroup(groupId: string): Promise<string[]> {
+  const response = await fetch(`${API_BASE}/admin/user-groups/${groupId}/users/`, {
+    credentials: 'include',
+  });
+  const data = await handleResponse<UserGroupUsersResponse>(response);
+  return data.user_ids;
+}
+
+export async function addUserToGroup(groupId: string, userId: string): Promise<void> {
+  const response = await fetch(`${API_BASE}/admin/user-groups/${groupId}/users/`, {
+    method: 'POST',
+    headers: getHeaders(),
+    credentials: 'include',
+    body: JSON.stringify({ user_id: userId }),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to add user to group');
+  }
+}
+
+export async function removeUserFromGroup(groupId: string, userId: string): Promise<void> {
+  const response = await fetch(`${API_BASE}/admin/user-groups/${groupId}/users/${userId}/`, {
+    method: 'DELETE',
+    headers: getHeaders(),
+    credentials: 'include',
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to remove user from group');
   }
 }
 

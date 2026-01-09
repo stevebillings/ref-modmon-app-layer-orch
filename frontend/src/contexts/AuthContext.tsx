@@ -13,6 +13,7 @@ export interface User {
   username: string;
   role: 'admin' | 'customer';
   capabilities: string[];
+  enabled_flags: string[];
 }
 
 interface AuthContextType {
@@ -20,6 +21,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isAdmin: boolean;
   hasCapability: (capability: string) => boolean;
+  isFeatureEnabled: (flagName: string) => boolean;
   login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   loading: boolean;
@@ -65,6 +67,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [user]
   );
 
+  const isFeatureEnabled = useCallback(
+    (flagName: string) => {
+      return user?.enabled_flags?.includes(flagName) ?? false;
+    },
+    [user]
+  );
+
   return (
     <AuthContext.Provider
       value={{
@@ -72,6 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAuthenticated: !!user,
         isAdmin: user?.role === 'admin',
         hasCapability,
+        isFeatureEnabled,
         login,
         logout,
         loading,

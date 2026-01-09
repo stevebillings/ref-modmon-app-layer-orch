@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
+from uuid import UUID
 
 
 @dataclass(frozen=True)
@@ -16,6 +17,11 @@ class FeatureFlag:
     description: str
     created_at: datetime
     updated_at: datetime
+    target_group_ids: frozenset[UUID] = field(default_factory=frozenset)
+
+    def is_targeted(self) -> bool:
+        """Check if this flag has any target groups."""
+        return bool(self.target_group_ids)
 
 
 class FeatureFlagRepository(ABC):
@@ -66,5 +72,51 @@ class FeatureFlagRepository(ABC):
         Delete a feature flag by name.
 
         Returns True if deleted, False if flag didn't exist.
+        """
+        pass
+
+    @abstractmethod
+    def set_target_groups(self, flag_name: str, group_ids: set[UUID]) -> FeatureFlag:
+        """
+        Set the target groups for a feature flag (replaces existing).
+
+        Args:
+            flag_name: The flag to update
+            group_ids: Set of group IDs to target (empty set clears targeting)
+
+        Returns:
+            The updated feature flag
+        """
+        pass
+
+    @abstractmethod
+    def add_target_group(self, flag_name: str, group_id: UUID) -> FeatureFlag:
+        """
+        Add a target group to a feature flag.
+
+        Idempotent - no error if group already targeted.
+
+        Args:
+            flag_name: The flag to update
+            group_id: The group ID to add as a target
+
+        Returns:
+            The updated feature flag
+        """
+        pass
+
+    @abstractmethod
+    def remove_target_group(self, flag_name: str, group_id: UUID) -> FeatureFlag:
+        """
+        Remove a target group from a feature flag.
+
+        Idempotent - no error if group not targeted.
+
+        Args:
+            flag_name: The flag to update
+            group_id: The group ID to remove from targets
+
+        Returns:
+            The updated feature flag
         """
         pass

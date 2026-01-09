@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from application.ports.feature_flag_repository import FeatureFlag, FeatureFlagRepository
 from domain.exceptions import PermissionDeniedError
 from domain.user_context import UserContext
@@ -132,3 +134,76 @@ class FeatureFlagService:
 
         if not self.repository.delete(flag_name):
             raise FeatureFlagNotFoundError(flag_name)
+
+    def set_target_groups(
+        self,
+        flag_name: str,
+        group_ids: list[UUID],
+        user_context: UserContext,
+    ) -> FeatureFlag:
+        """
+        Set the target groups for a feature flag (replaces existing).
+
+        When a flag has target groups, it is only enabled for users in those groups.
+        An empty list clears all targeting (flag applies to everyone when enabled).
+
+        Authorization: Admin only.
+
+        Raises:
+            PermissionDeniedError: If user is not an admin
+            FeatureFlagNotFoundError: If flag doesn't exist
+        """
+        self._require_admin(user_context, "set_flag_target_groups")
+
+        if self.repository.get_by_name(flag_name) is None:
+            raise FeatureFlagNotFoundError(flag_name)
+
+        return self.repository.set_target_groups(flag_name, set(group_ids))
+
+    def add_target_group(
+        self,
+        flag_name: str,
+        group_id: UUID,
+        user_context: UserContext,
+    ) -> FeatureFlag:
+        """
+        Add a target group to a feature flag.
+
+        Idempotent - no error if group already targeted.
+
+        Authorization: Admin only.
+
+        Raises:
+            PermissionDeniedError: If user is not an admin
+            FeatureFlagNotFoundError: If flag doesn't exist
+        """
+        self._require_admin(user_context, "add_flag_target_group")
+
+        if self.repository.get_by_name(flag_name) is None:
+            raise FeatureFlagNotFoundError(flag_name)
+
+        return self.repository.add_target_group(flag_name, group_id)
+
+    def remove_target_group(
+        self,
+        flag_name: str,
+        group_id: UUID,
+        user_context: UserContext,
+    ) -> FeatureFlag:
+        """
+        Remove a target group from a feature flag.
+
+        Idempotent - no error if group not targeted.
+
+        Authorization: Admin only.
+
+        Raises:
+            PermissionDeniedError: If user is not an admin
+            FeatureFlagNotFoundError: If flag doesn't exist
+        """
+        self._require_admin(user_context, "remove_flag_target_group")
+
+        if self.repository.get_by_name(flag_name) is None:
+            raise FeatureFlagNotFoundError(flag_name)
+
+        return self.repository.remove_target_group(flag_name, group_id)

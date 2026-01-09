@@ -10,7 +10,30 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 
+from domain.user_context import UserContext
+from infrastructure.django_app.feature_flags import (
+    DjangoFeatureFlagAdapter,
+    get_feature_flag_repository,
+)
 from infrastructure.django_app.user_context_adapter import build_user_context
+
+
+def get_enabled_flags_for_user(user_context: UserContext) -> list[str]:
+    """
+    Get list of feature flag names that are enabled for this user.
+
+    This checks each flag against the user's group memberships to determine
+    which flags should be active for their session.
+    """
+    adapter = DjangoFeatureFlagAdapter()
+    repository = get_feature_flag_repository()
+
+    enabled_flags = []
+    for flag in repository.get_all():
+        if adapter.is_enabled(flag.name, user_context):
+            enabled_flags.append(flag.name)
+
+    return enabled_flags
 
 
 @api_view(["POST"])
@@ -56,6 +79,7 @@ def login_view(request: Request) -> Response:
                 "username": user_context.username,
                 "role": user_context.role.value,
                 "capabilities": [cap.value for cap in user_context.get_capabilities()],
+                "enabled_flags": get_enabled_flags_for_user(user_context),
             }
         }
     )
@@ -96,6 +120,7 @@ def session_view(request: Request) -> Response:
                         "username": user_context.username,
                         "role": user_context.role.value,
                         "capabilities": [cap.value for cap in user_context.get_capabilities()],
+                        "enabled_flags": get_enabled_flags_for_user(user_context),
                     },
                     "csrf_token": csrf_token,
                 }

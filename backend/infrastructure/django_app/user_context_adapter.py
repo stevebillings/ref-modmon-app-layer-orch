@@ -27,8 +27,14 @@ def build_user_context(user: User) -> UserContext:
 
     role = Role.ADMIN if profile.role == "admin" else Role.CUSTOMER
 
+    # Get user's group IDs for feature flag targeting
+    group_ids = frozenset(
+        membership.group_id for membership in profile.group_memberships.all()
+    )
+
     return UserContext(
         user_id=profile.id,
         username=user.username,
         role=role,
+        group_ids=group_ids,
     )
