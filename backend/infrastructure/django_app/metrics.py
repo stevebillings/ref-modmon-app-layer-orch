@@ -12,6 +12,8 @@ from collections import defaultdict
 from contextlib import contextmanager
 from typing import Dict, Generator, List
 
+from application.ports.metrics import MetricsPort
+
 logger = logging.getLogger(__name__)
 
 
@@ -180,3 +182,56 @@ def record_operation_timing(operation_name: str, duration_ms: float) -> None:
         "operations_total",
         labels={"operation": operation_name},
     )
+
+
+class DjangoMetricsAdapter(MetricsPort):
+    """
+    Django implementation of the MetricsPort interface.
+
+    Uses the global metrics collector for recording operation timing.
+    """
+
+    @contextmanager
+    def time_operation(self, operation_name: str) -> Generator[None, None, None]:
+        """
+        Context manager to time an operation and record metrics.
+
+        Records duration in milliseconds to operation_duration_ms histogram.
+        Also logs the timing with request correlation.
+        """
+        from infrastructure.django_app.request_context import get_request_id
+
+        start_time = time.perf_counter()
+        try:
+            yield
+        finally:
+            duration_ms = (time.perf_counter() - start_time) * 1000
+            _metrics.observe(
+                "operation_duration_ms",
+                duration_ms,
+                labels={"operation": operation_name},
+            )
+            _metrics.increment(
+                "operations_total",
+                labels={"operation": operation_name},
+            )
+            logger.info(
+                f"Operation completed: {operation_name}",
+                extra={
+                    "operation": operation_name,
+                    "duration_ms": round(duration_ms, 2),
+                    "request_id": get_request_id(),
+                },
+            )
+
+
+# Singleton instance for dependency injection
+_metrics_adapter: DjangoMetricsAdapter | None = None
+
+
+def get_metrics_adapter() -> DjangoMetricsAdapter:
+    """Get the singleton metrics adapter instance."""
+    global _metrics_adapter
+    if _metrics_adapter is None:
+        _metrics_adapter = DjangoMetricsAdapter()
+    return _metrics_adapter

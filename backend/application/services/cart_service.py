@@ -5,6 +5,7 @@ from application.ports.address_verification import (
     AddressVerificationResult,
     VerificationStatus,
 )
+from application.ports.metrics import MetricsPort, NoOpMetrics
 from application.ports.unit_of_work import UnitOfWork
 from domain.aggregates.cart.entities import Cart
 from domain.aggregates.order.entities import Order, OrderItem
@@ -36,9 +37,11 @@ class CartService:
         self,
         uow: UnitOfWork,
         address_verification: AddressVerificationPort | None = None,
+        metrics: MetricsPort | None = None,
     ):
         self.uow = uow
         self.address_verification = address_verification
+        self.metrics = metrics or NoOpMetrics()
 
     def get_cart(self, user_context: UserContext) -> Cart:
         """Get the cart for the authenticated user."""
@@ -58,9 +61,7 @@ class CartService:
             ValidationError: If quantity is invalid
             InsufficientStockError: If not enough stock available
         """
-        from infrastructure.django_app.metrics import time_operation
-
-        with time_operation("cart_add_item"):
+        with self.metrics.time_operation("cart_add_item"):
             try:
                 pid = UUID(product_id)
             except ValueError:
@@ -157,9 +158,7 @@ class CartService:
         Raises:
             CartItemNotFoundError: If item not in cart
         """
-        from infrastructure.django_app.metrics import time_operation
-
-        with time_operation("cart_remove_item"):
+        with self.metrics.time_operation("cart_remove_item"):
             try:
                 pid = UUID(product_id)
             except ValueError:
@@ -258,9 +257,7 @@ class CartService:
             EmptyCartError: If cart has no items
             AddressVerificationError: If address verification fails
         """
-        from infrastructure.django_app.metrics import time_operation
-
-        with time_operation("cart_submit"):
+        with self.metrics.time_operation("cart_submit"):
             # Verify address first (fail fast before modifying cart)
             verified_address, _ = self.verify_address(shipping_address)
 

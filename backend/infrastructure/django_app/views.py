@@ -24,6 +24,7 @@ from application.services.user_service import (
     UserService,
 )
 from application.services.order_service import OrderService
+from application.services.product_report_service import ProductReportService
 from application.services.product_service import ProductService
 from domain.aggregates.order.value_objects import UnverifiedAddress
 from domain.exceptions import (
@@ -44,6 +45,7 @@ from domain.user_context import Role, UserContext
 from domain.user_info import UserInfo
 from infrastructure.django_app.address_verification import get_address_verification_adapter
 from infrastructure.django_app.auth_decorators import require_auth
+from infrastructure.django_app.metrics import get_metrics_adapter
 from domain.user_groups import UserGroup
 from infrastructure.django_app.feature_flags import get_feature_flag_repository
 from infrastructure.django_app.repositories.user_group_repository import (
@@ -293,12 +295,6 @@ def product_report(request: Request, user_context: UserContext) -> Response:
             - currently_reserved (sum of quantities in all carts)
         page, page_size, total_count, total_pages, has_next, has_previous: Pagination metadata
     """
-    if not user_context.is_admin():
-        return Response(
-            {"error": "Only admins can view product reports"},
-            status=status.HTTP_403_FORBIDDEN,
-        )
-
     # Parse pagination parameters
     page = _parse_int(request.query_params.get("page"), 1)
     page_size = _parse_int(request.query_params.get("page_size"), 20)
@@ -324,8 +320,14 @@ def product_report(request: Request, user_context: UserContext) -> Response:
         has_reservations=has_reservations,
     )
 
-    reader = get_product_report_reader()
-    result = reader.get_report(query)
+    try:
+        service = ProductReportService(get_product_report_reader())
+        result = service.get_report(query, user_context)
+    except PermissionDeniedError as e:
+        return Response(
+            {"error": str(e)},
+            status=status.HTTP_403_FORBIDDEN,
+        )
 
     return Response({
         "results": [
@@ -357,7 +359,7 @@ def product_report(request: Request, user_context: UserContext) -> Response:
 def cart_get(request: Request, user_context: UserContext) -> Response:
     """Get the current user's cart."""
     with unit_of_work(get_event_dispatcher()) as uow:
-        service = CartService(uow)
+        service = CartService(uow, metrics=get_metrics_adapter())
         cart = service.get_cart(user_context=user_context)
         cart_dict = to_dict(cart)
         cart_dict["total"] = str(cart.get_total())
@@ -370,7 +372,7 @@ def cart_get(request: Request, user_context: UserContext) -> Response:
 def cart_add_item(request: Request, user_context: UserContext) -> Response:
     """Add an item to the user's cart."""
     with unit_of_work(get_event_dispatcher()) as uow:
-        service = CartService(uow)
+        service = CartService(uow, metrics=get_metrics_adapter())
         try:
             data = request.data
             cart = service.add_item(
@@ -396,7 +398,7 @@ def cart_add_item(request: Request, user_context: UserContext) -> Response:
 def cart_update_item(request: Request, product_id: str, user_context: UserContext) -> Response:
     """Update the quantity of an item in the user's cart."""
     with unit_of_work(get_event_dispatcher()) as uow:
-        service = CartService(uow)
+        service = CartService(uow, metrics=get_metrics_adapter())
         try:
             data = request.data
             cart = service.update_item_quantity(
@@ -422,7 +424,7 @@ def cart_update_item(request: Request, product_id: str, user_context: UserContex
 def cart_remove_item(request: Request, product_id: str, user_context: UserContext) -> Response:
     """Remove an item from the user's cart."""
     with unit_of_work(get_event_dispatcher()) as uow:
-        service = CartService(uow)
+        service = CartService(uow, metrics=get_metrics_adapter())
         try:
             cart = service.remove_item(product_id=product_id, user_context=user_context)
             cart_dict = to_dict(cart)
@@ -457,6 +459,7 @@ def cart_verify_address(request: Request, user_context: UserContext) -> Response
         service = CartService(
             uow,
             address_verification=get_address_verification_adapter(),
+            metrics=get_metrics_adapter(),
         )
         try:
             data = request.data
@@ -506,6 +509,7 @@ def cart_submit(request: Request, user_context: UserContext) -> Response:
         service = CartService(
             uow,
             address_verification=get_address_verification_adapter(),
+            metrics=get_metrics_adapter(),
         )
         try:
             data = request.data
@@ -1067,6 +1071,10 @@ def trigger_test_error(request: Request, user_context: UserContext) -> Response:
     Test endpoint to trigger a 500 error for testing incident notifications.
 
     Admin only. Raises an exception to test the incident notification middleware.
+
+    Note: Authorization is intentionally in the view (not application service) because
+    this is a test utility endpoint with no business logic - it only exists to trigger
+    an error for testing the incident notification middleware.
     """
     if not user_context.is_admin():
         return Response(
