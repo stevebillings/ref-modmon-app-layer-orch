@@ -410,6 +410,38 @@ Benefits:
 - **Standards-based**: Prometheus metrics format for monitoring tools
 - **DDD-aware**: Timing specifically targets cross-aggregate operations
 
+### 15. Architecture Enforcement
+
+**Problem**: Software architectures erode over time. Developers (or AI assistants) inadvertently add imports that violate layer boundaries—domain importing from infrastructure, aggregates importing from each other—creating tight coupling that undermines the architecture's benefits.
+
+**Solution**: **Automated Import Linting with import-linter**
+
+Define architectural contracts in `.importlinter`:
+```ini
+[importlinter:contract:domain-layer-independence]
+name = Domain layer must not import from application or infrastructure
+type = forbidden
+source_modules = domain
+forbidden_modules = application, infrastructure, django
+
+[importlinter:contract:cart-aggregate-isolation]
+name = Cart aggregate must not import from other aggregates
+type = forbidden
+source_modules = domain.aggregates.cart
+forbidden_modules = domain.aggregates.product, domain.aggregates.order
+```
+
+Run `lint-imports` to verify:
+```
+Contracts: 5 kept, 0 broken.
+```
+
+Benefits:
+- **Automated enforcement**: Violations caught immediately, not in code review
+- **Self-documenting**: Contracts serve as architecture documentation
+- **CI-ready**: Add to build pipeline to block violating PRs
+- **Granular control**: Enforce both layer boundaries and aggregate isolation
+
 ## Project Structure
 
 ```
