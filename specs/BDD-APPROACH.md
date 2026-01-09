@@ -526,3 +526,140 @@ This provides comprehensive testing:
 | Full coverage | Frontend tests verify the complete user experience |
 | Regression safety | Changes that break behavior fail tests on both layers |
 | Debugging support | Playwright traces show exactly what happened on failure |
+
+## Scaling E2E Tests
+
+As E2E test suites grow, execution time can become problematic. Here are strategies for scaling.
+
+### CI Sharding (Easiest Win)
+
+Playwright supports splitting tests across multiple CI machines:
+
+```yaml
+# .github/workflows/e2e.yml
+jobs:
+  e2e:
+    strategy:
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm ci && npx playwright install --with-deps chromium
+      - run: npm run test:e2e -- --shard=${{ matrix.shard }}/4
+```
+
+Each shard runs 1/4 of the tests in parallel CI jobs.
+
+### Selective Test Execution
+
+**Tag-based filtering for PR vs main branch:**
+
+```gherkin
+@smoke @frontend
+Scenario: Critical checkout flow
+
+@frontend
+Scenario: Edge case handling
+```
+
+```yaml
+# PR builds - smoke tests only (fast feedback)
+- run: npm run test:e2e -- --grep "@smoke"
+
+# Main branch - full suite
+- run: npm run test:e2e
+```
+
+**Changed-file detection:**
+
+```yaml
+- uses: dorny/paths-filter@v2
+  id: changes
+  with:
+    filters: |
+      cart:
+        - 'src/components/Cart*'
+        - 'features/cart/**'
+
+- run: npm run test:e2e -- --grep "Cart"
+  if: steps.changes.outputs.cart == 'true'
+```
+
+### Parallel Execution with Isolated Databases
+
+The current configuration uses `workers=1` due to shared database state. To enable parallelism:
+
+**Per-worker databases:**
+
+```typescript
+// playwright.config.ts
+export default defineConfig({
+  workers: 4,
+});
+
+// test-fixtures.ts - worker-specific database
+testSuffix: async ({}, use, workerInfo) => {
+  process.env.DATABASE_NAME = `test_db_worker_${workerInfo.workerIndex}`;
+  await use(`-${workerInfo.workerIndex}-${Date.now()}`);
+},
+```
+
+**Docker Compose with multiple backends:**
+
+```yaml
+services:
+  backend-0:
+    image: backend:latest
+    environment:
+      - DATABASE_URL=sqlite:///test_0.db
+    ports: ["8000:8000"]
+  backend-1:
+    image: backend:latest
+    environment:
+      - DATABASE_URL=sqlite:///test_1.db
+    ports: ["8001:8000"]
+```
+
+### Test Pyramid Rebalancing
+
+Move coverage to faster test layers:
+
+| Layer | Speed | Coverage Focus |
+|-------|-------|----------------|
+| Unit tests | ~1ms each | Business logic, edge cases |
+| Integration tests | ~100ms each | API contracts, database queries |
+| E2E tests | ~3-5s each | Critical user journeys only |
+
+Keep E2E tests focused on **happy paths** and **critical flows**. Move edge case coverage to faster backend tests.
+
+### Why NOT to Mock the Database in E2E Tests
+
+It may be tempting to replace the real database with in-memory repository fakes for speed. This trades **test fidelity** for **speed** — usually the wrong tradeoff for E2E tests.
+
+**What you'd miss with mocked repositories:**
+
+| Real Database Behavior | In-Memory Mock |
+|------------------------|----------------|
+| Django ORM query correctness | Not tested |
+| Unique constraints, foreign keys | Must reimplement |
+| Transaction rollback/commit | Often simplified |
+| Migration correctness | Bypassed entirely |
+
+**The real bottleneck:** Browser automation dominates E2E test time, not database queries:
+
+| Operation | Typical Time |
+|-----------|--------------|
+| SQLite query | 1-5ms |
+| Browser navigation | 200-500ms |
+| DOM interaction | 50-100ms |
+
+Mocking the database might save 5% of test time while sacrificing confidence in the full stack.
+
+**Where in-memory fakes ARE valuable:** Backend unit tests of domain/application logic, where the hexagonal architecture allows swapping repository implementations.
+
+### Scaling Recommendations
+
+1. **Start with CI sharding** — easiest win, no code changes
+2. **Add tag-based filtering** — smoke tests on PRs, full suite on main
+3. **If still slow**, invest in per-worker database isolation for full parallelism
+4. **Keep E2E tests focused** — move edge cases to faster backend tests
