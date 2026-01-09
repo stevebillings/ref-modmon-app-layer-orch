@@ -24,10 +24,14 @@ from application.services.cart_service import CartService
 from application.services.feature_flag_service import FeatureFlagService
 from application.services.order_service import OrderService
 from application.services.product_service import ProductService
+from application.services.user_group_service import UserGroupService
+from application.services.user_service import UserService
 from domain.aggregates.order.value_objects import UnverifiedAddress
 from domain.user_context import Role, UserContext
 from infrastructure.django_app.address_verification import get_address_verification_adapter
 from infrastructure.django_app.feature_flags import get_feature_flag_repository
+from infrastructure.django_app.repositories.user_group_repository import get_user_group_repository
+from infrastructure.django_app.repositories.user_repository import get_user_repository
 from infrastructure.django_app.unit_of_work import DjangoUnitOfWork
 
 
@@ -70,6 +74,18 @@ def feature_flag_service(db: Any) -> FeatureFlagService:
 
 
 @pytest.fixture
+def user_group_service(db: Any) -> UserGroupService:
+    """Create a UserGroupService instance."""
+    return UserGroupService(get_user_group_repository())
+
+
+@pytest.fixture
+def user_service(db: Any) -> UserService:
+    """Create a UserService instance."""
+    return UserService(get_user_repository(), get_user_group_repository())
+
+
+@pytest.fixture
 def admin_user_context() -> UserContext:
     """Create an admin UserContext."""
     return UserContext(
@@ -101,6 +117,7 @@ def context() -> dict[str, Any]:
     - orders: List of created orders
     - named_users: Dict mapping usernames to UserContext instances
     - feature_flags: Dict mapping flag names to FeatureFlag entities
+    - user_groups: Dict mapping group names to UserGroup entities
     """
     return {
         "current_user_context": None,
@@ -109,6 +126,7 @@ def context() -> dict[str, Any]:
         "orders": [],
         "named_users": {},
         "feature_flags": {},
+        "user_groups": {},
     }
 
 

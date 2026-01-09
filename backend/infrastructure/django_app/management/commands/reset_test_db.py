@@ -80,6 +80,12 @@ class Command(BaseCommand):
             {"username": "bob", "password": "bob", "role": "customer"},
             # Dedicated user for "no orders" test - never used by other tests
             {"username": "noorders", "password": "noorders", "role": "customer"},
+            # Additional users for user management BDD tests
+            {"username": "charlie", "password": "charlie", "role": "customer"},
+            {"username": "dave", "password": "dave", "role": "customer"},
+            {"username": "eve", "password": "eve", "role": "admin"},
+            {"username": "frank", "password": "frank", "role": "customer"},
+            {"username": "grace", "password": "grace", "role": "customer"},
         ]
 
         for user_data in test_users:
