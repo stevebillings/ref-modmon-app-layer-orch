@@ -4,6 +4,7 @@ from django.conf import settings
 
 from application.ports.email import EmailPort, IncidentDetails
 from application.ports.feature_flags import FeatureFlagPort
+from domain.user_context import UserContext
 
 logger = logging.getLogger(__name__)
 
@@ -24,14 +25,17 @@ class IncidentNotifier:
         self.feature_flags = feature_flags
         self.email = email
 
-    def notify_if_enabled(self, incident: IncidentDetails) -> None:
+    def notify_if_enabled(
+        self, incident: IncidentDetails, user_context: UserContext | None = None
+    ) -> None:
         """
         Send incident notification if the feature flag is enabled.
 
         Args:
             incident: Details about the server incident.
+            user_context: Optional user context for targeted flag evaluation.
         """
-        if not self.feature_flags.is_enabled(INCIDENT_EMAIL_FLAG):
+        if not self.feature_flags.is_enabled(INCIDENT_EMAIL_FLAG, user_context):
             logger.debug(
                 f"Incident notification skipped - '{INCIDENT_EMAIL_FLAG}' flag is disabled"
             )

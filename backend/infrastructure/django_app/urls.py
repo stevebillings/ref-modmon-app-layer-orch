@@ -83,6 +83,23 @@ urlpatterns = [
         views.user_group_remove_user,
         name="user-group-remove-user",
     ),
+    # User management admin endpoints
+    path("admin/users/", views.users_list, name="users-list"),
+    path(
+        "admin/users/<str:user_id>/",
+        views.user_detail,
+        name="user-detail",
+    ),
+    path(
+        "admin/users/<str:user_id>/groups/",
+        views.user_add_to_group,
+        name="user-add-to-group",
+    ),
+    path(
+        "admin/users/<str:user_id>/groups/<str:group_id>/",
+        views.user_remove_from_group,
+        name="user-remove-from-group",
+    ),
     # Debug/test endpoints
     path("debug/trigger-error/", views.trigger_test_error, name="trigger-test-error"),
     # Health check and metrics

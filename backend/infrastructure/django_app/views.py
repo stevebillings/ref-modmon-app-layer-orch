@@ -19,6 +19,10 @@ from application.services.user_group_service import (
     UserGroupNotFoundError,
     UserGroupService,
 )
+from application.services.user_service import (
+    UserNotFoundError,
+    UserService,
+)
 from application.services.order_service import OrderService
 from application.services.product_service import ProductService
 from domain.aggregates.order.value_objects import UnverifiedAddress
@@ -36,13 +40,17 @@ from domain.exceptions import (
     ProductNotFoundError,
     ValidationError,
 )
-from domain.user_context import UserContext
+from domain.user_context import Role, UserContext
+from domain.user_info import UserInfo
 from infrastructure.django_app.address_verification import get_address_verification_adapter
 from infrastructure.django_app.auth_decorators import require_auth
 from domain.user_groups import UserGroup
 from infrastructure.django_app.feature_flags import get_feature_flag_repository
 from infrastructure.django_app.repositories.user_group_repository import (
     get_user_group_repository,
+)
+from infrastructure.django_app.repositories.user_repository import (
+    get_user_repository,
 )
 from infrastructure.django_app.readers.product_report_reader import get_product_report_reader
 from infrastructure.django_app.user_context_adapter import build_user_context
@@ -867,6 +875,135 @@ def user_group_remove_user(
     except UserGroupNotFoundError:
         return Response(
             {"error": f"Group '{group_id}' not found"},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+    except ValueError as e:
+        return Response({"error": f"Invalid UUID: {e}"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+# --- User Management Admin Endpoints ---
+
+
+def _user_info_to_dict(user: UserInfo) -> dict[str, Any]:
+    """Convert a UserInfo to a dictionary."""
+    return {
+        "id": str(user.id),
+        "username": user.username,
+        "email": user.email,
+        "role": user.role.value,
+        "group_ids": [str(gid) for gid in user.group_ids],
+    }
+
+
+def _get_user_service() -> UserService:
+    """Get the user service with its dependencies."""
+    return UserService(get_user_repository(), get_user_group_repository())
+
+
+@api_view(["GET"])
+@require_auth
+def users_list(request: Request, user_context: UserContext) -> Response:
+    """List all users with their roles and groups. Admin only."""
+    try:
+        service = _get_user_service()
+        users = service.get_all(user_context)
+        return Response({"results": [_user_info_to_dict(u) for u in users]})
+    except PermissionDeniedError as e:
+        return Response({"error": str(e)}, status=status.HTTP_403_FORBIDDEN)
+
+
+@api_view(["GET", "PUT"])
+@require_auth
+def user_detail(
+    request: Request, user_id: str, user_context: UserContext
+) -> Response:
+    """Get or update a user's details. Admin only."""
+    from uuid import UUID
+
+    try:
+        service = _get_user_service()
+        uid = UUID(user_id)
+
+        if request.method == "GET":
+            user = service.get_by_id(uid, user_context)
+            return Response(_user_info_to_dict(user))
+
+        if request.method == "PUT":
+            data = request.data
+            role_str = data.get("role")
+            if role_str:
+                try:
+                    role = Role(role_str)
+                except ValueError:
+                    return Response(
+                        {"error": f"Invalid role: {role_str}. Must be 'admin' or 'customer'"},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                user = service.update_role(uid, role, user_context)
+                return Response(_user_info_to_dict(user))
+            return Response(
+                {"error": "No updates provided"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    except PermissionDeniedError as e:
+        return Response({"error": str(e)}, status=status.HTTP_403_FORBIDDEN)
+    except UserNotFoundError:
+        return Response(
+            {"error": f"User '{user_id}' not found"},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+    except ValueError as e:
+        return Response({"error": f"Invalid UUID: {e}"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(["POST"])
+@require_auth
+def user_add_to_group(
+    request: Request, user_id: str, user_context: UserContext
+) -> Response:
+    """Add a user to a group. Admin only."""
+    from uuid import UUID
+
+    try:
+        service = _get_user_service()
+        uid = UUID(user_id)
+        data = request.data
+        group_id = UUID(data.get("group_id", ""))
+        user = service.add_to_group(uid, group_id, user_context)
+        return Response(_user_info_to_dict(user))
+    except PermissionDeniedError as e:
+        return Response({"error": str(e)}, status=status.HTTP_403_FORBIDDEN)
+    except UserNotFoundError:
+        return Response(
+            {"error": f"User '{user_id}' not found"},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+    except ValueError as e:
+        return Response({"error": f"Invalid UUID: {e}"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(["DELETE"])
+@require_auth
+def user_remove_from_group(
+    request: Request, user_id: str, group_id: str, user_context: UserContext
+) -> Response:
+    """Remove a user from a group. Admin only."""
+    from uuid import UUID
+
+    try:
+        service = _get_user_service()
+        uid = UUID(user_id)
+        gid = UUID(group_id)
+        user = service.remove_from_group(uid, gid, user_context)
+        return Response(_user_info_to_dict(user))
+    except PermissionDeniedError as e:
+        return Response({"error": str(e)}, status=status.HTTP_403_FORBIDDEN)
+    except UserNotFoundError:
+        return Response(
+            {"error": f"User '{user_id}' not found"},
             status=status.HTTP_404_NOT_FOUND,
         )
     except ValueError as e:

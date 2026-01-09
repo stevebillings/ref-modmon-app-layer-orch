@@ -158,6 +158,23 @@ export interface UserGroupUsersResponse {
   user_ids: string[];
 }
 
+// User Management types
+export interface ManagedUser {
+  id: string;
+  username: string;
+  email: string;
+  role: 'admin' | 'customer';
+  group_ids: string[];
+}
+
+export interface ManagedUserListResponse {
+  results: ManagedUser[];
+}
+
+export interface UpdateUserRoleRequest {
+  role: 'admin' | 'customer';
+}
+
 // Product Report types
 export interface ProductReportItem {
   product_id: string;

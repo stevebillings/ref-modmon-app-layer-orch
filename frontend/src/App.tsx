@@ -10,6 +10,7 @@ import { OrderHistoryPage } from './pages/OrderHistoryPage';
 import { ProductReportPage } from './pages/ProductReportPage';
 import { SystemPage } from './pages/SystemPage';
 import { UserGroupsPage } from './pages/UserGroupsPage';
+import { UserManagementPage } from './pages/UserManagementPage';
 
 function App() {
   return (
@@ -57,6 +58,14 @@ function App() {
               element={
                 <ProtectedRoute requireAdmin>
                   <UserGroupsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/users"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <UserManagementPage />
                 </ProtectedRoute>
               }
             />

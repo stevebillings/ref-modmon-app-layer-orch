@@ -9,6 +9,7 @@ from uuid import uuid4
 from django.http import HttpRequest, HttpResponse
 
 from application.ports.email import IncidentDetails
+from domain.user_context import UserContext
 
 logger = logging.getLogger(__name__)
 request_logger = logging.getLogger("infrastructure.request")
@@ -43,10 +44,20 @@ class IncidentNotificationMiddleware:
         notification asynchronously.
         Returns None to let Django's normal error handling continue.
         """
-        # Build incident details
+        # Build incident details and user context
         user_id = None
+        user_context: UserContext | None = None
         if hasattr(request, "user") and request.user.is_authenticated:
             user_id = str(request.user.id)
+            # Build user context for feature flag targeting
+            try:
+                from infrastructure.django_app.user_context_adapter import (
+                    build_user_context,
+                )
+
+                user_context = build_user_context(request.user)
+            except Exception as e:
+                logger.warning(f"Failed to build user context: {e}")
 
         now = datetime.now(timezone.utc)
         stack_trace = traceback.format_exc()
@@ -65,7 +76,7 @@ class IncidentNotificationMiddleware:
         self._write_audit_log(exception, stack_trace, user_id, now)
 
         # Dispatch notification asynchronously
-        _executor.submit(self._send_notification, incident)
+        _executor.submit(self._send_notification, incident, user_context)
 
         # Return None to let Django's normal error handling continue
         return None
@@ -101,7 +112,9 @@ class IncidentNotificationMiddleware:
         except Exception as e:
             logger.error(f"Failed to write exception to audit log: {e}")
 
-    def _send_notification(self, incident: IncidentDetails) -> None:
+    def _send_notification(
+        self, incident: IncidentDetails, user_context: UserContext | None = None
+    ) -> None:
         """Send notification in background thread."""
         try:
             # Import here to avoid circular imports and ensure
@@ -111,7 +124,7 @@ class IncidentNotificationMiddleware:
             )
 
             notifier = get_incident_notifier()
-            notifier.notify_if_enabled(incident)
+            notifier.notify_if_enabled(incident, user_context)
         except Exception as e:
             logger.error(f"Failed to send incident notification: {e}")
 

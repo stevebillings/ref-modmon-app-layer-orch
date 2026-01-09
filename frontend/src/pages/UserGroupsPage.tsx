@@ -77,6 +77,9 @@ export function UserGroupsPage() {
           </Text>
         </Box>
         <HStack gap={2}>
+          <Link to="/admin/users">
+            <Button variant="outline">Users</Button>
+          </Link>
           <Link to="/admin/system">
             <Button variant="outline">System</Button>
           </Link>

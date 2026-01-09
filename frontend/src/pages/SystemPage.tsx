@@ -109,6 +109,9 @@ export function SystemPage() {
           </Text>
         </Box>
         <HStack gap={2}>
+          <Link to="/admin/users">
+            <Button variant="outline">Users</Button>
+          </Link>
           <Link to="/admin/user-groups">
             <Button variant="outline">User Groups</Button>
           </Link>

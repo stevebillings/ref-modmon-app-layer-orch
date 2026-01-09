@@ -63,7 +63,7 @@ class TestIncidentNotifier:
             mock_settings.INCIDENT_NOTIFICATION_RECIPIENTS = ["dev@example.com"]
             notifier.notify_if_enabled(sample_incident)
 
-        mock_flags.is_enabled.assert_called_once_with(INCIDENT_EMAIL_FLAG)
+        mock_flags.is_enabled.assert_called_once_with(INCIDENT_EMAIL_FLAG, None)
         mock_email.send_incident_alert.assert_called_once_with(
             sample_incident, ["dev@example.com"]
         )
@@ -78,7 +78,7 @@ class TestIncidentNotifier:
         notifier = IncidentNotifier(feature_flags=mock_flags, email=mock_email)
         notifier.notify_if_enabled(sample_incident)
 
-        mock_flags.is_enabled.assert_called_once_with(INCIDENT_EMAIL_FLAG)
+        mock_flags.is_enabled.assert_called_once_with(INCIDENT_EMAIL_FLAG, None)
         mock_email.send_incident_alert.assert_not_called()
 
     def test_no_notification_when_no_recipients(

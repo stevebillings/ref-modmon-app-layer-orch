@@ -6,6 +6,8 @@ import type {
   CreateUserGroupRequest,
   FeatureFlag,
   FeatureFlagListResponse,
+  ManagedUser,
+  ManagedUserListResponse,
   Order,
   OrderListResponse,
   Product,
@@ -16,6 +18,7 @@ import type {
   SessionResponse,
   ShippingAddress,
   UpdateFeatureFlagRequest,
+  UpdateUserRoleRequest,
   UserGroup,
   UserGroupListResponse,
   UserGroupUsersResponse,
@@ -448,4 +451,65 @@ export async function triggerTestError(): Promise<void> {
   });
   // This endpoint always throws a 500, so we don't check response.ok
   // We just want to trigger the error
+}
+
+// User Management API
+
+export async function getUsers(): Promise<ManagedUser[]> {
+  const response = await fetch(`${API_BASE}/admin/users/`, {
+    credentials: 'include',
+  });
+  const data = await handleResponse<ManagedUserListResponse>(response);
+  return data.results;
+}
+
+export async function getUser(userId: string): Promise<ManagedUser> {
+  const response = await fetch(`${API_BASE}/admin/users/${userId}/`, {
+    credentials: 'include',
+  });
+  return handleResponse<ManagedUser>(response);
+}
+
+export async function updateUserRole(
+  userId: string,
+  request: UpdateUserRoleRequest
+): Promise<ManagedUser> {
+  const response = await fetch(`${API_BASE}/admin/users/${userId}/`, {
+    method: 'PUT',
+    headers: getHeaders(),
+    credentials: 'include',
+    body: JSON.stringify(request),
+  });
+  return handleResponse<ManagedUser>(response);
+}
+
+export async function addUserToGroupViaUser(
+  userId: string,
+  groupId: string
+): Promise<void> {
+  const response = await fetch(`${API_BASE}/admin/users/${userId}/groups/`, {
+    method: 'POST',
+    headers: getHeaders(),
+    credentials: 'include',
+    body: JSON.stringify({ group_id: groupId }),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to add user to group');
+  }
+}
+
+export async function removeUserFromGroupViaUser(
+  userId: string,
+  groupId: string
+): Promise<void> {
+  const response = await fetch(`${API_BASE}/admin/users/${userId}/groups/${groupId}/`, {
+    method: 'DELETE',
+    headers: getHeaders(),
+    credentials: 'include',
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to remove user from group');
+  }
 }
