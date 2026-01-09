@@ -116,3 +116,62 @@ project-root/
 - **GET /api/orders/** - List all orders
   - Response: Array of Order objects with nested items and computed total
   - Ordering: Descending by submitted_at (newest first)
+
+### Admin Feature Flag Endpoints
+
+All feature flag endpoints require admin authentication.
+
+- **GET /api/admin/feature-flags/** - List all feature flags
+  - Response: Array of FeatureFlag objects with target_group_ids
+- **POST /api/admin/feature-flags/create/** - Create a new feature flag
+  - Request body: `{ name, enabled, description }`
+  - Response: Created FeatureFlag object
+- **GET /api/admin/feature-flags/{name}/** - Get flag details
+  - Response: FeatureFlag object with target_group_ids
+- **PUT /api/admin/feature-flags/{name}/** - Update flag (enabled, description)
+  - Request body: `{ enabled?, description? }`
+  - Response: Updated FeatureFlag object
+- **DELETE /api/admin/feature-flags/{name}/** - Delete flag
+  - Response: 204 No Content
+- **PUT /api/admin/feature-flags/{name}/targets/** - Set target groups (replaces existing)
+  - Request body: `{ group_ids: [...] }`
+  - Response: 204 No Content
+- **POST /api/admin/feature-flags/{name}/targets/add/** - Add target group
+  - Request body: `{ group_id }`
+  - Response: 204 No Content
+- **DELETE /api/admin/feature-flags/{name}/targets/{group_id}/** - Remove target group
+  - Response: 204 No Content
+
+### Admin User Group Endpoints
+
+All user group endpoints require admin authentication.
+
+- **GET /api/admin/user-groups/** - List all user groups
+  - Response: Array of UserGroup objects
+- **POST /api/admin/user-groups/create/** - Create a new user group
+  - Request body: `{ name, description }`
+  - Response: Created UserGroup object with id
+- **GET /api/admin/user-groups/{id}/** - Get group details
+  - Response: UserGroup object
+- **DELETE /api/admin/user-groups/{id}/** - Delete group
+  - Response: 204 No Content
+  - Note: Also removes group from all feature flag targets
+- **GET /api/admin/user-groups/{id}/users/** - List users in group
+  - Response: `{ user_ids: [...] }`
+- **POST /api/admin/user-groups/{id}/users/** - Add user to group
+  - Request body: `{ user_id }`
+  - Response: 204 No Content
+- **DELETE /api/admin/user-groups/{id}/users/{user_id}/** - Remove user from group
+  - Response: 204 No Content
+
+### Admin User Management Endpoints
+
+All user management endpoints require admin authentication.
+
+- **GET /api/admin/users/** - List all users
+  - Response: Array of User objects with id, username, role, group_ids
+- **GET /api/admin/users/{id}/** - Get user details
+  - Response: User object with group_ids
+- **PUT /api/admin/users/{id}/** - Update user role
+  - Request body: `{ role }`
+  - Response: Updated User object

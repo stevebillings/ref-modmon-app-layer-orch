@@ -180,9 +180,10 @@ class UserContext:
     user_id: UUID
     username: str
     role: Role  # ADMIN or CUSTOMER
+    group_ids: frozenset[UUID]  # For feature flag targeting
 ```
 
-Infrastructure converts Django's User to UserContext. Application services receive UserContext for authorization decisions. The domain layer remains completely auth-unaware.
+Infrastructure converts Django's User to UserContext, including group memberships. Application services receive UserContext for authorization decisions and feature flag targeting. The domain layer remains completely auth-unaware.
 
 ### 8. Frontend Authorization Without HATEOAS
 
@@ -240,18 +241,35 @@ Benefits:
 | Singleton creation | Atomic get-or-create | `get_or_create()` |
 | Uniqueness validation | DB constraint + fallback | Unique constraint + catch `IntegrityError` |
 
-### 10. Feature Flags
+### 10. Feature Flags with User Group Targeting
 
-**Problem**: Deploying new features requires code changes. Rolling back problematic features means redeploying.
+**Problem**: Deploying new features requires code changes. Rolling back problematic features means redeploying. Rolling out features gradually to specific users is difficult without complex deployment strategies.
 
-**Solution**: **Feature Flag System with Hexagonal Architecture**
+**Solution**: **Feature Flag System with User Group Targeting**
 
-- Port interface: `FeatureFlagPort.is_enabled(flag_name)`
-- Database adapter: Stores flags, changes take effect immediately
-- Admin API: CRUD operations for flag management
+- Port interface: `FeatureFlagPort.is_enabled(flag_name, user_context)`
+- Database adapter: Stores flags with optional target groups
+- Admin API: CRUD operations for flags, groups, and targeting
 - Fail-safe defaults: Unknown flags return `false`
 
-Features can be toggled without deployment. The first use case demonstrated is incident email notifications.
+**Targeting Logic**:
+```python
+def is_enabled(flag_name, user_context):
+    # Master kill switch - if disabled, always False
+    if not flag.enabled:
+        return False
+    # No target groups - enabled for everyone
+    if not flag.target_groups:
+        return True
+    # With target groups - check user membership
+    return user_context and user_in_any_target_group(user_context, flag.target_groups)
+```
+
+**User Groups vs Roles**:
+- **Roles** are for authorization (what you CAN do): Admin, Customer
+- **Groups** are for targeting (what you SEE): beta_testers, internal_users, power_users
+
+A customer can be in the "beta_testers" group without gaining admin privileges. This enables gradual rollouts, A/B testing, and feature gating without coupling to the authorization model.
 
 ### 11. Soft Delete with History Preservation
 

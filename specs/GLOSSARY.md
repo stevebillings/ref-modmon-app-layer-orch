@@ -83,7 +83,7 @@ A standard user role. Can browse products, manage their own cart, and view their
 A specific action a user is permitted to perform, derived from their role. Examples: `products:create`, `products:delete`, `cart:modify`. Used by the frontend to show/hide UI elements.
 
 ### UserContext
-A framework-agnostic representation of the authenticated user. Contains user ID, username, role, and capabilities. Passed to application services for authorization checks.
+A framework-agnostic representation of the authenticated user. Contains user ID, username, role, capabilities, and group memberships. Passed to application services for authorization checks and feature flag targeting.
 
 ### Actor ID
 An identifier for who performed an action, used in domain events for audit logging. Derived from UserContext.
@@ -143,7 +143,16 @@ Domain event raised when a soft-deleted product is restored.
 ## Infrastructure Terms
 
 ### Feature Flag
-A runtime toggle that enables or disables functionality without code deployment. Stored in the database, managed by admins.
+A runtime toggle that enables or disables functionality without code deployment. Stored in the database, managed by admins. Can be globally enabled/disabled or targeted to specific user groups.
+
+### Feature Flag Targeting
+The ability to enable a feature flag only for users in specific groups. When a flag has target groups, it's only enabled for users who belong to at least one of those groups.
+
+### User Group
+An ad-hoc collection of users for feature targeting purposes. Separate from roles - groups determine which features users see, while roles determine what actions users can perform. Examples: "beta_testers", "internal_users", "power_users".
+
+### Target Group
+A user group that has been associated with a feature flag. Users in any target group for a flag will have that flag enabled (assuming the flag's master toggle is on).
 
 ### Audit Log
 A persistent record of domain events for compliance and debugging. Automatically populated by an event handler.
