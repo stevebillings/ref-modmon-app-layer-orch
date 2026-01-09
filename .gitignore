@@ -13,3 +13,7 @@ frontend/cucumber-report/
 frontend/test-results/
 **/.features-gen/
 
+# Environment files with secrets
+.env
+*.env.local
+

@@ -32,6 +32,28 @@ python manage.py migrate
 python manage.py runserver
 ```
 
+### Email Configuration (Optional)
+
+To enable real email sending (e.g., for incident notifications), configure Gmail SMTP:
+
+1. Copy the example environment file:
+   ```bash
+   cp backend/.env.example backend/.env
+   ```
+
+2. Edit `backend/.env` with your Gmail credentials:
+   ```
+   EMAIL_HOST_USER=your-email@gmail.com
+   EMAIL_HOST_PASSWORD=your-app-password
+   ```
+
+3. **Important**: You need a Gmail App Password, not your regular password:
+   - Go to [Google App Passwords](https://myaccount.google.com/apppasswords)
+   - Generate an app password for "Mail"
+   - Use that 16-character password in `EMAIL_HOST_PASSWORD`
+
+Without these settings, emails are printed to the console (development mode).
+
 ### Frontend Setup
 
 ```bash
