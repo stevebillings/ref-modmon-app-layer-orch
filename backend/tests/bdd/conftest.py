@@ -21,11 +21,13 @@ def pytest_bdd_apply_tag(tag: str, function: Any) -> Any:
 
 from application.ports.address_verification import AddressVerificationPort
 from application.services.cart_service import CartService
+from application.services.feature_flag_service import FeatureFlagService
 from application.services.order_service import OrderService
 from application.services.product_service import ProductService
 from domain.aggregates.order.value_objects import UnverifiedAddress
 from domain.user_context import Role, UserContext
 from infrastructure.django_app.address_verification import get_address_verification_adapter
+from infrastructure.django_app.feature_flags import get_feature_flag_repository
 from infrastructure.django_app.unit_of_work import DjangoUnitOfWork
 
 
@@ -62,6 +64,12 @@ def order_service(uow: DjangoUnitOfWork) -> OrderService:
 
 
 @pytest.fixture
+def feature_flag_service(db: Any) -> FeatureFlagService:
+    """Create a FeatureFlagService instance."""
+    return FeatureFlagService(get_feature_flag_repository())
+
+
+@pytest.fixture
 def admin_user_context() -> UserContext:
     """Create an admin UserContext."""
     return UserContext(
@@ -92,6 +100,7 @@ def context() -> dict[str, Any]:
     - products: Dict mapping product names to Product entities
     - orders: List of created orders
     - named_users: Dict mapping usernames to UserContext instances
+    - feature_flags: Dict mapping flag names to FeatureFlag entities
     """
     return {
         "current_user_context": None,
@@ -99,6 +108,7 @@ def context() -> dict[str, Any]:
         "products": {},
         "orders": [],
         "named_users": {},
+        "feature_flags": {},
     }
 
 
