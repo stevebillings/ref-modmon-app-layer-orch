@@ -505,3 +505,10 @@ The following are intentionally deferred to keep the implementation simple:
 - **One Django App Per Aggregate**: Currently using single app for simplicity
 
 See [ARCHITECTURE.md](specs/ARCHITECTURE.md#future-considerations) for trade-off analysis.
+
+## License
+
+This project is dedicated to the public domain under **CC0 1.0 Universal**.
+You may use, copy, modify, distribute, and sell this code without restriction and without attribution.
+
+See the [LICENSE](LICENSE) file for the full legal text.
