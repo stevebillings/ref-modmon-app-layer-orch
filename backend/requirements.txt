@@ -3,8 +3,8 @@ certifi==2026.1.4
 charset-normalizer==3.4.4
 Django==4.2.27
 django-cors-headers==4.9.0
-django-stubs==5.2.8
-django-stubs-ext==5.2.8
+django-stubs==4.2.7
+django-stubs-ext==4.2.7
 djangorestframework==3.16.1
 djangorestframework-stubs==3.16.6
 idna==3.11
