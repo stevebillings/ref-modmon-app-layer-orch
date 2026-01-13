@@ -5,6 +5,7 @@ Provides read/write access to user profiles for admin management.
 """
 
 from uuid import UUID
+from typing import Any, Dict, FrozenSet, List, Optional, Set
 
 from application.ports.user_repository import UserRepository
 from domain.user_context import Role
@@ -22,7 +23,7 @@ class DjangoUserRepository(UserRepository):
     Queries UserProfile and related models to provide user management.
     """
 
-    def _to_domain(self, profile: UserProfile, group_ids: frozenset[UUID]) -> UserInfo:
+    def _to_domain(self, profile: UserProfile, group_ids: FrozenSet[UUID]) -> UserInfo:
         """Convert ORM model to domain object."""
         return UserInfo(
             id=profile.id,
@@ -32,25 +33,26 @@ class DjangoUserRepository(UserRepository):
             group_ids=group_ids,
         )
 
-    def _get_group_ids(self, profile_id: UUID) -> frozenset[UUID]:
+    def _get_group_ids(self, profile_id: UUID) -> FrozenSet[UUID]:
         """Get all group IDs for a user profile."""
         memberships = UserGroupMembershipModel.objects.filter(
             user_profile_id=profile_id
         ).values_list("group_id", flat=True)
         return frozenset(memberships)
 
-    def get_all(self) -> list[UserInfo]:
+    def get_all(self) -> List[UserInfo]:
         """Get all users with their profile information."""
         profiles = UserProfile.objects.select_related("user").order_by("user__username")
 
         # Batch load group memberships for efficiency
         profile_ids = [p.id for p in profiles]
-        memberships = UserGroupMembershipModel.objects.filter(
+        membership_qs: Any = UserGroupMembershipModel.objects.filter(
             user_profile_id__in=profile_ids
-        ).values("user_profile_id", "group_id")
+        )
+        memberships: List[Dict[str, Any]] = list(membership_qs.values("user_profile_id", "group_id"))
 
         # Build group_ids map
-        group_ids_by_profile: dict[UUID, set[UUID]] = {pid: set() for pid in profile_ids}
+        group_ids_by_profile: Dict[UUID, Set[UUID]] = {pid: set() for pid in profile_ids}
         for m in memberships:
             group_ids_by_profile[m["user_profile_id"]].add(m["group_id"])
 
@@ -59,7 +61,7 @@ class DjangoUserRepository(UserRepository):
             for p in profiles
         ]
 
-    def get_by_id(self, user_id: UUID) -> UserInfo | None:
+    def get_by_id(self, user_id: UUID) -> Optional[UserInfo]:
         """Get a user by their profile ID."""
         try:
             profile = UserProfile.objects.select_related("user").get(id=user_id)
@@ -68,7 +70,7 @@ class DjangoUserRepository(UserRepository):
         except UserProfile.DoesNotExist:
             return None
 
-    def update_role(self, user_id: UUID, role: Role) -> UserInfo | None:
+    def update_role(self, user_id: UUID, role: Role) -> Optional[UserInfo]:
         """Update a user's role."""
         try:
             profile = UserProfile.objects.select_related("user").get(id=user_id)
@@ -81,7 +83,7 @@ class DjangoUserRepository(UserRepository):
 
 
 # Singleton instance for easy access
-_user_repository: UserRepository | None = None
+_user_repository: Optional[UserRepository] = None
 
 
 def get_user_repository() -> UserRepository:

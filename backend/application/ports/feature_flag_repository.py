@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
+from typing import FrozenSet, List, Optional, Set
 from uuid import UUID
 
 
@@ -17,7 +18,7 @@ class FeatureFlag:
     description: str
     created_at: datetime
     updated_at: datetime
-    target_group_ids: frozenset[UUID] = field(default_factory=frozenset)
+    target_group_ids: FrozenSet[UUID] = field(default_factory=frozenset)
 
     def is_targeted(self) -> bool:
         """Check if this flag has any target groups."""
@@ -33,12 +34,12 @@ class FeatureFlagRepository(ABC):
     """
 
     @abstractmethod
-    def get_all(self) -> list[FeatureFlag]:
+    def get_all(self) -> List[FeatureFlag]:
         """Get all feature flags."""
         pass
 
     @abstractmethod
-    def get_by_name(self, name: str) -> FeatureFlag | None:
+    def get_by_name(self, name: str) -> Optional[FeatureFlag]:
         """
         Get a feature flag by name.
 
@@ -76,7 +77,7 @@ class FeatureFlagRepository(ABC):
         pass
 
     @abstractmethod
-    def set_target_groups(self, flag_name: str, group_ids: set[UUID]) -> FeatureFlag:
+    def set_target_groups(self, flag_name: str, group_ids: Set[UUID]) -> FeatureFlag:
         """
         Set the target groups for a feature flag (replaces existing).
 

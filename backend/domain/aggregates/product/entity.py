@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import TYPE_CHECKING, List
+from typing import List, Optional, TYPE_CHECKING, Union
 from uuid import UUID, uuid4
 
 from domain.aggregates.product.validation import (
@@ -30,7 +30,7 @@ class Product:
     price: Decimal
     stock_quantity: int
     created_at: datetime
-    deleted_at: datetime | None = None
+    deleted_at: Optional[datetime] = None
     _domain_events: List["DomainEvent"] = field(
         default_factory=list, repr=False, compare=False
     )
@@ -44,7 +44,7 @@ class Product:
     def create(
         cls,
         name: str,
-        price: Decimal | str | float,
+        price: Union[Decimal, str, float],
         stock_quantity: int,
     ) -> "Product":
         """

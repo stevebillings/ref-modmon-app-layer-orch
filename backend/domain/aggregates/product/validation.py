@@ -1,4 +1,5 @@
 from decimal import Decimal, InvalidOperation
+from typing import Union
 
 from domain.exceptions import ValidationError
 
@@ -15,7 +16,7 @@ def validate_product_name(name: str) -> str:
     return name
 
 
-def validate_product_price(price: Decimal | str | float) -> Decimal:
+def validate_product_price(price: Union[Decimal, str, float]) -> Decimal:
     """Validate product price: greater than 0, max 2 decimal places."""
     try:
         if isinstance(price, str):

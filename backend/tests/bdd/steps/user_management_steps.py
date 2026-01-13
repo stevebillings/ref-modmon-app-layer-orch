@@ -1,6 +1,6 @@
 """User management step definitions."""
 
-from typing import Any
+from typing import Any, Dict
 from uuid import uuid4
 
 from django.contrib.auth.models import User
@@ -47,7 +47,7 @@ def _create_database_user_with_role(username: str, role: str) -> UserContext:
 
 
 @given(parsers.parse('an admin "{username}" exists'))
-def admin_exists(context: dict[str, Any], username: str) -> None:
+def admin_exists(context: Dict[str, Any], username: str) -> None:
     """Ensure a named admin exists with a real database user profile."""
     if username not in context["named_users"]:
         context["named_users"][username] = _create_database_user_with_role(username, "admin")
@@ -60,7 +60,7 @@ def admin_exists(context: dict[str, Any], username: str) -> None:
 
 @when("I list all users")
 def list_all_users(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     user_service: UserService,
 ) -> None:
     """List all users (expected to succeed)."""
@@ -70,7 +70,7 @@ def list_all_users(
 
 @when("I try to list all users")
 def try_list_all_users(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     user_service: UserService,
 ) -> None:
     """Try to list all users (may fail)."""
@@ -84,7 +84,7 @@ def try_list_all_users(
 
 @when(parsers.parse('I view user "{username}" details'))
 def view_user_details(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     user_service: UserService,
     username: str,
 ) -> None:
@@ -99,7 +99,7 @@ def view_user_details(
 
 @when(parsers.parse('I try to view user "{username}" details'))
 def try_view_user_details(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     user_service: UserService,
     username: str,
 ) -> None:
@@ -118,7 +118,7 @@ def try_view_user_details(
 
 @when("I try to view nonexistent user details")
 def try_view_nonexistent_user(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     user_service: UserService,
 ) -> None:
     """Try to view a nonexistent user's details."""
@@ -132,7 +132,7 @@ def try_view_nonexistent_user(
 
 @when(parsers.parse('I update user "{username}" role to "{role}"'))
 def update_user_role(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     user_service: UserService,
     username: str,
     role: str,
@@ -151,7 +151,7 @@ def update_user_role(
 
 @when(parsers.parse('I try to update user "{username}" role to "{role}"'))
 def try_update_user_role(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     user_service: UserService,
     username: str,
     role: str,
@@ -174,7 +174,7 @@ def try_update_user_role(
 
 @when(parsers.parse('I try to update nonexistent user role to "{role}"'))
 def try_update_nonexistent_user_role(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     user_service: UserService,
     role: str,
 ) -> None:
@@ -197,7 +197,7 @@ def try_update_nonexistent_user_role(
 
 @then(parsers.parse('I should see user "{username}" in the list'))
 def user_should_be_in_list(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     username: str,
 ) -> None:
     """Verify a user appears in the user list."""
@@ -208,7 +208,7 @@ def user_should_be_in_list(
 
 @then(parsers.parse('I should see the user has role "{role}"'))
 def user_should_have_role_in_view(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     role: str,
 ) -> None:
     """Verify the viewed user has the expected role."""
@@ -222,7 +222,7 @@ def user_should_have_role_in_view(
 
 @then(parsers.parse('I should see the user has username "{username}"'))
 def user_should_have_username(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     username: str,
 ) -> None:
     """Verify the viewed user has the expected username."""
@@ -235,7 +235,7 @@ def user_should_have_username(
 
 @then(parsers.parse('I should see the user is in group "{group_name}"'))
 def user_should_be_in_group(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     group_name: str,
 ) -> None:
     """Verify the viewed user is in a specific group."""
@@ -252,7 +252,7 @@ def user_should_be_in_group(
 
 
 @then("I should see the user has no groups")
-def user_should_have_no_groups(context: dict[str, Any]) -> None:
+def user_should_have_no_groups(context: Dict[str, Any]) -> None:
     """Verify the viewed user has no group memberships."""
     viewed_user = context.get("viewed_user")
     assert viewed_user is not None, "No user was viewed"
@@ -263,7 +263,7 @@ def user_should_have_no_groups(context: dict[str, Any]) -> None:
 
 @then(parsers.parse('user "{username}" should have role "{role}"'))
 def user_should_have_role(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     user_service: UserService,
     admin_user_context: UserContext,
     username: str,

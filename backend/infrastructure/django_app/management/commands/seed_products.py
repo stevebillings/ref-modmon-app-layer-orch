@@ -9,7 +9,7 @@ Usage:
 import random
 from decimal import Decimal
 
-from typing import Any
+from typing import Any, Optional, Set
 
 from django.core.management.base import BaseCommand, CommandParser
 
@@ -106,7 +106,7 @@ class Command(BaseCommand):
             )
         )
 
-    def _generate_unique_name(self, used_names: set[str], max_attempts: int = 100) -> str | None:
+    def _generate_unique_name(self, used_names: Set[str], max_attempts: int = 100) -> Optional[str]:
         """Generate a unique product name not already in used_names."""
         for _ in range(max_attempts):
             adj = random.choice(self.ADJECTIVES)

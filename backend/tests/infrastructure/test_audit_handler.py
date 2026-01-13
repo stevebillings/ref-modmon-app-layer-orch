@@ -1,7 +1,7 @@
 """Unit tests for AuditLogHandler with mock repository."""
 
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Dict, List, Optional
 from uuid import UUID, uuid4
 
 import pytest
@@ -16,8 +16,8 @@ class MockAuditLogRepository(AuditLogRepository):
     """In-memory mock implementation for testing."""
 
     def __init__(self) -> None:
-        self.entries: list[AuditLogEntry] = []
-        self.save_calls: list[dict[str, Any]] = []
+        self.entries: List[AuditLogEntry] = []
+        self.save_calls: List[Dict[str, Any]] = []
 
     def save(
         self,
@@ -26,8 +26,8 @@ class MockAuditLogRepository(AuditLogRepository):
         occurred_at: datetime,
         actor_id: str,
         aggregate_type: str,
-        aggregate_id: UUID | None,
-        event_data: dict[str, Any],
+        aggregate_id: Optional[UUID],
+        event_data: Dict[str, Any],
     ) -> AuditLogEntry:
         # Track the call for assertions
         self.save_calls.append({
@@ -65,8 +65,8 @@ class FailingAuditLogRepository(AuditLogRepository):
         occurred_at: datetime,
         actor_id: str,
         aggregate_type: str,
-        aggregate_id: UUID | None,
-        event_data: dict[str, Any],
+        aggregate_id: Optional[UUID],
+        event_data: Dict[str, Any],
     ) -> AuditLogEntry:
         raise Exception("Database connection failed")
 
@@ -125,12 +125,15 @@ class TestAuditLogHandlerWithMock:
 
     def test_handler_handles_unknown_event_type(self) -> None:
         """Unknown event types should still be saved with 'Unknown' aggregate type."""
-        from dataclasses import dataclass
-        from domain.events import DomainEvent
+        from dataclasses import dataclass, field
+        from datetime import datetime
+        from domain.events import DomainEvent, _now_utc
 
-        @dataclass(frozen=True, kw_only=True)
+        @dataclass(frozen=True)
         class UnknownEvent(DomainEvent):
-            some_field: str
+            some_field: str = ""
+            event_id: UUID = field(default_factory=uuid4)
+            occurred_at: datetime = field(default_factory=_now_utc)
 
         repo = MockAuditLogRepository()
         handler = AuditLogHandler(repo)
@@ -188,12 +191,15 @@ class TestAuditLogHandlerWithMock:
 
     def test_handler_uses_default_actor_id_when_missing(self) -> None:
         """Events without actor_id should use 'unknown' as default."""
-        from dataclasses import dataclass
-        from domain.events import DomainEvent
+        from dataclasses import dataclass, field
+        from datetime import datetime
+        from domain.events import DomainEvent, _now_utc
 
-        @dataclass(frozen=True, kw_only=True)
+        @dataclass(frozen=True)
         class NoActorEvent(DomainEvent):
-            value: int
+            value: int = 0
+            event_id: UUID = field(default_factory=uuid4)
+            occurred_at: datetime = field(default_factory=_now_utc)
 
         repo = MockAuditLogRepository()
         handler = AuditLogHandler(repo)

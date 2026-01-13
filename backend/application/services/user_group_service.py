@@ -6,6 +6,7 @@ with authorization. All operations require admin privileges.
 """
 
 from uuid import UUID
+from typing import List, Optional
 
 from application.ports.user_group_repository import UserGroupRepository
 from domain.exceptions import PermissionDeniedError
@@ -47,7 +48,7 @@ class UserGroupService:
                 operation, "Only admins can manage user groups"
             )
 
-    def get_all(self, user_context: UserContext) -> list[UserGroup]:
+    def get_all(self, user_context: UserContext) -> List[UserGroup]:
         """
         Get all user groups.
 
@@ -102,7 +103,7 @@ class UserGroupService:
     def update(
         self,
         group_id: UUID,
-        description: str | None,
+        description: Optional[str],
         user_context: UserContext,
     ) -> UserGroup:
         """
@@ -193,7 +194,7 @@ class UserGroupService:
         self,
         group_id: UUID,
         user_context: UserContext,
-    ) -> list[UUID]:
+    ) -> List[UUID]:
         """
         Get all user IDs in a group.
 
@@ -215,7 +216,7 @@ class UserGroupService:
         self,
         target_user_id: UUID,
         user_context: UserContext,
-    ) -> list[UserGroup]:
+    ) -> List[UserGroup]:
         """
         Get all groups a user belongs to.
 

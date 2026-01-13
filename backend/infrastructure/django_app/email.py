@@ -1,4 +1,5 @@
 import logging
+from typing import List, Optional
 
 from django.conf import settings
 from django.core.mail import send_mail
@@ -17,7 +18,7 @@ class DjangoEmailAdapter(EmailPort):
     """
 
     def send_incident_alert(
-        self, incident: IncidentDetails, recipients: list[str]
+        self, incident: IncidentDetails, recipients: List[str]
     ) -> None:
         """
         Send an incident alert email using Django's mail system.
@@ -61,7 +62,7 @@ Traceback:
 
 
 # Singleton instance
-_email_adapter: EmailPort | None = None
+_email_adapter: Optional[EmailPort] = None
 
 
 def get_email_adapter() -> EmailPort:

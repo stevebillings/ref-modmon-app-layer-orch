@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
-from typing import List
+from typing import List, Optional
 from uuid import UUID, uuid4
 
 from domain.aggregates.order.value_objects import VerifiedAddress
@@ -51,7 +51,7 @@ class Order:
     user_id: UUID
     items: List[OrderItem]
     shipping_address: VerifiedAddress
-    submitted_at: datetime | None
+    submitted_at: Optional[datetime]
 
     @classmethod
     def create(

@@ -1,6 +1,7 @@
 """Tests for UserService."""
 
 from uuid import uuid4
+from typing import Dict, List, Optional, Set
 
 import pytest
 
@@ -14,18 +15,18 @@ class FakeUserRepository:
     """Fake user repository for testing."""
 
     def __init__(self) -> None:
-        self._users: dict[str, UserInfo] = {}
+        self._users: Dict[str, UserInfo] = {}
 
     def add_user(self, user: UserInfo) -> None:
         self._users[str(user.id)] = user
 
-    def get_all(self) -> list[UserInfo]:
+    def get_all(self) -> List[UserInfo]:
         return list(self._users.values())
 
-    def get_by_id(self, user_id) -> UserInfo | None:
+    def get_by_id(self, user_id) -> Optional[UserInfo]:
         return self._users.get(str(user_id))
 
-    def update_role(self, user_id, role: Role) -> UserInfo | None:
+    def update_role(self, user_id, role: Role) -> Optional[UserInfo]:
         user = self._users.get(str(user_id))
         if user is None:
             return None
@@ -44,7 +45,7 @@ class FakeUserGroupRepository:
     """Fake user group repository for testing."""
 
     def __init__(self) -> None:
-        self._memberships: dict[str, set[str]] = {}  # user_id -> set of group_ids
+        self._memberships: Dict[str, Set[str]] = {}  # user_id -> set of group_ids
 
     def add_user_to_group(self, user_id, group_id) -> None:
         uid = str(user_id)

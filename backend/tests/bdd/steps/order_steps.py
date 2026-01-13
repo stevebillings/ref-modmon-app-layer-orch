@@ -1,7 +1,7 @@
 """Order-related step definitions."""
 
 from decimal import Decimal
-from typing import Any
+from typing import Any, Dict
 from uuid import uuid4
 
 from pytest_bdd import given, when, then, parsers
@@ -25,7 +25,7 @@ from tests.bdd.conftest import VALID_SHIPPING_ADDRESS
     )
 )
 def customer_has_order(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     product_service: ProductService,
     cart_service: CartService,
     admin_user_context: UserContext,
@@ -63,7 +63,7 @@ def customer_has_order(
 
 
 @given("I have no previous orders")
-def no_previous_orders(context: dict[str, Any]) -> None:
+def no_previous_orders(context: Dict[str, Any]) -> None:
     """Placeholder - new user contexts don't have orders by default."""
     pass
 
@@ -74,7 +74,7 @@ def no_previous_orders(context: dict[str, Any]) -> None:
 
 
 @when(parsers.parse('I am logged in as customer "{username}"'))
-def when_logged_in_as_customer(context: dict[str, Any], username: str) -> None:
+def when_logged_in_as_customer(context: Dict[str, Any], username: str) -> None:
     """Log in as a specific customer."""
     if username not in context["named_users"]:
         context["named_users"][username] = UserContext(
@@ -87,21 +87,21 @@ def when_logged_in_as_customer(context: dict[str, Any], username: str) -> None:
 
 @when("I am logged in as an Admin")
 def when_logged_in_as_admin(
-    context: dict[str, Any], admin_user_context: UserContext
+    context: Dict[str, Any], admin_user_context: UserContext
 ) -> None:
     """Log in as admin."""
     context["current_user_context"] = admin_user_context
 
 
 @when("I view my orders")
-def view_my_orders(context: dict[str, Any], order_service: OrderService) -> None:
+def view_my_orders(context: Dict[str, Any], order_service: OrderService) -> None:
     """View orders for current user."""
     orders = order_service.get_orders(context["current_user_context"])
     context["viewed_orders"] = orders
 
 
 @when("I view all orders")
-def view_all_orders(context: dict[str, Any], order_service: OrderService) -> None:
+def view_all_orders(context: Dict[str, Any], order_service: OrderService) -> None:
     """View all orders (admin)."""
     orders = order_service.get_orders(context["current_user_context"])
     context["viewed_orders"] = orders
@@ -113,14 +113,14 @@ def view_all_orders(context: dict[str, Any], order_service: OrderService) -> Non
 
 
 @then(parsers.parse("I should see {count:d} order"))
-def should_see_order_count_singular(context: dict[str, Any], count: int) -> None:
+def should_see_order_count_singular(context: Dict[str, Any], count: int) -> None:
     """Verify number of orders visible (singular)."""
     viewed = context.get("viewed_orders", [])
     assert len(viewed) == count, f"Expected {count} order, got {len(viewed)}"
 
 
 @then(parsers.parse("I should see {count:d} orders"))
-def should_see_order_count_plural(context: dict[str, Any], count: int) -> None:
+def should_see_order_count_plural(context: Dict[str, Any], count: int) -> None:
     """Verify number of orders visible (plural)."""
     viewed = context.get("viewed_orders", [])
     assert len(viewed) == count, f"Expected {count} orders, got {len(viewed)}"
@@ -128,7 +128,7 @@ def should_see_order_count_plural(context: dict[str, Any], count: int) -> None:
 
 @then(parsers.parse('the order should contain "{product_name}" quantity {qty:d}'))
 def order_should_contain_quantity(
-    context: dict[str, Any], product_name: str, qty: int
+    context: Dict[str, Any], product_name: str, qty: int
 ) -> None:
     """Verify order contains item with expected quantity."""
     viewed = context.get("viewed_orders", [])
@@ -148,7 +148,7 @@ def order_should_contain_quantity(
 
 @then(parsers.parse('the order should contain "{product_name}" at "${price}" each'))
 def viewed_order_should_contain_item_price(
-    context: dict[str, Any], product_name: str, price: str
+    context: Dict[str, Any], product_name: str, price: str
 ) -> None:
     """Verify order in viewed orders contains item with expected price."""
     viewed = context.get("viewed_orders", [])

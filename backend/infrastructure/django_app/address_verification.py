@@ -1,6 +1,7 @@
 """Address verification adapter implementations."""
 
 import logging
+from typing import Optional
 
 from application.ports.address_verification import (
     AddressVerificationPort,
@@ -29,7 +30,7 @@ class StubAddressVerificationAdapter(AddressVerificationPort):
     def verify(
         self,
         street_line_1: str,
-        street_line_2: str | None,
+        street_line_2: Optional[str],
         city: str,
         state: str,
         postal_code: str,
@@ -102,7 +103,7 @@ class StubAddressVerificationAdapter(AddressVerificationPort):
 
 
 # Singleton instance
-_address_verification_adapter: AddressVerificationPort | None = None
+_address_verification_adapter: Optional[AddressVerificationPort] = None
 
 
 def get_address_verification_adapter() -> AddressVerificationPort:

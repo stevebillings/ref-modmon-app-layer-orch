@@ -6,6 +6,7 @@ user for use in application services. It contains no Django dependencies.
 """
 
 from dataclasses import dataclass, field
+from typing import Dict, FrozenSet, Set
 from enum import Enum
 from uuid import UUID
 
@@ -41,7 +42,7 @@ class Capability(Enum):
     FEATURE_FLAGS_MANAGE = "feature_flags:manage"
 
 
-ROLE_CAPABILITIES: dict[Role, frozenset["Capability"]] = {
+ROLE_CAPABILITIES: Dict[Role, FrozenSet["Capability"]] = {
     Role.ADMIN: frozenset(
         {
             Capability.PRODUCTS_VIEW,
@@ -83,7 +84,7 @@ class UserContext:
     user_id: UUID
     username: str
     role: Role
-    group_ids: frozenset[UUID] = field(default_factory=frozenset)
+    group_ids: FrozenSet[UUID] = field(default_factory=frozenset)
 
     def is_admin(self) -> bool:
         """Check if user has admin role."""
@@ -98,7 +99,7 @@ class UserContext:
         """Return user identifier for audit logging in domain events."""
         return str(self.user_id)
 
-    def get_capabilities(self) -> frozenset[Capability]:
+    def get_capabilities(self) -> FrozenSet[Capability]:
         """Return the set of capabilities for this user's role."""
         return ROLE_CAPABILITIES.get(self.role, frozenset())
 
@@ -110,6 +111,6 @@ class UserContext:
         """Check if user belongs to a specific group."""
         return group_id in self.group_ids
 
-    def is_in_any_group(self, group_ids: set[UUID]) -> bool:
+    def is_in_any_group(self, group_ids: Set[UUID]) -> bool:
         """Check if user belongs to any of the specified groups."""
         return bool(self.group_ids & group_ids)

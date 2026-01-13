@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
-from typing import TYPE_CHECKING, List
+from typing import List, Optional, TYPE_CHECKING
 from uuid import UUID, uuid4
 
 from domain.exceptions import CartItemNotFoundError, EmptyCartError
@@ -99,7 +99,7 @@ class Cart:
     def get_item_count(self) -> int:
         return sum(item.quantity for item in self.items)
 
-    def get_item_by_product_id(self, product_id: UUID) -> CartItem | None:
+    def get_item_by_product_id(self, product_id: UUID) -> Optional[CartItem]:
         """Find a cart item by product ID."""
         for item in self.items:
             if item.product_id == product_id:

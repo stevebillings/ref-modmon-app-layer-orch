@@ -20,7 +20,7 @@ from infrastructure.events.audit_handler import create_audit_log_handler
 
 
 def create_event_dispatcher(
-    audit_log_repository: AuditLogRepository | None = None,
+    audit_log_repository: Optional[AuditLogRepository] = None,
 ) -> SyncEventDispatcher:
     """
     Create and configure the event dispatcher with all handlers.

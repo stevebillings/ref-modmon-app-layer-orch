@@ -13,7 +13,7 @@ class UserProfileInline(admin.StackedInline):  # type: ignore[type-arg]
     verbose_name_plural = "Profile"
 
 
-class UserAdmin(BaseUserAdmin):  # type: ignore[type-arg]
+class UserAdmin(BaseUserAdmin):
     """Extended User admin with UserProfile inline."""
 
     inlines = [UserProfileInline]

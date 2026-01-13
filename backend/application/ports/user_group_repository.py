@@ -6,6 +6,7 @@ This port defines the interface for user group persistence.
 """
 
 from abc import ABC, abstractmethod
+from typing import FrozenSet, List, Optional
 from uuid import UUID
 
 from domain.user_groups import UserGroup
@@ -19,12 +20,12 @@ class UserGroupRepository(ABC):
     """
 
     @abstractmethod
-    def get_all(self) -> list[UserGroup]:
+    def get_all(self) -> List[UserGroup]:
         """Get all user groups."""
         pass
 
     @abstractmethod
-    def get_by_id(self, group_id: UUID) -> UserGroup | None:
+    def get_by_id(self, group_id: UUID) -> Optional[UserGroup]:
         """
         Get a user group by ID.
 
@@ -33,7 +34,7 @@ class UserGroupRepository(ABC):
         pass
 
     @abstractmethod
-    def get_by_name(self, name: str) -> UserGroup | None:
+    def get_by_name(self, name: str) -> Optional[UserGroup]:
         """
         Get a user group by name.
 
@@ -70,12 +71,12 @@ class UserGroupRepository(ABC):
         pass
 
     @abstractmethod
-    def get_groups_for_user(self, user_id: UUID) -> list[UserGroup]:
+    def get_groups_for_user(self, user_id: UUID) -> List[UserGroup]:
         """Get all groups a user belongs to."""
         pass
 
     @abstractmethod
-    def get_group_ids_for_user(self, user_id: UUID) -> frozenset[UUID]:
+    def get_group_ids_for_user(self, user_id: UUID) -> FrozenSet[UUID]:
         """Get all group IDs a user belongs to (optimized for UserContext)."""
         pass
 
@@ -98,6 +99,6 @@ class UserGroupRepository(ABC):
         pass
 
     @abstractmethod
-    def get_user_ids_in_group(self, group_id: UUID) -> list[UUID]:
+    def get_user_ids_in_group(self, group_id: UUID) -> List[UUID]:
         """Get all user IDs in a group."""
         pass

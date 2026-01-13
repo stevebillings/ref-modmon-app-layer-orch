@@ -1,7 +1,7 @@
 """Product-related step definitions."""
 
 from decimal import Decimal
-from typing import Any
+from typing import Any, Dict
 
 from pytest_bdd import given, when, then, parsers
 
@@ -16,7 +16,7 @@ from domain.user_context import UserContext
 
 @given(parsers.parse('the product "{name}" has been deleted'))
 def product_has_been_deleted(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     product_service: ProductService,
     admin_user_context: UserContext,
     name: str,
@@ -38,7 +38,7 @@ def product_has_been_deleted(
     )
 )
 def create_product(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     product_service: ProductService,
     name: str,
     price: str,
@@ -60,7 +60,7 @@ def create_product(
     )
 )
 def try_create_product(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     product_service: ProductService,
     name: str,
     price: str,
@@ -82,7 +82,7 @@ def try_create_product(
 
 @when('I try to create a product with name "" price "$29.99" and stock quantity 100')
 def try_create_product_empty_name(
-    context: dict[str, Any], product_service: ProductService
+    context: Dict[str, Any], product_service: ProductService
 ) -> None:
     """Try to create a product with empty name."""
     try:
@@ -99,7 +99,7 @@ def try_create_product_empty_name(
 
 @when(parsers.parse('I delete the product "{name}"'))
 def delete_product(
-    context: dict[str, Any], product_service: ProductService, name: str
+    context: Dict[str, Any], product_service: ProductService, name: str
 ) -> None:
     """Delete a product (expected to succeed)."""
     product = context["products"][name]
@@ -108,7 +108,7 @@ def delete_product(
 
 @when(parsers.parse('I try to delete the product "{name}"'))
 def try_delete_product(
-    context: dict[str, Any], product_service: ProductService, name: str
+    context: Dict[str, Any], product_service: ProductService, name: str
 ) -> None:
     """Try to delete a product (may fail)."""
     try:
@@ -121,7 +121,7 @@ def try_delete_product(
 
 @when(parsers.parse('I restore the product "{name}"'))
 def restore_product(
-    context: dict[str, Any], product_service: ProductService, name: str
+    context: Dict[str, Any], product_service: ProductService, name: str
 ) -> None:
     """Restore a deleted product."""
     product = context["products"][name]
@@ -133,7 +133,7 @@ def restore_product(
 
 @when(parsers.parse('the product "{name}" price changes to "${new_price}"'))
 def change_product_price(
-    context: dict[str, Any], name: str, new_price: str
+    context: Dict[str, Any], name: str, new_price: str
 ) -> None:
     """Change a product's price (simulating external update)."""
     product = context["products"][name]
@@ -145,7 +145,7 @@ def change_product_price(
 
 @when(parsers.parse('the product "{name}" is soft-deleted'))
 def soft_delete_product(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     product_service: ProductService,
     admin_user_context: UserContext,
     name: str,
@@ -182,7 +182,7 @@ def product_should_have_price(
 
 @then(parsers.parse('the product "{name}" should have stock quantity {expected_qty:d}'))
 def product_should_have_stock(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     product_service: ProductService,
     name: str,
     expected_qty: int,
@@ -202,7 +202,7 @@ def product_should_have_stock(
 
 @then(parsers.parse('the product "{name}" should be marked as deleted'))
 def product_should_be_deleted(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     product_service: ProductService,
     admin_user_context: UserContext,
     name: str,
@@ -256,7 +256,7 @@ def product_should_appear_in_catalog(
 
 
 @then(parsers.parse('I should receive a "{error_type}"'))
-def should_receive_error(context: dict[str, Any], error_type: str) -> None:
+def should_receive_error(context: Dict[str, Any], error_type: str) -> None:
     """Verify that a specific error was raised."""
     assert context["error"] is not None, f"Expected {error_type} but no error occurred"
     actual_type = type(context["error"]).__name__
@@ -266,6 +266,6 @@ def should_receive_error(context: dict[str, Any], error_type: str) -> None:
 
 
 @then(parsers.parse('I should receive an "{error_type}"'))
-def should_receive_error_an(context: dict[str, Any], error_type: str) -> None:
+def should_receive_error_an(context: Dict[str, Any], error_type: str) -> None:
     """Verify that a specific error was raised (alternate grammar)."""
     should_receive_error(context, error_type)

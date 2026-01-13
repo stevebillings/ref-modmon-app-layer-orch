@@ -2,7 +2,7 @@
 
 import logging
 from datetime import datetime
-from typing import Any
+from typing import Any, Dict, List, Optional, Tuple
 from unittest.mock import MagicMock, patch
 
 from django.contrib.auth.models import User
@@ -20,10 +20,10 @@ class MockEmailAdapter(EmailPort):
     """Mock email adapter that records sent emails for testing."""
 
     def __init__(self) -> None:
-        self.sent_emails: list[tuple[IncidentDetails, list[str]]] = []
+        self.sent_emails: List[Tuple[IncidentDetails, List[str]]] = []
 
     def send_incident_alert(
-        self, incident: IncidentDetails, recipients: list[str]
+        self, incident: IncidentDetails, recipients: List[str]
     ) -> None:
         """Record the email instead of sending it."""
         self.sent_emails.append((incident, recipients))
@@ -33,7 +33,7 @@ class MockEmailAdapter(EmailPort):
         self.sent_emails.clear()
 
     @property
-    def last_incident(self) -> IncidentDetails | None:
+    def last_incident(self) -> Optional[IncidentDetails]:
         """Get the last incident that was sent."""
         if self.sent_emails:
             return self.sent_emails[-1][0]
@@ -46,14 +46,14 @@ class MockEmailAdapter(EmailPort):
 
 
 @given("incident notification recipients are configured")
-def recipients_configured(context: dict[str, Any]) -> None:
+def recipients_configured(context: Dict[str, Any]) -> None:
     """Configure test incident notification recipients."""
     context["incident_recipients"] = ["admin@example.com", "ops@example.com"]
     context["recipients_configured"] = True
 
 
 @given("no incident notification recipients are configured")
-def no_recipients_configured(context: dict[str, Any]) -> None:
+def no_recipients_configured(context: Dict[str, Any]) -> None:
     """Clear incident notification recipients."""
     context["incident_recipients"] = []
     context["recipients_configured"] = False
@@ -61,7 +61,7 @@ def no_recipients_configured(context: dict[str, Any]) -> None:
 
 @given(parsers.parse('the feature flag "{flag_name}" is enabled'))
 def feature_flag_is_enabled(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     feature_flag_service: FeatureFlagService,
     admin_user_context: UserContext,
     flag_name: str,
@@ -87,7 +87,7 @@ def feature_flag_is_enabled(
 
 @given(parsers.parse('the feature flag "{flag_name}" is disabled'))
 def feature_flag_is_disabled(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     feature_flag_service: FeatureFlagService,
     admin_user_context: UserContext,
     flag_name: str,
@@ -117,7 +117,7 @@ def feature_flag_is_disabled(
 
 
 @when("a server incident occurs")
-def server_incident_occurs(context: dict[str, Any]) -> None:
+def server_incident_occurs(context: Dict[str, Any]) -> None:
     """Simulate a server incident occurring."""
     mock_email = MockEmailAdapter()
     context["mock_email"] = mock_email
@@ -145,7 +145,7 @@ def server_incident_occurs(context: dict[str, Any]) -> None:
 
 
 @when(parsers.parse('a server incident occurs for user "{username}"'))
-def server_incident_occurs_for_user(context: dict[str, Any], username: str) -> None:
+def server_incident_occurs_for_user(context: Dict[str, Any], username: str) -> None:
     """Simulate a server incident occurring for a specific user."""
     mock_email = MockEmailAdapter()
     context["mock_email"] = mock_email
@@ -178,7 +178,7 @@ def server_incident_occurs_for_user(context: dict[str, Any], username: str) -> N
 
 @when(parsers.parse('a server incident occurs on path "{path}" with method "{method}"'))
 def server_incident_occurs_with_request(
-    context: dict[str, Any], path: str, method: str
+    context: Dict[str, Any], path: str, method: str
 ) -> None:
     """Simulate a server incident with specific request details."""
     mock_email = MockEmailAdapter()
@@ -212,7 +212,7 @@ def server_incident_occurs_with_request(
     )
 )
 def server_incident_occurs_with_error(
-    context: dict[str, Any], error_type: str, message: str
+    context: Dict[str, Any], error_type: str, message: str
 ) -> None:
     """Simulate a server incident with specific error details."""
     mock_email = MockEmailAdapter()
@@ -246,7 +246,7 @@ def server_incident_occurs_with_error(
 
 
 @then("an incident notification email should be sent")
-def email_should_be_sent(context: dict[str, Any]) -> None:
+def email_should_be_sent(context: Dict[str, Any]) -> None:
     """Verify that an incident notification email was sent."""
     mock_email = context.get("mock_email")
     assert mock_email is not None, "Mock email adapter not found in context"
@@ -254,7 +254,7 @@ def email_should_be_sent(context: dict[str, Any]) -> None:
 
 
 @then("no incident notification email should be sent")
-def no_email_should_be_sent(context: dict[str, Any]) -> None:
+def no_email_should_be_sent(context: Dict[str, Any]) -> None:
     """Verify that no incident notification email was sent."""
     mock_email = context.get("mock_email")
     assert mock_email is not None, "Mock email adapter not found in context"
@@ -264,7 +264,7 @@ def no_email_should_be_sent(context: dict[str, Any]) -> None:
 
 
 @then("the email should contain the error details")
-def email_should_contain_error_details(context: dict[str, Any]) -> None:
+def email_should_contain_error_details(context: Dict[str, Any]) -> None:
     """Verify the email contains error details."""
     mock_email = context.get("mock_email")
     assert mock_email is not None, "Mock email adapter not found in context"
@@ -279,7 +279,7 @@ def email_should_contain_error_details(context: dict[str, Any]) -> None:
 
 
 @then(parsers.parse('the email should contain request path "{path}"'))
-def email_should_contain_request_path(context: dict[str, Any], path: str) -> None:
+def email_should_contain_request_path(context: Dict[str, Any], path: str) -> None:
     """Verify the email contains the request path."""
     mock_email = context.get("mock_email")
     assert mock_email is not None, "Mock email adapter not found in context"
@@ -288,7 +288,7 @@ def email_should_contain_request_path(context: dict[str, Any], path: str) -> Non
 
 
 @then(parsers.parse('the email should contain request method "{method}"'))
-def email_should_contain_request_method(context: dict[str, Any], method: str) -> None:
+def email_should_contain_request_method(context: Dict[str, Any], method: str) -> None:
     """Verify the email contains the request method."""
     mock_email = context.get("mock_email")
     assert mock_email is not None, "Mock email adapter not found in context"
@@ -297,7 +297,7 @@ def email_should_contain_request_method(context: dict[str, Any], method: str) ->
 
 
 @then(parsers.parse('the email should contain error type "{error_type}"'))
-def email_should_contain_error_type(context: dict[str, Any], error_type: str) -> None:
+def email_should_contain_error_type(context: Dict[str, Any], error_type: str) -> None:
     """Verify the email contains the error type."""
     mock_email = context.get("mock_email")
     assert mock_email is not None, "Mock email adapter not found in context"
@@ -306,7 +306,7 @@ def email_should_contain_error_type(context: dict[str, Any], error_type: str) ->
 
 
 @then(parsers.parse('the email should contain error message "{message}"'))
-def email_should_contain_error_message(context: dict[str, Any], message: str) -> None:
+def email_should_contain_error_message(context: Dict[str, Any], message: str) -> None:
     """Verify the email contains the error message."""
     mock_email = context.get("mock_email")
     assert mock_email is not None, "Mock email adapter not found in context"
@@ -315,7 +315,7 @@ def email_should_contain_error_message(context: dict[str, Any], message: str) ->
 
 
 @then("a warning should be logged about missing recipients")
-def warning_logged_about_recipients(context: dict[str, Any]) -> None:
+def warning_logged_about_recipients(context: Dict[str, Any]) -> None:
     """Verify a warning was logged about missing recipients.
 
     Note: This step passes by design since the notifier logs a warning

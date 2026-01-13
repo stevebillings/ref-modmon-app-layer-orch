@@ -1,5 +1,5 @@
 from decimal import Decimal, InvalidOperation
-from typing import Any
+from typing import Any, Dict, List, Optional
 
 from rest_framework import status
 from rest_framework.decorators import api_view
@@ -128,7 +128,7 @@ def handle_domain_error(error: DomainError) -> Response:
 # --- Product Endpoints ---
 
 
-def _get_optional_user_context(request: Request) -> UserContext | None:
+def _get_optional_user_context(request: Request) -> Optional[UserContext]:
     """Get user context if authenticated, None otherwise."""
     if hasattr(request, "user") and request.user.is_authenticated:
         try:
@@ -138,7 +138,7 @@ def _get_optional_user_context(request: Request) -> UserContext | None:
     return None
 
 
-def _parse_int(value: str | None, default: int) -> int:
+def _parse_int(value: Optional[str], default: int) -> int:
     """Safely parse an integer from a query parameter."""
     if value is None:
         return default
@@ -148,7 +148,7 @@ def _parse_int(value: str | None, default: int) -> int:
         return default
 
 
-def _parse_decimal(value: str | None) -> Decimal | None:
+def _parse_decimal(value: Optional[str]) -> Optional[Decimal]:
     """Safely parse a decimal from a query parameter."""
     if value is None:
         return None
@@ -158,7 +158,7 @@ def _parse_decimal(value: str | None) -> Decimal | None:
         return None
 
 
-def _parse_bool(value: str | None) -> bool | None:
+def _parse_bool(value: Optional[str]) -> Optional[bool]:
     """Safely parse a boolean from a query parameter."""
     if value is None:
         return None
@@ -562,7 +562,7 @@ def orders_list(request: Request, user_context: UserContext) -> Response:
 # --- Feature Flag Admin Endpoints ---
 
 
-def _feature_flag_to_dict(flag: FeatureFlag) -> dict[str, Any]:
+def _feature_flag_to_dict(flag: FeatureFlag) -> Dict[str, Any]:
     """Convert a FeatureFlag to a dictionary."""
     return {
         "name": flag.name,
@@ -663,7 +663,7 @@ def feature_flag_set_targets(
     Set the target groups for a feature flag (replaces existing). Admin only.
 
     Request body:
-        group_ids: list[str] - List of group UUIDs to target
+        group_ids: List[str] - List of group UUIDs to target
     """
     from uuid import UUID
 
@@ -742,7 +742,7 @@ def feature_flag_remove_target(
 # --- User Group Admin Endpoints ---
 
 
-def _user_group_to_dict(group: UserGroup) -> dict[str, Any]:
+def _user_group_to_dict(group: UserGroup) -> Dict[str, Any]:
     """Convert a UserGroup to a dictionary."""
     return {
         "id": str(group.id),
@@ -888,7 +888,7 @@ def user_group_remove_user(
 # --- User Management Admin Endpoints ---
 
 
-def _user_info_to_dict(user: UserInfo) -> dict[str, Any]:
+def _user_info_to_dict(user: UserInfo) -> Dict[str, Any]:
     """Convert a UserInfo to a dictionary."""
     return {
         "id": str(user.id),
@@ -1025,7 +1025,7 @@ def health_check(request: Request) -> Response:
     Checks database connectivity and returns status.
     """
     from datetime import datetime, timezone
-    from typing import Any, Dict
+    from typing import Any, Dict, List, Optional, Dict
 
     from django.db import connection
 

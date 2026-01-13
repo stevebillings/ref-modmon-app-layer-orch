@@ -48,23 +48,25 @@ class DjangoProductReportReader(ProductReportReader):
         page_size = max(1, min(100, query.page_size))
 
         # Subquery for total sold (sum of order item quantities for each product)
-        total_sold_subquery = (
-            OrderItemModel.objects.filter(product_id=OuterRef("id"))
-            .values("product_id")
+        # Note: Using Any type to work around mypy internal error with django-stubs
+        total_sold_qs: Any = OrderItemModel.objects.filter(product_id=OuterRef("id"))
+        total_sold_subquery: Any = (
+            total_sold_qs.values("product_id")
             .annotate(total=Sum("quantity"))
             .values("total")
         )
 
         # Subquery for currently reserved (sum of cart item quantities for each product)
-        currently_reserved_subquery = (
-            CartItemModel.objects.filter(product_id=OuterRef("id"))
-            .values("product_id")
+        currently_reserved_qs: Any = CartItemModel.objects.filter(product_id=OuterRef("id"))
+        currently_reserved_subquery: Any = (
+            currently_reserved_qs.values("product_id")
             .annotate(total=Sum("quantity"))
             .values("total")
         )
 
         # Build queryset with annotations
-        queryset = ProductModel.objects.annotate(
+        base_qs: Any = ProductModel.objects
+        queryset: Any = base_qs.annotate(
             total_sold=Coalesce(Subquery(total_sold_subquery), 0),
             currently_reserved=Coalesce(Subquery(currently_reserved_subquery), 0),
         )

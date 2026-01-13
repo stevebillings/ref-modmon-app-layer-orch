@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any
+from typing import Any, Dict, Optional
 from uuid import UUID
 
 
@@ -19,8 +19,8 @@ class AuditLogEntry:
     occurred_at: datetime
     actor_id: str
     aggregate_type: str
-    aggregate_id: UUID | None
-    event_data: dict[str, Any]
+    aggregate_id: Optional[UUID]
+    event_data: Dict[str, Any]
     created_at: datetime
 
 
@@ -40,8 +40,8 @@ class AuditLogRepository(ABC):
         occurred_at: datetime,
         actor_id: str,
         aggregate_type: str,
-        aggregate_id: UUID | None,
-        event_data: dict[str, Any],
+        aggregate_id: Optional[UUID],
+        event_data: Dict[str, Any],
     ) -> AuditLogEntry:
         """
         Save an audit log entry.

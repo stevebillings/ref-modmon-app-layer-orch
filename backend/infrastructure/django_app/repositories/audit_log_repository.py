@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any
+from typing import Any, Dict, Optional
 from uuid import UUID
 
 from application.ports.audit_log_repository import AuditLogEntry, AuditLogRepository
@@ -34,8 +34,8 @@ class DjangoAuditLogRepository(AuditLogRepository):
         occurred_at: datetime,
         actor_id: str,
         aggregate_type: str,
-        aggregate_id: UUID | None,
-        event_data: dict[str, Any],
+        aggregate_id: Optional[UUID],
+        event_data: Dict[str, Any],
     ) -> AuditLogEntry:
         """Save an audit log entry."""
         # Build kwargs, using event_id as fallback for aggregate_id if not provided
@@ -53,7 +53,7 @@ class DjangoAuditLogRepository(AuditLogRepository):
 
 
 # Singleton instance
-_audit_log_repository: AuditLogRepository | None = None
+_audit_log_repository: Optional[AuditLogRepository] = None
 
 
 def get_audit_log_repository() -> AuditLogRepository:

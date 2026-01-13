@@ -9,7 +9,7 @@ thread pool for slow or unreliable operations.
 import atexit
 import logging
 from concurrent.futures import ThreadPoolExecutor
-from typing import Callable, Dict, List, Type
+from typing import Callable, Dict, List, Optional, Type
 
 from domain.events import DomainEvent
 from domain.event_dispatcher import EventDispatcher
@@ -19,7 +19,7 @@ EventHandler = Callable[[DomainEvent], None]
 logger = logging.getLogger(__name__)
 
 # Module-level thread pool shared by all dispatchers
-_executor: ThreadPoolExecutor | None = None
+_executor: Optional[ThreadPoolExecutor] = None
 
 
 def _get_executor() -> ThreadPoolExecutor:

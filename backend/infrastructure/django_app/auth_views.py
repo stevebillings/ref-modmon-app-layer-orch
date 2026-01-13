@@ -3,6 +3,8 @@ Authentication views for login, logout, and session management.
 """
 
 from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.models import User
+from typing import cast, List
 from django.middleware.csrf import get_token
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -18,7 +20,7 @@ from infrastructure.django_app.feature_flags import (
 from infrastructure.django_app.user_context_adapter import build_user_context
 
 
-def get_enabled_flags_for_user(user_context: UserContext) -> list[str]:
+def get_enabled_flags_for_user(user_context: UserContext) -> List[str]:
     """
     Get list of feature flag names that are enabled for this user.
 
@@ -65,7 +67,7 @@ def login_view(request: Request) -> Response:
     login(request, user)
 
     try:
-        user_context = build_user_context(user)
+        user_context = build_user_context(cast(User, user))
     except Exception:
         return Response(
             {"error": "User profile not found"},

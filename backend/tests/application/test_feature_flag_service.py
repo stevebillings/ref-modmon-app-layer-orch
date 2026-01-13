@@ -1,6 +1,7 @@
 """Unit tests for FeatureFlagService with mock repository."""
 
 from datetime import datetime, timezone
+from typing import Dict, List, Optional, Set
 from uuid import UUID, uuid4
 
 import pytest
@@ -19,13 +20,13 @@ class MockFeatureFlagRepository(FeatureFlagRepository):
     """In-memory mock implementation for testing."""
 
     def __init__(self) -> None:
-        self._flags: dict[str, FeatureFlag] = {}
-        self._targets: dict[str, set[UUID]] = {}
+        self._flags: Dict[str, FeatureFlag] = {}
+        self._targets: Dict[str, Set[UUID]] = {}
 
-    def get_all(self) -> list[FeatureFlag]:
+    def get_all(self) -> List[FeatureFlag]:
         return list(self._flags.values())
 
-    def get_by_name(self, name: str) -> FeatureFlag | None:
+    def get_by_name(self, name: str) -> Optional[FeatureFlag]:
         return self._flags.get(name)
 
     def exists(self, name: str) -> bool:
@@ -53,7 +54,7 @@ class MockFeatureFlagRepository(FeatureFlagRepository):
             return True
         return False
 
-    def set_target_groups(self, flag_name: str, group_ids: set[UUID]) -> FeatureFlag:
+    def set_target_groups(self, flag_name: str, group_ids: Set[UUID]) -> FeatureFlag:
         self._targets[flag_name] = group_ids
         flag = self._flags[flag_name]
         updated_flag = FeatureFlag(

@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List
+from typing import List, Optional
 from uuid import UUID
 
 from domain.aggregates.product.entity import Product
@@ -20,7 +20,7 @@ class ProductRepository(ABC):
     @abstractmethod
     def get_by_id(
         self, product_id: UUID, include_deleted: bool = False
-    ) -> Product | None:
+    ) -> Optional[Product]:
         """
         Get a product by its ID.
 
@@ -32,7 +32,7 @@ class ProductRepository(ABC):
     @abstractmethod
     def get_by_id_for_update(
         self, product_id: UUID, include_deleted: bool = False
-    ) -> Product | None:
+    ) -> Optional[Product]:
         """
         Get a product by its ID with a row-level lock for update.
 
@@ -80,7 +80,7 @@ class ProductRepository(ABC):
         self,
         page: int = 1,
         page_size: int = 20,
-        filter: ProductFilter | None = None,
+        filter: Optional[ProductFilter] = None,
         include_deleted: bool = False,
     ) -> PaginatedResult[Product]:
         """

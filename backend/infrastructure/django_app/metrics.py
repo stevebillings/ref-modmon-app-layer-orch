@@ -10,7 +10,7 @@ import threading
 import time
 from collections import defaultdict
 from contextlib import contextmanager
-from typing import Dict, Generator, List
+from typing import Dict, Generator, List, Optional
 
 from application.ports.metrics import MetricsPort
 
@@ -30,37 +30,37 @@ class Metrics:
         self._gauges: Dict[str, float] = {}
         self._histograms: Dict[str, List[float]] = defaultdict(list)
 
-    def increment(self, name: str, value: int = 1, labels: Dict[str, str] | None = None) -> None:
+    def increment(self, name: str, value: int = 1, labels: Optional[Dict[str, str]] = None) -> None:
         """Increment a counter metric."""
         key = self._make_key(name, labels)
         with self._lock:
             self._counters[key] += value
 
-    def set_gauge(self, name: str, value: float, labels: Dict[str, str] | None = None) -> None:
+    def set_gauge(self, name: str, value: float, labels: Optional[Dict[str, str]] = None) -> None:
         """Set a gauge metric to a specific value."""
         key = self._make_key(name, labels)
         with self._lock:
             self._gauges[key] = value
 
-    def get_counter(self, name: str, labels: Dict[str, str] | None = None) -> int:
+    def get_counter(self, name: str, labels: Optional[Dict[str, str]] = None) -> int:
         """Get current value of a counter."""
         key = self._make_key(name, labels)
         with self._lock:
             return self._counters.get(key, 0)
 
-    def get_gauge(self, name: str, labels: Dict[str, str] | None = None) -> float:
+    def get_gauge(self, name: str, labels: Optional[Dict[str, str]] = None) -> float:
         """Get current value of a gauge."""
         key = self._make_key(name, labels)
         with self._lock:
             return self._gauges.get(key, 0.0)
 
-    def observe(self, name: str, value: float, labels: Dict[str, str] | None = None) -> None:
+    def observe(self, name: str, value: float, labels: Optional[Dict[str, str]] = None) -> None:
         """Record an observation for a histogram metric."""
         key = self._make_key(name, labels)
         with self._lock:
             self._histograms[key].append(value)
 
-    def _make_key(self, name: str, labels: Dict[str, str] | None) -> str:
+    def _make_key(self, name: str, labels: Optional[Dict[str, str]]) -> str:
         """Create a unique key for a metric with labels."""
         if not labels:
             return name
@@ -226,7 +226,7 @@ class DjangoMetricsAdapter(MetricsPort):
 
 
 # Singleton instance for dependency injection
-_metrics_adapter: DjangoMetricsAdapter | None = None
+_metrics_adapter: Optional[DjangoMetricsAdapter] = None
 
 
 def get_metrics_adapter() -> DjangoMetricsAdapter:

@@ -18,7 +18,7 @@ def _now_utc() -> datetime:
     return datetime.now(timezone.utc)
 
 
-@dataclass(frozen=True, kw_only=True)
+@dataclass(frozen=True)
 class DomainEvent:
     """
     Base class for all domain events.
@@ -26,8 +26,8 @@ class DomainEvent:
     Events are immutable and include a unique ID and timestamp.
     Subclasses should add fields specific to the event type.
 
-    Uses kw_only=True to allow subclasses to have required fields
-    while the base class has default values.
+    Note: Subclasses must ensure their required fields come before
+    inherited default fields by redeclaring base class fields last.
     """
 
     event_id: UUID = field(default_factory=uuid4)

@@ -1,4 +1,5 @@
 from uuid import UUID
+from typing import List, Optional
 
 from application.ports.feature_flag_repository import FeatureFlag, FeatureFlagRepository
 from domain.exceptions import PermissionDeniedError
@@ -39,7 +40,7 @@ class FeatureFlagService:
                 operation, "Only admins can manage feature flags"
             )
 
-    def get_all(self, user_context: UserContext) -> list[FeatureFlag]:
+    def get_all(self, user_context: UserContext) -> List[FeatureFlag]:
         """
         Get all feature flags.
 
@@ -96,8 +97,8 @@ class FeatureFlagService:
     def update(
         self,
         flag_name: str,
-        enabled: bool | None,
-        description: str | None,
+        enabled: Optional[bool],
+        description: Optional[str],
         user_context: UserContext,
     ) -> FeatureFlag:
         """
@@ -138,7 +139,7 @@ class FeatureFlagService:
     def set_target_groups(
         self,
         flag_name: str,
-        group_ids: list[UUID],
+        group_ids: List[UUID],
         user_context: UserContext,
     ) -> FeatureFlag:
         """

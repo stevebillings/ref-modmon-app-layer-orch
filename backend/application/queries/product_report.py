@@ -9,6 +9,7 @@ across aggregate boundaries bypass the domain layer and use optimized read paths
 """
 
 from dataclasses import dataclass
+from typing import List, Optional
 from decimal import Decimal
 from uuid import UUID
 
@@ -39,10 +40,10 @@ class ProductReportQuery:
 
     # Filters
     include_deleted: bool = False
-    search: str | None = None
-    low_stock_threshold: int | None = None
-    has_sales: bool | None = None
-    has_reservations: bool | None = None
+    search: Optional[str] = None
+    low_stock_threshold: Optional[int] = None
+    has_sales: Optional[bool] = None
+    has_reservations: Optional[bool] = None
 
 
 @dataclass(frozen=True)
@@ -75,7 +76,7 @@ class ProductReportResult:
     Contains the items for the current page plus pagination metadata.
     """
 
-    items: list[ProductReportItem]
+    items: List[ProductReportItem]
     total_count: int
     page: int
     page_size: int

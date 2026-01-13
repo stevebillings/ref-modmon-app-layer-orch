@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import List, Optional
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -18,7 +19,7 @@ class IncidentDetails:
     request_method: str
     timestamp: datetime
     traceback: str
-    user_id: str | None = None
+    user_id: Optional[str] = None
 
 
 class EmailPort(ABC):
@@ -31,7 +32,7 @@ class EmailPort(ABC):
 
     @abstractmethod
     def send_incident_alert(
-        self, incident: IncidentDetails, recipients: list[str]
+        self, incident: IncidentDetails, recipients: List[str]
     ) -> None:
         """
         Send an incident alert email to the specified recipients.

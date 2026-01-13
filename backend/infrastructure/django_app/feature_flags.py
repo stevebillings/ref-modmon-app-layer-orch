@@ -1,4 +1,5 @@
 import logging
+from typing import List, Optional, Set
 from uuid import UUID
 
 from application.ports.feature_flags import FeatureFlagPort
@@ -21,7 +22,7 @@ class DjangoFeatureFlagAdapter(FeatureFlagPort):
     """
 
     def is_enabled(
-        self, flag_name: str, user_context: UserContext | None = None
+        self, flag_name: str, user_context: Optional[UserContext] = None
     ) -> bool:
         """
         Check if a feature flag is enabled for a user.
@@ -88,14 +89,14 @@ class DjangoFeatureFlagRepository(FeatureFlagRepository):
             target_group_ids=target_group_ids,
         )
 
-    def get_all(self) -> list[FeatureFlag]:
+    def get_all(self) -> List[FeatureFlag]:
         """Get all feature flags."""
         return [
             self._to_domain(m)
             for m in FeatureFlagModel.objects.prefetch_related("target_groups").all()
         ]
 
-    def get_by_name(self, name: str) -> FeatureFlag | None:
+    def get_by_name(self, name: str) -> Optional[FeatureFlag]:
         """Get a feature flag by name."""
         try:
             model = FeatureFlagModel.objects.prefetch_related("target_groups").get(
@@ -123,7 +124,7 @@ class DjangoFeatureFlagRepository(FeatureFlagRepository):
         deleted_count, _ = FeatureFlagModel.objects.filter(name=name).delete()
         return deleted_count > 0
 
-    def set_target_groups(self, flag_name: str, group_ids: set[UUID]) -> FeatureFlag:
+    def set_target_groups(self, flag_name: str, group_ids: Set[UUID]) -> FeatureFlag:
         """Set the target groups for a feature flag (replaces existing)."""
         flag = FeatureFlagModel.objects.get(name=flag_name)
         # Clear existing targets
@@ -159,8 +160,8 @@ class DjangoFeatureFlagRepository(FeatureFlagRepository):
 
 
 # Singleton instances for easy access
-_feature_flags: FeatureFlagPort | None = None
-_feature_flag_repository: FeatureFlagRepository | None = None
+_feature_flags: Optional[FeatureFlagPort] = None
+_feature_flag_repository: Optional[FeatureFlagRepository] = None
 
 
 def get_feature_flags() -> FeatureFlagPort:

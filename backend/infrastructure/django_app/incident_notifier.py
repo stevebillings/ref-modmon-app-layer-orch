@@ -1,4 +1,5 @@
 import logging
+from typing import Optional
 
 from django.conf import settings
 
@@ -26,7 +27,7 @@ class IncidentNotifier:
         self.email = email
 
     def notify_if_enabled(
-        self, incident: IncidentDetails, user_context: UserContext | None = None
+        self, incident: IncidentDetails, user_context: Optional[UserContext] = None
     ) -> None:
         """
         Send incident notification if the feature flag is enabled.
@@ -56,7 +57,7 @@ class IncidentNotifier:
 
 
 # Singleton instance
-_incident_notifier: IncidentNotifier | None = None
+_incident_notifier: Optional[IncidentNotifier] = None
 
 
 def get_incident_notifier() -> IncidentNotifier:

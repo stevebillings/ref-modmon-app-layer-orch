@@ -5,6 +5,7 @@ Provides CRUD operations for user groups and membership management.
 """
 
 from uuid import UUID
+from typing import FrozenSet, List, Optional
 
 from application.ports.user_group_repository import UserGroupRepository
 from domain.user_groups import UserGroup
@@ -29,11 +30,11 @@ class DjangoUserGroupRepository(UserGroupRepository):
             description=model.description,
         )
 
-    def get_all(self) -> list[UserGroup]:
+    def get_all(self) -> List[UserGroup]:
         """Get all user groups."""
         return [self._to_domain(m) for m in UserGroupModel.objects.all()]
 
-    def get_by_id(self, group_id: UUID) -> UserGroup | None:
+    def get_by_id(self, group_id: UUID) -> Optional[UserGroup]:
         """Get a user group by ID."""
         try:
             model = UserGroupModel.objects.get(id=group_id)
@@ -41,7 +42,7 @@ class DjangoUserGroupRepository(UserGroupRepository):
         except UserGroupModel.DoesNotExist:
             return None
 
-    def get_by_name(self, name: str) -> UserGroup | None:
+    def get_by_name(self, name: str) -> Optional[UserGroup]:
         """Get a user group by name."""
         try:
             model = UserGroupModel.objects.get(name=name)
@@ -66,14 +67,14 @@ class DjangoUserGroupRepository(UserGroupRepository):
         deleted_count, _ = UserGroupModel.objects.filter(id=group_id).delete()
         return deleted_count > 0
 
-    def get_groups_for_user(self, user_id: UUID) -> list[UserGroup]:
+    def get_groups_for_user(self, user_id: UUID) -> List[UserGroup]:
         """Get all groups a user belongs to."""
         memberships = UserGroupMembershipModel.objects.filter(
             user_profile_id=user_id
         ).select_related("group")
         return [self._to_domain(m.group) for m in memberships]
 
-    def get_group_ids_for_user(self, user_id: UUID) -> frozenset[UUID]:
+    def get_group_ids_for_user(self, user_id: UUID) -> FrozenSet[UUID]:
         """Get all group IDs a user belongs to (optimized for UserContext)."""
         memberships = UserGroupMembershipModel.objects.filter(
             user_profile_id=user_id
@@ -94,7 +95,7 @@ class DjangoUserGroupRepository(UserGroupRepository):
             group_id=group_id,
         ).delete()
 
-    def get_user_ids_in_group(self, group_id: UUID) -> list[UUID]:
+    def get_user_ids_in_group(self, group_id: UUID) -> List[UUID]:
         """Get all user IDs in a group."""
         memberships = UserGroupMembershipModel.objects.filter(
             group_id=group_id
@@ -103,7 +104,7 @@ class DjangoUserGroupRepository(UserGroupRepository):
 
 
 # Singleton instance for easy access
-_user_group_repository: UserGroupRepository | None = None
+_user_group_repository: Optional[UserGroupRepository] = None
 
 
 def get_user_group_repository() -> UserGroupRepository:

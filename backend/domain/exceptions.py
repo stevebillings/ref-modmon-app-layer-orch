@@ -1,3 +1,6 @@
+from typing import Optional
+
+
 class DomainError(Exception):
     """Base exception for domain errors."""
 
@@ -7,7 +10,7 @@ class DomainError(Exception):
 class ValidationError(DomainError):
     """Raised when validation fails."""
 
-    def __init__(self, message: str, field: str | None = None) -> None:
+    def __init__(self, message: str, field: Optional[str] = None) -> None:
         self.message = message
         self.field = field
         super().__init__(message)
@@ -94,7 +97,7 @@ class PermissionDeniedError(DomainError):
 class AddressVerificationError(DomainError):
     """Raised when address verification fails."""
 
-    def __init__(self, reason: str, field: str | None = None) -> None:
+    def __init__(self, reason: str, field: Optional[str] = None) -> None:
         self.reason = reason
         self.field = field
         super().__init__(f"Address verification failed: {reason}")

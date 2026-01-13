@@ -1,6 +1,6 @@
 """User group-related step definitions."""
 
-from typing import Any
+from typing import Any, Dict
 
 from pytest_bdd import given, when, then, parsers
 
@@ -15,7 +15,7 @@ from domain.user_context import UserContext
 
 @given(parsers.parse('a user group "{name}" exists with description "{description}"'))
 def user_group_exists(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     user_group_service: UserGroupService,
     admin_user_context: UserContext,
     name: str,
@@ -32,7 +32,7 @@ def user_group_exists(
 
 @given(parsers.parse('user "{username}" is a member of group "{group_name}"'))
 def user_is_member_of_group(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     user_group_service: UserGroupService,
     admin_user_context: UserContext,
     username: str,
@@ -61,7 +61,7 @@ def user_is_member_of_group(
 
 @when(parsers.parse('I create a user group "{name}" with description "{description}"'))
 def create_user_group(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     user_group_service: UserGroupService,
     name: str,
     description: str,
@@ -77,7 +77,7 @@ def create_user_group(
 
 @when(parsers.parse('I try to create a user group "{name}" with description "{description}"'))
 def try_create_user_group(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     user_group_service: UserGroupService,
     name: str,
     description: str,
@@ -97,7 +97,7 @@ def try_create_user_group(
 
 @when('I try to create a user group "" with description "No name"')
 def try_create_user_group_empty_name(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     user_group_service: UserGroupService,
 ) -> None:
     """Try to create a user group with empty name."""
@@ -114,7 +114,7 @@ def try_create_user_group_empty_name(
 
 @when(parsers.parse('I delete the user group "{name}"'))
 def delete_user_group(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     user_group_service: UserGroupService,
     name: str,
 ) -> None:
@@ -132,7 +132,7 @@ def delete_user_group(
 
 @when(parsers.parse('I try to delete the user group "{name}"'))
 def try_delete_user_group(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     user_group_service: UserGroupService,
     name: str,
 ) -> None:
@@ -154,7 +154,7 @@ def try_delete_user_group(
 
 @when(parsers.parse('I add user "{username}" to the group "{group_name}"'))
 def add_user_to_group(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     user_group_service: UserGroupService,
     username: str,
     group_name: str,
@@ -177,7 +177,7 @@ def add_user_to_group(
 
 @when(parsers.parse('I try to add user "{username}" to the group "{group_name}"'))
 def try_add_user_to_group(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     user_group_service: UserGroupService,
     username: str,
     group_name: str,
@@ -204,7 +204,7 @@ def try_add_user_to_group(
 
 @when(parsers.parse('I remove user "{username}" from the group "{group_name}"'))
 def remove_user_from_group(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     user_group_service: UserGroupService,
     username: str,
     group_name: str,
@@ -254,7 +254,7 @@ def user_group_should_not_exist(
 
 @then(parsers.parse('the user group "{name}" should have description "{expected_desc}"'))
 def user_group_should_have_description(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     user_group_service: UserGroupService,
     admin_user_context: UserContext,
     name: str,
@@ -271,7 +271,7 @@ def user_group_should_have_description(
 
 @then(parsers.parse('user "{username}" should be a member of group "{group_name}"'))
 def user_should_be_member_of_group(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     user_group_service: UserGroupService,
     admin_user_context: UserContext,
     username: str,
@@ -292,7 +292,7 @@ def user_should_be_member_of_group(
 
 @then(parsers.parse('user "{username}" should not be a member of group "{group_name}"'))
 def user_should_not_be_member_of_group(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     user_group_service: UserGroupService,
     admin_user_context: UserContext,
     username: str,

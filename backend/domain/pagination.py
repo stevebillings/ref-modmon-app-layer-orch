@@ -5,7 +5,7 @@ These are generic types that can be used by any aggregate's repository.
 """
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Generic, TypeVar
+from typing import Generic, List, Optional, TypeVar
 
 T = TypeVar("T")
 
@@ -18,10 +18,10 @@ class ProductFilter:
     All fields are optional. Unset fields (None) mean no filtering on that field.
     """
 
-    search: str | None = None  # Search by name (case-insensitive contains)
-    min_price: Decimal | None = None
-    max_price: Decimal | None = None
-    in_stock: bool | None = None  # If True, only products with stock > 0
+    search: Optional[str] = None  # Search by name (case-insensitive contains)
+    min_price: Optional[Decimal] = None
+    max_price: Optional[Decimal] = None
+    in_stock: Optional[bool] = None  # If True, only products with stock > 0
 
 
 @dataclass(frozen=True)
@@ -36,7 +36,7 @@ class PaginatedResult(Generic[T]):
         page_size: Number of items per page
     """
 
-    items: list[T]
+    items: List[T]
     total_count: int
     page: int
     page_size: int

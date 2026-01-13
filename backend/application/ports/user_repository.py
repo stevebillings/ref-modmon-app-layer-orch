@@ -5,6 +5,7 @@ Provides read/write access to user profiles for admin management.
 """
 
 from abc import ABC, abstractmethod
+from typing import List, Optional
 from uuid import UUID
 
 from domain.user_context import Role
@@ -19,17 +20,17 @@ class UserRepository(ABC):
     """
 
     @abstractmethod
-    def get_all(self) -> list[UserInfo]:
+    def get_all(self) -> List[UserInfo]:
         """Get all users with their profile information."""
         pass
 
     @abstractmethod
-    def get_by_id(self, user_id: UUID) -> UserInfo | None:
+    def get_by_id(self, user_id: UUID) -> Optional[UserInfo]:
         """Get a user by their profile ID."""
         pass
 
     @abstractmethod
-    def update_role(self, user_id: UUID, role: Role) -> UserInfo | None:
+    def update_role(self, user_id: UUID, role: Role) -> Optional[UserInfo]:
         """
         Update a user's role.
 

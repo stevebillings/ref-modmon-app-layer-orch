@@ -1,6 +1,6 @@
 """Feature flag-related step definitions."""
 
-from typing import Any
+from typing import Any, Dict
 
 from pytest_bdd import given, when, then, parsers
 
@@ -15,7 +15,7 @@ from domain.user_context import UserContext
 
 @given(parsers.parse('a feature flag "{name}" exists and is disabled'))
 def feature_flag_exists_disabled(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     feature_flag_service: FeatureFlagService,
     admin_user_context: UserContext,
     name: str,
@@ -32,7 +32,7 @@ def feature_flag_exists_disabled(
 
 @given(parsers.parse('a feature flag "{name}" exists and is enabled'))
 def feature_flag_exists_enabled(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     feature_flag_service: FeatureFlagService,
     admin_user_context: UserContext,
     name: str,
@@ -54,7 +54,7 @@ def feature_flag_exists_enabled(
 
 @when(parsers.parse('I create a feature flag "{name}" with description "{description}"'))
 def create_feature_flag(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     feature_flag_service: FeatureFlagService,
     name: str,
     description: str,
@@ -71,7 +71,7 @@ def create_feature_flag(
 
 @when(parsers.parse('I try to create a feature flag "{name}" with description "{description}"'))
 def try_create_feature_flag(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     feature_flag_service: FeatureFlagService,
     name: str,
     description: str,
@@ -92,7 +92,7 @@ def try_create_feature_flag(
 
 @when(parsers.parse('I enable the feature flag "{name}"'))
 def enable_feature_flag(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     feature_flag_service: FeatureFlagService,
     name: str,
 ) -> None:
@@ -108,7 +108,7 @@ def enable_feature_flag(
 
 @when(parsers.parse('I try to enable the feature flag "{name}"'))
 def try_enable_feature_flag(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     feature_flag_service: FeatureFlagService,
     name: str,
 ) -> None:
@@ -128,7 +128,7 @@ def try_enable_feature_flag(
 
 @when(parsers.parse('I disable the feature flag "{name}"'))
 def disable_feature_flag(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     feature_flag_service: FeatureFlagService,
     name: str,
 ) -> None:
@@ -144,7 +144,7 @@ def disable_feature_flag(
 
 @when(parsers.parse('I delete the feature flag "{name}"'))
 def delete_feature_flag(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     feature_flag_service: FeatureFlagService,
     name: str,
 ) -> None:
@@ -159,7 +159,7 @@ def delete_feature_flag(
 
 @when(parsers.parse('I try to delete the feature flag "{name}"'))
 def try_delete_feature_flag(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     feature_flag_service: FeatureFlagService,
     name: str,
 ) -> None:

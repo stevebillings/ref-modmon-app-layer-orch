@@ -3,7 +3,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any
+from typing import Any, Dict, Optional
 
 
 class VerificationStatus(Enum):
@@ -26,10 +26,10 @@ class AddressVerificationResult:
     """
 
     status: VerificationStatus
-    standardized_address: dict[str, Any] | None  # Standardized address fields if verified
-    verification_id: str | None  # Tracking ID from the service for audit
-    error_message: str | None  # Human-readable error message if failed
-    field_errors: dict[str, str] | None  # Field-specific errors (e.g., {"city": "Not found"})
+    standardized_address: Optional[Dict[str, Any]]  # Standardized address fields if verified
+    verification_id: Optional[str]  # Tracking ID from the service for audit
+    error_message: Optional[str]  # Human-readable error message if failed
+    field_errors: Optional[Dict[str, str]]  # Field-specific errors (e.g., {"city": "Not found"})
 
     @property
     def is_success(self) -> bool:
@@ -53,7 +53,7 @@ class AddressVerificationPort(ABC):
     def verify(
         self,
         street_line_1: str,
-        street_line_2: str | None,
+        street_line_2: Optional[str],
         city: str,
         state: str,
         postal_code: str,

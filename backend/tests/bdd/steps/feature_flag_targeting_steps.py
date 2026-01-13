@@ -1,6 +1,6 @@
 """Feature flag targeting step definitions."""
 
-from typing import Any
+from typing import Any, Dict
 
 from django.contrib.auth.models import User
 from pytest_bdd import given, when, then, parsers
@@ -20,7 +20,7 @@ from infrastructure.django_app.user_context_adapter import build_user_context
 
 @given(parsers.parse('a feature flag "{name}" exists with enabled "{enabled}"'))
 def feature_flag_exists_with_enabled(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     feature_flag_service: FeatureFlagService,
     admin_user_context: UserContext,
     name: str,
@@ -38,7 +38,7 @@ def feature_flag_exists_with_enabled(
 
 @given(parsers.parse('the flag "{flag_name}" has target group "{group_name}"'))
 def flag_has_target_group(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     feature_flag_service: FeatureFlagService,
     admin_user_context: UserContext,
     flag_name: str,
@@ -63,7 +63,7 @@ def flag_has_target_group(
 
 @when(parsers.parse('I add target group "{group_name}" to flag "{flag_name}"'))
 def add_target_group_to_flag(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     feature_flag_service: FeatureFlagService,
     group_name: str,
     flag_name: str,
@@ -82,7 +82,7 @@ def add_target_group_to_flag(
 
 @when(parsers.parse('I try to add target group "{group_name}" to flag "{flag_name}"'))
 def try_add_target_group_to_flag(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     feature_flag_service: FeatureFlagService,
     group_name: str,
     flag_name: str,
@@ -105,7 +105,7 @@ def try_add_target_group_to_flag(
 
 @when(parsers.parse('I remove target group "{group_name}" from flag "{flag_name}"'))
 def remove_target_group_from_flag(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     feature_flag_service: FeatureFlagService,
     group_name: str,
     flag_name: str,
@@ -124,7 +124,7 @@ def remove_target_group_from_flag(
 
 @when(parsers.parse('I set target groups "{group_names}" for flag "{flag_name}"'))
 def set_target_groups_for_flag(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     feature_flag_service: FeatureFlagService,
     group_names: str,
     flag_name: str,
@@ -147,7 +147,7 @@ def set_target_groups_for_flag(
 
 @when(parsers.parse('I clear all target groups from flag "{flag_name}"'))
 def clear_target_groups_from_flag(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     feature_flag_service: FeatureFlagService,
     flag_name: str,
 ) -> None:
@@ -161,7 +161,7 @@ def clear_target_groups_from_flag(
 
 @when(parsers.parse('I check if flag "{flag_name}" is enabled for user "{username}"'))
 def check_flag_enabled_for_user(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     flag_name: str,
     username: str,
 ) -> None:
@@ -182,7 +182,7 @@ def check_flag_enabled_for_user(
 
 @then(parsers.parse('the flag "{flag_name}" should have target group "{group_name}"'))
 def flag_should_have_target_group(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     feature_flag_service: FeatureFlagService,
     admin_user_context: UserContext,
     flag_name: str,
@@ -201,7 +201,7 @@ def flag_should_have_target_group(
 
 @then(parsers.parse('the flag "{flag_name}" should not have target group "{group_name}"'))
 def flag_should_not_have_target_group(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     feature_flag_service: FeatureFlagService,
     admin_user_context: UserContext,
     flag_name: str,
@@ -232,12 +232,12 @@ def flag_should_have_no_target_groups(
 
 
 @then("the flag should be enabled")
-def flag_should_be_enabled(context: dict[str, Any]) -> None:
+def flag_should_be_enabled(context: Dict[str, Any]) -> None:
     """Verify the flag check result is enabled."""
     assert context.get("flag_check_result") is True, "Flag should be enabled"
 
 
 @then("the flag should be disabled")
-def flag_should_be_disabled(context: dict[str, Any]) -> None:
+def flag_should_be_disabled(context: Dict[str, Any]) -> None:
     """Verify the flag check result is disabled."""
     assert context.get("flag_check_result") is False, "Flag should be disabled"

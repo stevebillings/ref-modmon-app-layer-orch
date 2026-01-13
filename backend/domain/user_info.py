@@ -6,6 +6,7 @@ updating roles and group memberships.
 """
 
 from dataclasses import dataclass
+from typing import FrozenSet
 from uuid import UUID
 
 from domain.user_context import Role
@@ -24,7 +25,7 @@ class UserInfo:
     username: str
     email: str
     role: Role
-    group_ids: frozenset[UUID]
+    group_ids: FrozenSet[UUID]
 
     @property
     def group_count(self) -> int:

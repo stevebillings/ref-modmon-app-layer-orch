@@ -1,6 +1,7 @@
 """Unit tests for UserGroupService with mock repository."""
 
 from uuid import UUID, uuid4
+from typing import Dict, FrozenSet, List, Optional, Set
 
 import pytest
 
@@ -19,17 +20,17 @@ class MockUserGroupRepository(UserGroupRepository):
     """In-memory mock implementation for testing."""
 
     def __init__(self) -> None:
-        self._groups: dict[UUID, UserGroup] = {}
-        self._names: dict[str, UUID] = {}
-        self._memberships: dict[UUID, set[UUID]] = {}  # group_id -> set of user_ids
+        self._groups: Dict[UUID, UserGroup] = {}
+        self._names: Dict[str, UUID] = {}
+        self._memberships: Dict[UUID, Set[UUID]] = {}  # group_id -> set of user_ids
 
-    def get_all(self) -> list[UserGroup]:
+    def get_all(self) -> List[UserGroup]:
         return list(self._groups.values())
 
-    def get_by_id(self, group_id: UUID) -> UserGroup | None:
+    def get_by_id(self, group_id: UUID) -> Optional[UserGroup]:
         return self._groups.get(group_id)
 
-    def get_by_name(self, name: str) -> UserGroup | None:
+    def get_by_name(self, name: str) -> Optional[UserGroup]:
         group_id = self._names.get(name)
         if group_id:
             return self._groups.get(group_id)
@@ -62,7 +63,7 @@ class MockUserGroupRepository(UserGroupRepository):
             return True
         return False
 
-    def get_groups_for_user(self, user_id: UUID) -> list[UserGroup]:
+    def get_groups_for_user(self, user_id: UUID) -> List[UserGroup]:
         groups = []
         for group_id, user_ids in self._memberships.items():
             if user_id in user_ids:
@@ -71,7 +72,7 @@ class MockUserGroupRepository(UserGroupRepository):
                     groups.append(group)
         return groups
 
-    def get_group_ids_for_user(self, user_id: UUID) -> frozenset[UUID]:
+    def get_group_ids_for_user(self, user_id: UUID) -> FrozenSet[UUID]:
         group_ids = set()
         for group_id, user_ids in self._memberships.items():
             if user_id in user_ids:
@@ -87,7 +88,7 @@ class MockUserGroupRepository(UserGroupRepository):
         if group_id in self._memberships:
             self._memberships[group_id].discard(user_id)
 
-    def get_user_ids_in_group(self, group_id: UUID) -> list[UUID]:
+    def get_user_ids_in_group(self, group_id: UUID) -> List[UUID]:
         return list(self._memberships.get(group_id, set()))
 
 

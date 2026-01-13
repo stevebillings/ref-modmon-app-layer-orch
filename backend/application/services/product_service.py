@@ -1,5 +1,5 @@
 from decimal import Decimal
-from typing import List
+from typing import List, Optional, Union
 from uuid import UUID
 
 from application.ports.unit_of_work import UnitOfWork
@@ -40,12 +40,12 @@ class ProductService:
         self,
         page: int = 1,
         page_size: int = 20,
-        search: str | None = None,
-        min_price: Decimal | None = None,
-        max_price: Decimal | None = None,
-        in_stock: bool | None = None,
+        search: Optional[str] = None,
+        min_price: Optional[Decimal] = None,
+        max_price: Optional[Decimal] = None,
+        in_stock: Optional[bool] = None,
         include_deleted: bool = False,
-        user_context: UserContext | None = None,
+        user_context: Optional[UserContext] = None,
     ) -> PaginatedResult[Product]:
         """
         Get products with pagination and optional filtering.
@@ -91,7 +91,7 @@ class ProductService:
     def create_product(
         self,
         name: str,
-        price: Decimal | str,
+        price: Union[Decimal, str],
         stock_quantity: int,
         user_context: UserContext,
     ) -> Product:

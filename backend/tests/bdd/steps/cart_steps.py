@@ -1,7 +1,7 @@
 """Cart-related step definitions."""
 
 from decimal import Decimal
-from typing import Any
+from typing import Any, Dict, List
 from uuid import uuid4
 
 from pytest_bdd import given, when, then, parsers
@@ -18,7 +18,7 @@ from tests.bdd.conftest import VALID_SHIPPING_ADDRESS, INVALID_SHIPPING_ADDRESS
 
 @given(parsers.parse('my cart contains {qty:d} "{product_name}"'))
 def cart_contains_items(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     cart_service: CartService,
     product_name: str,
     qty: int,
@@ -33,7 +33,7 @@ def cart_contains_items(
 
 
 @given("my cart is empty")
-def cart_is_empty(context: dict[str, Any], cart_service: CartService) -> None:
+def cart_is_empty(context: Dict[str, Any], cart_service: CartService) -> None:
     """Ensure the cart is empty by removing all items."""
     cart = cart_service.get_cart(context["current_user_context"])
     for item in list(cart.items):
@@ -45,7 +45,7 @@ def cart_is_empty(context: dict[str, Any], cart_service: CartService) -> None:
 
 @given(parsers.parse('I add {qty:d} "{product_name}" to my cart'))
 def add_to_cart_given(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     cart_service: CartService,
     product_name: str,
     qty: int,
@@ -61,7 +61,7 @@ def add_to_cart_given(
 
 @given("I have a valid shipping address:")
 def have_valid_shipping_address(
-    context: dict[str, Any], datatable: list[list[str]]
+    context: Dict[str, Any], datatable: List[List[str]]
 ) -> None:
     """Set up a valid shipping address from the datatable."""
     # pytest-bdd returns datatable as list of lists, first row is headers
@@ -80,7 +80,7 @@ def have_valid_shipping_address(
 
 @given("I have an invalid shipping address:")
 def have_invalid_shipping_address(
-    context: dict[str, Any], datatable: list[list[str]]
+    context: Dict[str, Any], datatable: List[List[str]]
 ) -> None:
     """Set up an invalid shipping address from the datatable."""
     # pytest-bdd returns datatable as list of lists, first row is headers
@@ -104,7 +104,7 @@ def have_invalid_shipping_address(
 
 @when(parsers.parse('I add {qty:d} "{product_name}" to my cart'))
 def add_to_cart(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     cart_service: CartService,
     product_name: str,
     qty: int,
@@ -120,7 +120,7 @@ def add_to_cart(
 
 @when(parsers.parse('I try to add {qty:d} "{product_name}" to my cart'))
 def try_add_to_cart(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     cart_service: CartService,
     product_name: str,
     qty: int,
@@ -148,7 +148,7 @@ def try_add_to_cart(
 
 @when(parsers.parse('I update "{product_name}" quantity to {qty:d}'))
 def update_cart_quantity(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     cart_service: CartService,
     product_name: str,
     qty: int,
@@ -164,7 +164,7 @@ def update_cart_quantity(
 
 @when(parsers.parse('I try to update "{product_name}" quantity to {qty:d}'))
 def try_update_cart_quantity(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     cart_service: CartService,
     product_name: str,
     qty: int,
@@ -191,7 +191,7 @@ def try_update_cart_quantity(
 
 @when(parsers.parse('I remove "{product_name}" from my cart'))
 def remove_from_cart(
-    context: dict[str, Any], cart_service: CartService, product_name: str
+    context: Dict[str, Any], cart_service: CartService, product_name: str
 ) -> None:
     """Remove item from cart (expected to succeed)."""
     product = context["products"][product_name]
@@ -203,7 +203,7 @@ def remove_from_cart(
 
 @when(parsers.parse('I try to remove "{product_name}" from my cart'))
 def try_remove_from_cart(
-    context: dict[str, Any], cart_service: CartService, product_name: str
+    context: Dict[str, Any], cart_service: CartService, product_name: str
 ) -> None:
     """Try to remove item from cart (may fail)."""
     try:
@@ -224,7 +224,7 @@ def try_remove_from_cart(
 
 
 @when("I submit my cart")
-def submit_cart(context: dict[str, Any], cart_service: CartService) -> None:
+def submit_cart(context: Dict[str, Any], cart_service: CartService) -> None:
     """Submit cart (expected to succeed)."""
     address = context.get("shipping_address", VALID_SHIPPING_ADDRESS)
     order = cart_service.submit_cart(
@@ -235,7 +235,7 @@ def submit_cart(context: dict[str, Any], cart_service: CartService) -> None:
 
 
 @when("I try to submit my cart")
-def try_submit_cart(context: dict[str, Any], cart_service: CartService) -> None:
+def try_submit_cart(context: Dict[str, Any], cart_service: CartService) -> None:
     """Try to submit cart (may fail)."""
     try:
         address = context.get("shipping_address", VALID_SHIPPING_ADDRESS)
@@ -258,7 +258,7 @@ def try_submit_cart(context: dict[str, Any], cart_service: CartService) -> None:
     parsers.parse('my cart should contain {qty:d} "{product_name}" at "${price}" each')
 )
 def cart_should_contain_with_price(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     cart_service: CartService,
     qty: int,
     product_name: str,
@@ -276,7 +276,7 @@ def cart_should_contain_with_price(
 
 @then(parsers.parse('my cart should contain {qty:d} "{product_name}"'))
 def cart_should_contain(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     cart_service: CartService,
     qty: int,
     product_name: str,
@@ -289,7 +289,7 @@ def cart_should_contain(
 
 
 @then("my cart should be empty")
-def cart_should_be_empty(context: dict[str, Any], cart_service: CartService) -> None:
+def cart_should_be_empty(context: Dict[str, Any], cart_service: CartService) -> None:
     """Verify cart has no items."""
     cart = cart_service.get_cart(context["current_user_context"])
     assert len(cart.items) == 0, f"Cart should be empty but has {len(cart.items)} items"
@@ -299,7 +299,7 @@ def cart_should_be_empty(context: dict[str, Any], cart_service: CartService) -> 
     parsers.parse('my cart item "{product_name}" should still show "${price}" per unit')
 )
 def cart_item_should_show_price(
-    context: dict[str, Any],
+    context: Dict[str, Any],
     cart_service: CartService,
     product_name: str,
     price: str,
@@ -319,7 +319,7 @@ def cart_item_should_show_price(
     )
 )
 def order_should_be_created_plural(
-    context: dict[str, Any], item_count: int, total: str
+    context: Dict[str, Any], item_count: int, total: str
 ) -> None:
     """Verify order was created with expected item count and total (plural)."""
     assert len(context["orders"]) > 0, "No order was created"
@@ -338,14 +338,14 @@ def order_should_be_created_plural(
     )
 )
 def order_should_be_created_singular(
-    context: dict[str, Any], item_count: int, total: str
+    context: Dict[str, Any], item_count: int, total: str
 ) -> None:
     """Verify order was created with expected item count and total (singular)."""
     order_should_be_created_plural(context, item_count, total)
 
 
 @then("the order should have a verified shipping address")
-def order_should_have_verified_address(context: dict[str, Any]) -> None:
+def order_should_have_verified_address(context: Dict[str, Any]) -> None:
     """Verify order has a verified shipping address."""
     assert len(context["orders"]) > 0, "No order was created"
     order = context["orders"][-1]
@@ -355,7 +355,7 @@ def order_should_have_verified_address(context: dict[str, Any]) -> None:
 
 @then(parsers.parse('the order should contain "{product_name}" at "${price}" each'))
 def order_should_contain_item(
-    context: dict[str, Any], product_name: str, price: str
+    context: Dict[str, Any], product_name: str, price: str
 ) -> None:
     """Verify order contains item with expected price."""
     assert len(context["orders"]) > 0, "No order was created"

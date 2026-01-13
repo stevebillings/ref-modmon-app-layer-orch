@@ -1,4 +1,5 @@
 from uuid import UUID, uuid4
+from typing import Optional, Tuple
 
 from application.ports.address_verification import (
     AddressVerificationPort,
@@ -36,8 +37,8 @@ class CartService:
     def __init__(
         self,
         uow: UnitOfWork,
-        address_verification: AddressVerificationPort | None = None,
-        metrics: MetricsPort | None = None,
+        address_verification: Optional[AddressVerificationPort] = None,
+        metrics: Optional[MetricsPort] = None,
     ):
         self.uow = uow
         self.address_verification = address_verification
@@ -185,7 +186,7 @@ class CartService:
     def verify_address(
         self,
         address: UnverifiedAddress,
-    ) -> tuple[VerifiedAddress, AddressVerificationResult]:
+    ) -> Tuple[VerifiedAddress, AddressVerificationResult]:
         """
         Verify a shipping address using the address verification service.
 

@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import Optional
 
 from domain.user_context import UserContext
 
@@ -13,7 +14,7 @@ class FeatureFlagPort(ABC):
 
     @abstractmethod
     def is_enabled(
-        self, flag_name: str, user_context: UserContext | None = None
+        self, flag_name: str, user_context: Optional[UserContext] = None
     ) -> bool:
         """
         Check if a feature flag is enabled for a user.

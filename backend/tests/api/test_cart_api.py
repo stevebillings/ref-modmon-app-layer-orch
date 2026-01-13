@@ -1,17 +1,17 @@
-from typing import Any, cast
+from typing import Any, Dict, cast
 
 import pytest
 from rest_framework.test import APIClient
 
 
 @pytest.fixture
-def product(authenticated_admin_client: APIClient) -> dict[str, Any]:
+def product(authenticated_admin_client: APIClient) -> Dict[str, Any]:
     response = authenticated_admin_client.post(
         "/api/products/create/",
         {"name": "Test Product", "price": "10.00", "stock_quantity": 100},
         format="json",
     )
-    return cast(dict[str, Any], response.json())
+    return cast(Dict[str, Any], response.json())
 
 
 @pytest.mark.django_db
@@ -28,7 +28,7 @@ class TestCartGet:
 @pytest.mark.django_db
 class TestCartAddItem:
     def test_add_item_to_cart(
-        self, authenticated_admin_client: APIClient, product: dict[str, Any]
+        self, authenticated_admin_client: APIClient, product: Dict[str, Any]
     ) -> None:
         response = authenticated_admin_client.post(
             "/api/cart/items/",
@@ -45,7 +45,7 @@ class TestCartAddItem:
         assert data["item_count"] == 2
 
     def test_add_item_reserves_stock(
-        self, authenticated_admin_client: APIClient, product: dict[str, Any]
+        self, authenticated_admin_client: APIClient, product: Dict[str, Any]
     ) -> None:
         authenticated_admin_client.post(
             "/api/cart/items/",
@@ -59,7 +59,7 @@ class TestCartAddItem:
         assert updated_product["stock_quantity"] == 75
 
     def test_add_same_product_increases_quantity(
-        self, authenticated_admin_client: APIClient, product: dict[str, Any]
+        self, authenticated_admin_client: APIClient, product: Dict[str, Any]
     ) -> None:
         authenticated_admin_client.post(
             "/api/cart/items/",
@@ -77,7 +77,7 @@ class TestCartAddItem:
         assert data["items"][0]["quantity"] == 5
 
     def test_add_insufficient_stock(
-        self, authenticated_admin_client: APIClient, product: dict[str, Any]
+        self, authenticated_admin_client: APIClient, product: Dict[str, Any]
     ) -> None:
         response = authenticated_admin_client.post(
             "/api/cart/items/",
@@ -104,7 +104,7 @@ class TestCartAddItem:
 @pytest.mark.django_db
 class TestCartUpdateItem:
     def test_update_item_quantity(
-        self, authenticated_admin_client: APIClient, product: dict[str, Any]
+        self, authenticated_admin_client: APIClient, product: Dict[str, Any]
     ) -> None:
         authenticated_admin_client.post(
             "/api/cart/items/",
@@ -122,7 +122,7 @@ class TestCartUpdateItem:
         assert response.json()["items"][0]["quantity"] == 8
 
     def test_update_adjusts_stock(
-        self, authenticated_admin_client: APIClient, product: dict[str, Any]
+        self, authenticated_admin_client: APIClient, product: Dict[str, Any]
     ) -> None:
         authenticated_admin_client.post(
             "/api/cart/items/",
@@ -142,7 +142,7 @@ class TestCartUpdateItem:
         assert updated_product["stock_quantity"] == 85
 
     def test_update_insufficient_stock(
-        self, authenticated_admin_client: APIClient, product: dict[str, Any]
+        self, authenticated_admin_client: APIClient, product: Dict[str, Any]
     ) -> None:
         authenticated_admin_client.post(
             "/api/cart/items/",
@@ -171,7 +171,7 @@ class TestCartUpdateItem:
 @pytest.mark.django_db
 class TestCartRemoveItem:
     def test_remove_item(
-        self, authenticated_admin_client: APIClient, product: dict[str, Any]
+        self, authenticated_admin_client: APIClient, product: Dict[str, Any]
     ) -> None:
         authenticated_admin_client.post(
             "/api/cart/items/",
@@ -187,7 +187,7 @@ class TestCartRemoveItem:
         assert response.json()["items"] == []
 
     def test_remove_releases_stock(
-        self, authenticated_admin_client: APIClient, product: dict[str, Any]
+        self, authenticated_admin_client: APIClient, product: Dict[str, Any]
     ) -> None:
         authenticated_admin_client.post(
             "/api/cart/items/",
@@ -278,7 +278,7 @@ class TestCartVerifyAddress:
 @pytest.mark.django_db
 class TestCartSubmit:
     def test_submit_cart(
-        self, authenticated_admin_client: APIClient, product: dict[str, Any]
+        self, authenticated_admin_client: APIClient, product: Dict[str, Any]
     ) -> None:
         authenticated_admin_client.post(
             "/api/cart/items/",
@@ -301,7 +301,7 @@ class TestCartSubmit:
         assert order["shipping_address"]["city"] == "ANYTOWN"
 
     def test_submit_clears_cart(
-        self, authenticated_admin_client: APIClient, product: dict[str, Any]
+        self, authenticated_admin_client: APIClient, product: Dict[str, Any]
     ) -> None:
         authenticated_admin_client.post(
             "/api/cart/items/",
@@ -329,7 +329,7 @@ class TestCartSubmit:
         assert "empty" in response.json()["error"].lower()
 
     def test_submit_without_address(
-        self, authenticated_admin_client: APIClient, product: dict[str, Any]
+        self, authenticated_admin_client: APIClient, product: Dict[str, Any]
     ) -> None:
         authenticated_admin_client.post(
             "/api/cart/items/",
@@ -343,7 +343,7 @@ class TestCartSubmit:
         assert "shipping_address" in response.json()["error"].lower()
 
     def test_submit_with_invalid_address(
-        self, authenticated_admin_client: APIClient, product: dict[str, Any]
+        self, authenticated_admin_client: APIClient, product: Dict[str, Any]
     ) -> None:
         authenticated_admin_client.post(
             "/api/cart/items/",

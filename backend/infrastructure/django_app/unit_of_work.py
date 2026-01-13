@@ -1,5 +1,5 @@
 from contextlib import contextmanager
-from typing import Any, Generator, List
+from typing import Any, Generator, List, Optional
 
 from django.db import transaction
 
@@ -32,10 +32,10 @@ class DjangoUnitOfWork(UnitOfWork):
     after the transaction commits successfully.
     """
 
-    def __init__(self, event_dispatcher: EventDispatcher | None = None) -> None:
-        self._product_repository: ProductRepository | None = None
-        self._cart_repository: CartRepository | None = None
-        self._order_repository: OrderRepository | None = None
+    def __init__(self, event_dispatcher: Optional[EventDispatcher] = None) -> None:
+        self._product_repository: Optional[ProductRepository] = None
+        self._cart_repository: Optional[CartRepository] = None
+        self._order_repository: Optional[OrderRepository] = None
         self._event_dispatcher = event_dispatcher
         self._collected_events: List[DomainEvent] = []
 
@@ -78,7 +78,7 @@ class DjangoUnitOfWork(UnitOfWork):
 
 @contextmanager
 def unit_of_work(
-    event_dispatcher: EventDispatcher | None = None,
+    event_dispatcher: Optional[EventDispatcher] = None,
 ) -> Generator[UnitOfWork, None, None]:
     """
     Context manager that provides a UnitOfWork with transaction management.

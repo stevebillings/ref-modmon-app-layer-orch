@@ -6,6 +6,7 @@ and updating roles.
 """
 
 from uuid import UUID
+from typing import List
 
 from application.ports.user_group_repository import UserGroupRepository
 from application.ports.user_repository import UserRepository
@@ -42,7 +43,7 @@ class UserService:
         if not user_context.is_admin():
             raise PermissionDeniedError("Admin access required")
 
-    def get_all(self, user_context: UserContext) -> list[UserInfo]:
+    def get_all(self, user_context: UserContext) -> List[UserInfo]:
         """Get all users. Admin only."""
         self._require_admin(user_context)
         return self._user_repo.get_all()

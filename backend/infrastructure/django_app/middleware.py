@@ -3,7 +3,7 @@ import time
 import traceback
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
-from typing import Callable
+from typing import Callable, Optional
 from uuid import uuid4
 
 from django.http import HttpRequest, HttpResponse
@@ -36,7 +36,7 @@ class IncidentNotificationMiddleware:
 
     def process_exception(
         self, request: HttpRequest, exception: Exception
-    ) -> HttpResponse | None:
+    ) -> Optional[HttpResponse]:
         """
         Called when a view raises an exception.
 
@@ -46,7 +46,7 @@ class IncidentNotificationMiddleware:
         """
         # Build incident details and user context
         user_id = None
-        user_context: UserContext | None = None
+        user_context: Optional[UserContext] = None
         if hasattr(request, "user") and request.user.is_authenticated:
             user_id = str(request.user.id)
             # Build user context for feature flag targeting
@@ -85,7 +85,7 @@ class IncidentNotificationMiddleware:
         self,
         exception: Exception,
         stack_trace: str,
-        user_id: str | None,
+        user_id: Optional[str],
         occurred_at: datetime,
     ) -> None:
         """Write exception to audit log."""
@@ -113,7 +113,7 @@ class IncidentNotificationMiddleware:
             logger.error(f"Failed to write exception to audit log: {e}")
 
     def _send_notification(
-        self, incident: IncidentDetails, user_context: UserContext | None = None
+        self, incident: IncidentDetails, user_context: Optional[UserContext] = None
     ) -> None:
         """Send notification in background thread."""
         try:

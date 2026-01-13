@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Dict, List
 
 import pytest
 from django.contrib.auth.models import User
@@ -286,7 +286,7 @@ class TestProductSoftDelete:
 class TestProductPagination:
     """Tests for product list pagination and filtering."""
 
-    def _create_products(self, admin_client: APIClient, products: list[dict[str, object]]) -> None:
+    def _create_products(self, admin_client: APIClient, products: List[Dict[str, object]]) -> None:
         """Helper to create multiple products."""
         for p in products:
             admin_client.post("/api/products/create/", p, format="json")

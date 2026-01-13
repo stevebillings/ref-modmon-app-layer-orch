@@ -1,4 +1,4 @@
-from typing import Any, cast
+from typing import Any, Dict, cast
 
 import pytest
 from rest_framework.test import APIClient
@@ -14,13 +14,13 @@ VALID_SHIPPING_ADDRESS = {
 
 
 @pytest.fixture
-def product(authenticated_admin_client: APIClient) -> dict[str, Any]:
+def product(authenticated_admin_client: APIClient) -> Dict[str, Any]:
     response = authenticated_admin_client.post(
         "/api/products/create/",
         {"name": "Test Product", "price": "10.00", "stock_quantity": 100},
         format="json",
     )
-    return cast(dict[str, Any], response.json())
+    return cast(Dict[str, Any], response.json())
 
 
 @pytest.mark.django_db
@@ -31,7 +31,7 @@ class TestOrderList:
         assert response.json() == {"results": []}
 
     def test_list_orders(
-        self, authenticated_admin_client: APIClient, product: dict[str, Any]
+        self, authenticated_admin_client: APIClient, product: Dict[str, Any]
     ) -> None:
         # Create orders
         for _ in range(3):
@@ -52,7 +52,7 @@ class TestOrderList:
         assert len(results) == 3
 
     def test_orders_include_total(
-        self, authenticated_admin_client: APIClient, product: dict[str, Any]
+        self, authenticated_admin_client: APIClient, product: Dict[str, Any]
     ) -> None:
         authenticated_admin_client.post(
             "/api/cart/items/",
@@ -70,7 +70,7 @@ class TestOrderList:
         assert order["total"] == "50.00"
 
     def test_orders_newest_first(
-        self, authenticated_admin_client: APIClient, product: dict[str, Any]
+        self, authenticated_admin_client: APIClient, product: Dict[str, Any]
     ) -> None:
         for _ in range(3):
             authenticated_admin_client.post(

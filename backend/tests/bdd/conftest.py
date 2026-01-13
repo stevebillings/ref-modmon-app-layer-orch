@@ -1,6 +1,6 @@
 """BDD test fixtures and configuration."""
 
-from typing import Any, Generator
+from typing import Any, Dict, Generator
 
 import pytest
 from pytest_bdd import parser
@@ -106,7 +106,7 @@ def customer_user_context() -> UserContext:
 
 
 @pytest.fixture
-def context() -> dict[str, Any]:
+def context() -> Dict[str, Any]:
     """
     Mutable context for passing data between BDD steps.
 
