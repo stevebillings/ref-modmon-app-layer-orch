@@ -59,6 +59,7 @@ Without these settings, emails are printed to the console (development mode).
 ```bash
 cd frontend
 npm install
+npx playwright install
 npm run dev
 ```
 
