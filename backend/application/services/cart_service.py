@@ -245,7 +245,7 @@ class CartService:
         Orchestrates cross-aggregate operation:
         1. Verifies the shipping address
         2. Submits the cart (clears items, returns them for order creation)
-        3. Creates an Order from the cart items
+        3. Creates an Order from the cart items (Order raises OrderCreated event)
         4. Persists both aggregates
 
         Stock remains decremented (was reserved when added to cart).
@@ -281,19 +281,22 @@ class CartService:
                 for item in cart_items
             ]
 
-            order = Order(
-                id=order_id,
+            # Use Order.create() factory which raises OrderCreated event
+            order = Order.create(
                 user_id=user_context.user_id,
                 items=order_items,
                 shipping_address=verified_address,
-                submitted_at=None,
+                cart_id=cart.id,
+                actor_id=user_context.actor_id,
+                order_id=order_id,
             )
 
             # Persist order and cleared cart
             saved_order = self.uow.get_order_repository().save(order)
             self.uow.get_cart_repository().save(cart)
 
-            # Collect events from cart (includes CartSubmitted event)
+            # Collect events from both aggregates
             self.uow.collect_events_from(cart)
+            self.uow.collect_events_from(order)
 
             return saved_order

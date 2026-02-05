@@ -389,3 +389,49 @@ class TestOrder:
 
         # 10*2 + 7.50*4 = 20 + 30 = 50
         assert order.get_total() == Decimal("50.00")
+
+    def test_create_factory_method(self) -> None:
+        """Order.create() sets submitted_at and returns valid Order."""
+        user_id = uuid4()
+        cart_id = uuid4()
+        order_id = uuid4()
+        product_id = uuid4()
+
+        items = [
+            OrderItem.create(
+                order_id=order_id,
+                product_id=product_id,
+                product_name="Test Product",
+                unit_price=Decimal("25.00"),
+                quantity=2,
+            )
+        ]
+
+        order = Order.create(
+            user_id=user_id,
+            items=items,
+            shipping_address=TEST_SHIPPING_ADDRESS,
+            cart_id=cart_id,
+            order_id=order_id,
+        )
+
+        assert order.id == order_id
+        assert order.user_id == user_id
+        assert len(order.items) == 1
+        assert order.items[0].product_id == product_id
+        assert order.shipping_address == TEST_SHIPPING_ADDRESS
+        assert order.submitted_at is not None
+
+    def test_order_is_mutable(self) -> None:
+        """Order aggregate root should be mutable (not frozen)."""
+        order = Order(
+            id=uuid4(),
+            user_id=uuid4(),
+            items=[],
+            shipping_address=TEST_SHIPPING_ADDRESS,
+            submitted_at=None,
+        )
+
+        # Should be able to mutate items list
+        order.items = []
+        assert order.items == []

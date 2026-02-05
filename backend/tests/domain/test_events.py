@@ -8,8 +8,10 @@ import pytest
 from domain.events import DomainEvent
 from domain.aggregates.product.events import StockReserved, StockReleased
 from domain.aggregates.cart.events import CartItemAdded, CartSubmitted
+from domain.aggregates.order.events import OrderCreated
 from domain.aggregates.product.entity import Product
 from domain.aggregates.cart.entities import Cart
+from domain.aggregates.order.entities import Order, OrderItem
 from domain.aggregates.order.value_objects import VerifiedAddress
 
 
@@ -198,3 +200,94 @@ class TestCartEvents:
 
         events = cart.get_domain_events()
         assert len(events) == 2
+
+
+class TestOrderEvents:
+    """Tests for Order aggregate event raising."""
+
+    def test_create_raises_order_created_event(self) -> None:
+        user_id = uuid4()
+        cart_id = uuid4()
+        order_id = uuid4()
+        product_id = uuid4()
+
+        items = [
+            OrderItem.create(
+                order_id=order_id,
+                product_id=product_id,
+                product_name="Test Product",
+                unit_price=Decimal("19.99"),
+                quantity=2,
+            )
+        ]
+
+        order = Order.create(
+            user_id=user_id,
+            items=items,
+            shipping_address=TEST_SHIPPING_ADDRESS,
+            cart_id=cart_id,
+            actor_id="user-123",
+            order_id=order_id,
+        )
+
+        events = order.get_domain_events()
+        assert len(events) == 1
+        assert isinstance(events[0], OrderCreated)
+        assert events[0].order_id == order.id
+        assert events[0].cart_id == cart_id
+        assert events[0].total == Decimal("39.98")  # 19.99 * 2
+        assert events[0].item_count == 2
+        assert events[0].actor_id == "user-123"
+
+    def test_create_sets_submitted_at(self) -> None:
+        user_id = uuid4()
+        cart_id = uuid4()
+
+        order = Order.create(
+            user_id=user_id,
+            items=[],
+            shipping_address=TEST_SHIPPING_ADDRESS,
+            cart_id=cart_id,
+        )
+
+        assert order.submitted_at is not None
+
+    def test_create_with_auto_generated_order_id(self) -> None:
+        """Order.create() generates an order_id if not provided."""
+        user_id = uuid4()
+        cart_id = uuid4()
+
+        order = Order.create(
+            user_id=user_id,
+            items=[],
+            shipping_address=TEST_SHIPPING_ADDRESS,
+            cart_id=cart_id,
+        )
+
+        assert order.id is not None
+        events = order.get_domain_events()
+        assert events[0].order_id == order.id
+
+    def test_clear_domain_events(self) -> None:
+        order = Order.create(
+            user_id=uuid4(),
+            items=[],
+            shipping_address=TEST_SHIPPING_ADDRESS,
+            cart_id=uuid4(),
+        )
+        assert len(order.get_domain_events()) == 1
+
+        order.clear_domain_events()
+        assert len(order.get_domain_events()) == 0
+
+    def test_constructor_does_not_raise_events(self) -> None:
+        """Direct constructor (for reconstitution) doesn't raise events."""
+        order = Order(
+            id=uuid4(),
+            user_id=uuid4(),
+            items=[],
+            shipping_address=TEST_SHIPPING_ADDRESS,
+            submitted_at=None,
+        )
+
+        assert len(order.get_domain_events()) == 0
