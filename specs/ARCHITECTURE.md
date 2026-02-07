@@ -64,7 +64,7 @@ project-root/
 │       └── django_app/            # Django project
 │           ├── models.py          # ORM models (including AuditLog, FeatureFlag)
 │           ├── views.py           # API views
-│           ├── serializers.py     # DRF serializers
+│           ├── serialization.py   # to_dict() recursive conversion for JSON serialization
 │           ├── repositories/      # Repository implementations (Django ORM)
 │           ├── unit_of_work.py    # Unit of Work with event dispatch
 │           ├── feature_flags.py   # Feature flag adapter

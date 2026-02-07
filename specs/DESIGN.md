@@ -40,7 +40,7 @@ project-root/
 │       └── django_app/            # Django project
 │           ├── models.py          # ORM models (including AuditLog)
 │           ├── views.py           # API views
-│           ├── serializers.py     # DRF serializers
+│           ├── serialization.py   # to_dict() recursive conversion for JSON serialization
 │           ├── repositories/      # Repository implementations (Django ORM)
 │           │   ├── product_repository.py
 │           │   ├── cart_repository.py
