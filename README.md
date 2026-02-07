@@ -8,6 +8,10 @@ This application is intentionally kept simple enough to understand while demonst
 
 For detailed architecture documentation, see [specs/ARCHITECTURE.md](specs/ARCHITECTURE.md).
 
+## Why Not Standard Django?
+
+The standard Django approach — fat models, ModelSerializers, ModelViewSets — is excellent for rapid prototyping and small applications. It lets you expose a full REST API for a model in a handful of lines. However, that convenience comes from tight coupling: serializers blur validation, deserialization, and persistence into a single class that depends on both Django REST Framework and the ORM. ORM operations end up spread across views, serializers, and model methods, making it hard to reason about where data access happens. This project intentionally avoids that trade-off. Validation lives in the domain layer (aggregate factory methods and validation functions). Deserialization is just reading fields from the request dict in the view. Persistence is encapsulated in repositories behind abstract interfaces. Serialization out is a simple recursive `to_dict()` function that converts dataclasses to dictionaries at the infrastructure boundary. The result is that the core business logic has zero framework dependencies — it's pure Python dataclasses and functions that can be tested without Django, ported to another framework by writing new adapters, and reasoned about without understanding DRF internals. Django REST Framework is still a dependency, but only for its HTTP utilities: `@api_view`, `Request`, `Response`, and status codes.
+
 ## Technology Stack
 
 - **Backend**: Python 3.12+ / Django 6.0 / Django REST Framework
