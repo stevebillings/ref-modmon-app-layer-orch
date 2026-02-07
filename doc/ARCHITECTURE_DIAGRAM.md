@@ -11,7 +11,9 @@
                                           ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │    INFRASTRUCTURE                                                            │
-│    REST API, Adapters: Repositories, UnitOfWork, EventDispatcher            │
+│    REST API (using DRF)                                                      │
+│    Adapters: Repositories (using Django ORM), EventDispatcher               │
+│             UnitOfWork (using Django transactions)                           │
 │                                       │ implements                           │
 │    ┌──────────────────────────────────▼──────────────────────────────────┐  │
 │    │    APPLICATION                                                       │  │
@@ -35,7 +37,6 @@
                                           ▼
                                      ┌──────────┐
                                      │ Database │
-                                     │ (SQLite) │
                                      └──────────┘
 ```
 
