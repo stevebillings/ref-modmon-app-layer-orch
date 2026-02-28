@@ -2,6 +2,8 @@
 
 A reference e-commerce web application demonstrating architectural patterns for medium-complexity applications developed by small teams. This project serves as a practical example of how to structure a **Domain-Driven Design (DDD) Modular Monolith** with **Hexagonal Architecture** and **Application Layer Orchestration**.
 
+There is also a sister ref app (ref-layered-mvt-active-record) that demonstrated a layered architecture using active record.
+
 ## Purpose
 
 This application is intentionally kept simple enough to understand while demonstrating solutions to common web application problems. Use it as a reference when building real applications that need clean architecture, maintainability, and testability.
@@ -517,3 +519,5 @@ This project is dedicated to the public domain under **CC0 1.0 Universal**.
 You may use, copy, modify, distribute, and sell this code without restriction and without attribution.
 
 See the [LICENSE](LICENSE) file for the full legal text.
+
+
