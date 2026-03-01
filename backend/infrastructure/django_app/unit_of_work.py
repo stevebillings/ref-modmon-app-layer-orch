@@ -5,12 +5,16 @@ from django.db import transaction
 
 from application.ports.unit_of_work import UnitOfWork
 from domain.aggregates.cart.repository import CartRepository
+from domain.aggregates.coupon.repository import CouponRepository
 from domain.aggregates.order.repository import OrderRepository
 from domain.aggregates.product.repository import ProductRepository
 from domain.event_dispatcher import EventDispatcher
 from domain.events import DomainEvent
 from infrastructure.django_app.repositories.cart_repository import (
     DjangoCartRepository,
+)
+from infrastructure.django_app.repositories.coupon_repository import (
+    DjangoCouponRepository,
 )
 from infrastructure.django_app.repositories.order_repository import (
     DjangoOrderRepository,
@@ -36,6 +40,7 @@ class DjangoUnitOfWork(UnitOfWork):
         self._product_repository: Optional[ProductRepository] = None
         self._cart_repository: Optional[CartRepository] = None
         self._order_repository: Optional[OrderRepository] = None
+        self._coupon_repository: Optional[CouponRepository] = None
         self._event_dispatcher = event_dispatcher
         self._collected_events: List[DomainEvent] = []
 
@@ -53,6 +58,11 @@ class DjangoUnitOfWork(UnitOfWork):
         if self._order_repository is None:
             self._order_repository = DjangoOrderRepository()
         return self._order_repository
+
+    def get_coupon_repository(self) -> CouponRepository:
+        if self._coupon_repository is None:
+            self._coupon_repository = DjangoCouponRepository()
+        return self._coupon_repository
 
     def collect_events_from(self, aggregate: Any) -> None:
         """

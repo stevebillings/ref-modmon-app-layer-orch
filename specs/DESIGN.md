@@ -21,10 +21,15 @@ project-root/
 │   │   │   │   ├── entities.py            # Cart (root) + CartItem
 │   │   │   │   ├── events.py              # Cart domain events
 │   │   │   │   └── repository.py          # Repository interface (ABC)
-│   │   │   └── order/
-│   │   │       ├── entities.py            # Order (root) + OrderItem
-│   │   │       ├── events.py              # Order domain events
-│   │   │       └── repository.py          # Repository interface (ABC)
+│   │   │   ├── order/
+│   │   │   │   ├── entities.py            # Order (root) + OrderItem
+│   │   │   │   ├── events.py              # Order domain events
+│   │   │   │   └── repository.py          # Repository interface (ABC)
+│   │   │   └── coupon/
+│   │   │       ├── entity.py              # Coupon aggregate root
+│   │   │       ├── events.py              # CouponCreated, CouponApplied
+│   │   │       ├── repository.py          # Repository interface (ABC)
+│   │   │       └── exceptions.py          # CouponNotFoundError, CouponExpiredError, CouponAlreadyUsedError
 │   │   └── services/              # Domain services (cross-aggregate business logic)
 │   ├── application/               # Application layer (use case orchestration)
 │   │   ├── services/              # Application services
@@ -107,10 +112,15 @@ project-root/
   - Response: Updated Cart object
   - Side effects: Releases reserved stock (increments product's stock_quantity)
 - **POST /api/cart/submit/** - Submit cart as order (cross-aggregate operation)
-  - Response: Created Order object
+  - Request body: `{ shipping_address, coupon_code? }` — coupon_code is optional
+  - Response: Created Order object (includes `subtotal`, `coupon_code`, `coupon_discount`, `total`)
   - Side effects: Creates Order with OrderItems, empties cart (deletes CartItems, cart itself remains)
-  - Error: 400 if cart is empty
+  - Error: 400 if cart is empty, 400 if coupon invalid/expired/already used
   - Note: Stock remains decremented (was reserved when added to cart)
+- **POST /api/cart/coupons/validate/** - Validate a coupon code for the current user
+  - Request body: `{ coupon_code, cart_total }`
+  - Response: `{ discount_percent, discount_amount }` (estimated savings based on cart_total)
+  - Error: 400 if coupon not found, expired, or already used by this user
 
 ### Order Endpoints
 - **GET /api/orders/** - List all orders
@@ -163,6 +173,16 @@ All user group endpoints require admin authentication.
   - Response: 204 No Content
 - **DELETE /api/admin/user-groups/{id}/users/{user_id}/** - Remove user from group
   - Response: 204 No Content
+
+### Admin Coupon Endpoints
+
+All coupon admin endpoints require admin authentication.
+
+- **POST /api/admin/coupons/** - Create a coupon
+  - Request body: `{ code, discount_percent, expires_at }`
+  - Response: Created Coupon object
+- **GET /api/admin/coupons/** - List all coupons
+  - Response: `{ results: [...] }`
 
 ### Admin User Management Endpoints
 

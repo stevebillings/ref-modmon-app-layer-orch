@@ -38,8 +38,8 @@ export function CartPage() {
     setCart(updatedCart);
   };
 
-  const handleSubmit = async (shippingAddress: ShippingAddress) => {
-    await submitCart(shippingAddress);
+  const handleSubmit = async (shippingAddress: ShippingAddress, couponCode?: string) => {
+    await submitCart(shippingAddress, couponCode);
     navigate('/orders');
   };
 

@@ -11,6 +11,7 @@ import { ProductReportPage } from './pages/ProductReportPage';
 import { SystemPage } from './pages/SystemPage';
 import { UserGroupsPage } from './pages/UserGroupsPage';
 import { UserManagementPage } from './pages/UserManagementPage';
+import { CouponsPage } from './pages/admin/CouponsPage';
 
 function App() {
   return (
@@ -66,6 +67,14 @@ function App() {
               element={
                 <ProtectedRoute requireAdmin>
                   <UserManagementPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/coupons"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <CouponsPage />
                 </ProtectedRoute>
               }
             />

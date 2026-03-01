@@ -63,6 +63,9 @@ class Order:
     items: List[OrderItem]
     shipping_address: VerifiedAddress
     submitted_at: Optional[datetime]
+    coupon_id: Optional[UUID] = None
+    coupon_code: Optional[str] = None
+    coupon_discount: Decimal = Decimal("0")
     _domain_events: List["DomainEvent"] = field(
         default_factory=list, repr=False, compare=False
     )
@@ -76,6 +79,9 @@ class Order:
         cart_id: UUID,
         actor_id: str = "anonymous",
         order_id: Optional[UUID] = None,
+        coupon_id: Optional[UUID] = None,
+        coupon_code: Optional[str] = None,
+        coupon_discount: Decimal = Decimal("0"),
     ) -> "Order":
         """
         Factory method to create a new Order.
@@ -88,6 +94,9 @@ class Order:
             actor_id: ID of the actor creating the order
             order_id: Optional pre-generated order ID (used when OrderItems
                       need to reference the order ID before creation)
+            coupon_id: Optional ID of the coupon applied
+            coupon_code: Optional code snapshot of the coupon applied
+            coupon_discount: Discount amount deducted from subtotal
         """
         from domain.aggregates.order.events import OrderCreated
 
@@ -97,6 +106,9 @@ class Order:
             items=list(items),  # Make a copy to avoid shared state
             shipping_address=shipping_address,
             submitted_at=datetime.now(),
+            coupon_id=coupon_id,
+            coupon_code=coupon_code,
+            coupon_discount=coupon_discount,
         )
 
         order._raise_event(
@@ -111,8 +123,11 @@ class Order:
 
         return order
 
-    def get_total(self) -> Decimal:
+    def get_subtotal(self) -> Decimal:
         return sum((item.get_subtotal() for item in self.items), Decimal("0"))
+
+    def get_total(self) -> Decimal:
+        return self.get_subtotal() - self.coupon_discount
 
     def _raise_event(self, event: "DomainEvent") -> None:
         """Record a domain event."""

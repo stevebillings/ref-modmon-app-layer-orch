@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 from domain.aggregates.cart.repository import CartRepository
+from domain.aggregates.coupon.repository import CouponRepository
 from domain.aggregates.order.repository import OrderRepository
 from domain.aggregates.product.repository import ProductRepository
 
@@ -30,6 +31,11 @@ class UnitOfWork(ABC):
     @abstractmethod
     def get_order_repository(self) -> OrderRepository:
         """Get the order repository."""
+        pass
+
+    @abstractmethod
+    def get_coupon_repository(self) -> CouponRepository:
+        """Get the coupon repository."""
         pass
 
     @abstractmethod

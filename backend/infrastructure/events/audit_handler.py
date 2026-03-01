@@ -8,6 +8,7 @@ import logging
 from typing import Dict, Tuple, Type
 
 from application.ports.audit_log_repository import AuditLogRepository
+from domain.aggregates.coupon.events import CouponApplied, CouponCreated
 from domain.events import DomainEvent
 from domain.aggregates.product.events import (
     StockReserved,
@@ -38,6 +39,8 @@ EVENT_AGGREGATE_MAP: Dict[Type[DomainEvent], Tuple[str, str]] = {
     CartItemRemoved: ("Cart", "cart_id"),
     CartSubmitted: ("Cart", "cart_id"),
     OrderCreated: ("Order", "order_id"),
+    CouponCreated: ("Coupon", "coupon_id"),
+    CouponApplied: ("Order", "order_id"),
 }
 
 

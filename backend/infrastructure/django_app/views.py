@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from application.ports.feature_flag_repository import FeatureFlag
 from application.queries.product_report import ProductReportQuery
 from application.services.cart_service import CartService
+from application.services.coupon_service import CouponApplicationService
 from application.services.feature_flag_service import (
     DuplicateFeatureFlagError,
     FeatureFlagNotFoundError,
@@ -26,6 +27,11 @@ from application.services.user_service import (
 from application.services.order_service import OrderService
 from application.services.product_report_service import ProductReportService
 from application.services.product_service import ProductService
+from domain.aggregates.coupon.exceptions import (
+    CouponAlreadyUsedError,
+    CouponExpiredError,
+    CouponNotFoundError,
+)
 from domain.aggregates.order.value_objects import UnverifiedAddress
 from domain.exceptions import (
     AddressVerificationError,
@@ -116,6 +122,16 @@ def handle_domain_error(error: DomainError) -> Response:
     if isinstance(error, AddressVerificationError):
         return Response(
             {"error": str(error), "field": error.field},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    if isinstance(error, CouponNotFoundError):
+        return Response(
+            {"error": str(error)},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+    if isinstance(error, (CouponExpiredError, CouponAlreadyUsedError)):
+        return Response(
+            {"error": str(error)},
             status=status.HTTP_400_BAD_REQUEST,
         )
     # Generic domain error
@@ -530,13 +546,130 @@ def cart_submit(request: Request, user_context: UserContext) -> Response:
                 country=address_data.get("country", "US"),
             )
 
+            coupon_code = data.get("coupon_code") or None
+
             order = service.submit_cart(
                 user_context=user_context,
                 shipping_address=shipping_address,
+                coupon_code=coupon_code,
             )
             order_dict = to_dict(order)
+            order_dict["subtotal"] = str(order.get_subtotal())
+            order_dict["coupon_code"] = order.coupon_code
+            order_dict["coupon_discount"] = str(order.coupon_discount)
             order_dict["total"] = str(order.get_total())
             return Response(order_dict, status=status.HTTP_201_CREATED)
+        except DomainError as e:
+            return handle_domain_error(e)
+
+
+# --- Coupon Endpoints ---
+
+
+def _coupon_to_dict(coupon) -> Dict[str, Any]:
+    """Convert a Coupon aggregate to a dictionary."""
+    return {
+        "id": str(coupon.id),
+        "code": coupon.code,
+        "discount_percent": str(coupon.discount_percent),
+        "expires_at": coupon.expires_at.isoformat(),
+        "created_at": coupon.created_at.isoformat(),
+    }
+
+
+@api_view(["GET", "POST"])
+@require_auth
+def coupon_admin_list_create(request: Request, user_context: UserContext) -> Response:
+    """List all coupons (GET) or create a coupon (POST). Admin only."""
+    with unit_of_work(get_event_dispatcher()) as uow:
+        service = CouponApplicationService(uow)
+
+        if request.method == "GET":
+            try:
+                coupons = service.list_coupons(user_context=user_context)
+                return Response({"results": [_coupon_to_dict(c) for c in coupons]})
+            except DomainError as e:
+                return handle_domain_error(e)
+
+        # POST — create coupon
+        try:
+            data = request.data
+            discount_percent_str = data.get("discount_percent", "0")
+            expires_at_str = data.get("expires_at", "")
+
+            try:
+                from decimal import Decimal as D
+                discount_percent = D(str(discount_percent_str))
+            except Exception:
+                return Response(
+                    {"error": "discount_percent must be a valid number"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            from django.utils.dateparse import parse_datetime
+            expires_at = parse_datetime(expires_at_str)
+            if expires_at is None:
+                return Response(
+                    {"error": "expires_at must be a valid ISO datetime string"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            coupon = service.create_coupon(
+                code=data.get("code", ""),
+                discount_percent=discount_percent,
+                expires_at=expires_at,
+                user_context=user_context,
+            )
+            return Response(_coupon_to_dict(coupon), status=status.HTTP_201_CREATED)
+        except DomainError as e:
+            return handle_domain_error(e)
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(["POST"])
+@require_auth
+def cart_validate_coupon(request: Request, user_context: UserContext) -> Response:
+    """
+    Validate a coupon for the current user's cart.
+
+    Expects: { "coupon_code": "SAVE10", "cart_total": "50.00" }
+    """
+    with unit_of_work(get_event_dispatcher()) as uow:
+        data = request.data
+        coupon_code = data.get("coupon_code", "")
+        cart_total_str = data.get("cart_total", "0")
+
+        try:
+            from decimal import Decimal as D
+            cart_total = D(str(cart_total_str))
+        except Exception:
+            cart_total = D("0")
+
+        try:
+            coupon = uow.get_coupon_repository().get_by_code(coupon_code)
+            if coupon is None:
+                raise CouponNotFoundError(coupon_code)
+
+            # Per-user limit check
+            already_used = uow.get_order_repository().has_user_used_coupon(
+                user_context.user_id, coupon.id
+            )
+            if already_used:
+                raise CouponAlreadyUsedError(coupon_code)
+
+            # Validate expiry and calculate discount
+            discount_amount = coupon.validate_and_calculate_discount(
+                order_total=cart_total,
+                actor_id=user_context.actor_id,
+            )
+            # Clear events (validation is not a committed operation)
+            coupon.clear_domain_events()
+
+            return Response({
+                "discount_percent": str(coupon.discount_percent),
+                "discount_amount": str(discount_amount),
+            })
         except DomainError as e:
             return handle_domain_error(e)
 
@@ -554,6 +687,9 @@ def orders_list(request: Request, user_context: UserContext) -> Response:
         results = []
         for order in orders:
             order_dict = to_dict(order)
+            order_dict["subtotal"] = str(order.get_subtotal())
+            order_dict["coupon_code"] = order.coupon_code
+            order_dict["coupon_discount"] = str(order.coupon_discount)
             order_dict["total"] = str(order.get_total())
             results.append(order_dict)
         return Response({"results": results})

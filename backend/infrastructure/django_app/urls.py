@@ -32,8 +32,11 @@ urlpatterns = [
     ),
     path("cart/verify-address/", views.cart_verify_address, name="cart-verify-address"),
     path("cart/submit/", views.cart_submit, name="cart-submit"),
+    path("cart/coupons/validate/", views.cart_validate_coupon, name="cart-validate-coupon"),
     # Order endpoints
     path("orders/", views.orders_list, name="orders-list"),
+    # Coupon admin endpoints
+    path("admin/coupons/", views.coupon_admin_list_create, name="coupon-admin-list-create"),
     # Feature flag admin endpoints
     path("admin/feature-flags/", views.feature_flags_list, name="feature-flags-list"),
     path(

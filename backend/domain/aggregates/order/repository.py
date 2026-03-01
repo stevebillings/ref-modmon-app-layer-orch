@@ -20,3 +20,8 @@ class OrderRepository(ABC):
     def save(self, order: Order) -> Order:
         """Save an order and its items."""
         pass
+
+    @abstractmethod
+    def has_user_used_coupon(self, user_id: UUID, coupon_id: UUID) -> bool:
+        """Return True if the user has any prior order that used the given coupon."""
+        pass

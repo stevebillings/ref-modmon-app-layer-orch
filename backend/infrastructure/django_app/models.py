@@ -81,11 +81,31 @@ class CartItemModel(models.Model):
         return f"{self.product_name} x {self.quantity}"
 
 
+class CouponModel(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    code = models.CharField(max_length=50, unique=True)
+    discount_percent = models.DecimalField(max_digits=5, decimal_places=2)
+    expires_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "coupon"
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"{self.code} ({self.discount_percent}% off)"
+
+
 class OrderModel(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user_id = models.UUIDField(db_index=True)
     shipping_address = models.JSONField(default=dict)
     submitted_at = models.DateTimeField(auto_now_add=True)
+    coupon_id = models.UUIDField(null=True, blank=True)
+    coupon_code = models.CharField(max_length=50, null=True, blank=True)
+    coupon_discount = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0
+    )
 
     class Meta:
         db_table = "order"

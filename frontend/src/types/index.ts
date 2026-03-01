@@ -80,8 +80,30 @@ export interface Order {
   id: string;
   items: OrderItem[];
   submitted_at: string;
+  subtotal?: string;
+  coupon_code?: string | null;
+  coupon_discount?: string;
   total: string;
   shipping_address?: VerifiedShippingAddress;
+}
+
+export interface Coupon {
+  id: string;
+  code: string;
+  discount_percent: string;
+  expires_at: string;
+  created_at: string;
+}
+
+export interface CouponValidationResult {
+  discount_percent: string;
+  discount_amount: string;
+}
+
+export interface CreateCouponRequest {
+  code: string;
+  discount_percent: string;
+  expires_at: string;
 }
 
 export interface ApiError {

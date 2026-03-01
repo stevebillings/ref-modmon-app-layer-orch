@@ -7,6 +7,7 @@ Provides event dispatcher setup and configuration.
 from typing import Optional
 
 from application.ports.audit_log_repository import AuditLogRepository
+from domain.aggregates.coupon.events import CouponApplied, CouponCreated
 from domain.aggregates.product.events import StockReserved, StockReleased
 from domain.aggregates.cart.events import (
     CartItemAdded,
@@ -50,6 +51,8 @@ def create_event_dispatcher(
         CartItemRemoved,
         CartSubmitted,
         OrderCreated,
+        CouponCreated,
+        CouponApplied,
     ]
     for event_type in all_events:
         dispatcher.register(event_type, audit_handler)

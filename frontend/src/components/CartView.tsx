@@ -8,9 +8,10 @@ import {
   Table,
   Text,
 } from '@chakra-ui/react';
-import type { Cart, ShippingAddress } from '../types';
+import type { Cart, CouponValidationResult, ShippingAddress } from '../types';
 import { formatCurrency, calculateSubtotal } from '../services/currencyUtils';
 import { ConfirmationDialog } from './ConfirmationDialog';
+import { CouponInput } from './CouponInput';
 import { EmptyState } from './EmptyState';
 import { ErrorAlert } from './ErrorAlert';
 import { ShippingAddressForm } from './ShippingAddressForm';
@@ -19,7 +20,7 @@ interface CartViewProps {
   cart: Cart;
   onUpdateQuantity: (productId: string, quantity: number) => Promise<void>;
   onRemoveItem: (productId: string) => Promise<void>;
-  onSubmit: (shippingAddress: ShippingAddress) => Promise<void>;
+  onSubmit: (shippingAddress: ShippingAddress, couponCode?: string) => Promise<void>;
 }
 
 export function CartView({
@@ -34,6 +35,8 @@ export function CartView({
   const [updatingItemId, setUpdatingItemId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [shippingAddress, setShippingAddress] = useState<ShippingAddress | null>(null);
+  const [appliedCouponCode, setAppliedCouponCode] = useState<string | undefined>(undefined);
+  const [couponResult, setCouponResult] = useState<CouponValidationResult | null>(null);
 
   const handleRemove = async () => {
     if (!removeItemId) return;
@@ -70,12 +73,22 @@ export function CartView({
     setIsSubmitting(true);
     setError(null);
     try {
-      await onSubmit(shippingAddress);
+      await onSubmit(shippingAddress, appliedCouponCode);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to submit order');
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleCouponApplied = (code: string, result: CouponValidationResult) => {
+    setAppliedCouponCode(code);
+    setCouponResult(result);
+  };
+
+  const handleCouponCleared = () => {
+    setAppliedCouponCode(undefined);
+    setCouponResult(null);
   };
 
   const removeItem = cart.items.find((item) => item.product_id === removeItemId);
@@ -149,7 +162,31 @@ export function CartView({
       </Table.Root>
 
       <Box mt={6} pt={4} borderTopWidth={1}>
-        <Heading size="md" mb={4}>Total: {formatCurrency(cart.total)}</Heading>
+        {couponResult ? (
+          <>
+            <Text mb={1}>Subtotal: {formatCurrency(cart.total)}</Text>
+            <Text mb={1} color="green.600">
+              Coupon Discount ({couponResult.discount_percent}% off): −{formatCurrency(couponResult.discount_amount)}
+            </Text>
+            <Heading size="md" mb={4}>
+              Total:{' '}
+              {formatCurrency(
+                String(
+                  parseFloat(cart.total) - parseFloat(couponResult.discount_amount)
+                )
+              )}
+            </Heading>
+          </>
+        ) : (
+          <Heading size="md" mb={4}>Total: {formatCurrency(cart.total)}</Heading>
+        )}
+
+        <CouponInput
+          cartTotal={cart.total}
+          onCouponApplied={handleCouponApplied}
+          onCouponCleared={handleCouponCleared}
+          disabled={isSubmitting}
+        />
 
         <ShippingAddressForm
           onAddressChange={setShippingAddress}

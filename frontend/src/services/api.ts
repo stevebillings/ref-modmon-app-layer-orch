@@ -2,6 +2,9 @@ import type {
   AddressVerificationResult,
   AuthResponse,
   Cart,
+  Coupon,
+  CouponValidationResult,
+  CreateCouponRequest,
   CreateFeatureFlagRequest,
   CreateUserGroupRequest,
   FeatureFlag,
@@ -254,15 +257,51 @@ export async function verifyAddress(
 }
 
 export async function submitCart(
-  shippingAddress: ShippingAddress
+  shippingAddress: ShippingAddress,
+  couponCode?: string
 ): Promise<Order> {
+  const body: Record<string, unknown> = { shipping_address: shippingAddress };
+  if (couponCode) {
+    body.coupon_code = couponCode;
+  }
   const response = await fetch(`${API_BASE}/cart/submit/`, {
     method: 'POST',
     headers: getHeaders(),
     credentials: 'include',
-    body: JSON.stringify({ shipping_address: shippingAddress }),
+    body: JSON.stringify(body),
   });
   return handleResponse<Order>(response);
+}
+
+export async function validateCoupon(
+  couponCode: string,
+  cartTotal: string
+): Promise<CouponValidationResult> {
+  const response = await fetch(`${API_BASE}/cart/coupons/validate/`, {
+    method: 'POST',
+    headers: getHeaders(),
+    credentials: 'include',
+    body: JSON.stringify({ coupon_code: couponCode, cart_total: cartTotal }),
+  });
+  return handleResponse<CouponValidationResult>(response);
+}
+
+export async function createCoupon(request: CreateCouponRequest): Promise<Coupon> {
+  const response = await fetch(`${API_BASE}/admin/coupons/`, {
+    method: 'POST',
+    headers: getHeaders(),
+    credentials: 'include',
+    body: JSON.stringify(request),
+  });
+  return handleResponse<Coupon>(response);
+}
+
+export async function listCoupons(): Promise<Coupon[]> {
+  const response = await fetch(`${API_BASE}/admin/coupons/`, {
+    credentials: 'include',
+  });
+  const data = await handleResponse<{ results: Coupon[] }>(response);
+  return data.results;
 }
 
 // Order API

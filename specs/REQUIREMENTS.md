@@ -9,6 +9,7 @@ A minimal e-commerce web application demonstrating cross-aggregate operations. W
 - **Product**: Represents an item for sale with available stock
 - **Cart**: The user's shopping cart (one cart per user)
 - **Order**: A submitted, immutable record of a purchase (associated with the user who placed it), including a verified shipping address
+- **Coupon**: A discount code with a percentage off and an expiry date; admin-created, customer-redeemable
 
 ### Cross-Aggregate Operations
 
@@ -42,8 +43,9 @@ A minimal e-commerce web application demonstrating cross-aggregate operations. W
    - View current user's cart with items, quantities, unit prices, subtotals, and total
    - Remove items from cart — releases reserved stock
    - Adjust item quantity — adjusts stock reservation accordingly
+   - **Coupon code input** — enter a coupon code to apply a percentage discount; shows discount preview on success; inline error if invalid, expired, or already used
    - **Shipping address form** — street, city, state, postal code, country
-   - Submit Order button — verifies shipping address, creates an immutable Order, and clears the cart
+   - Submit Order button — verifies shipping address, creates an immutable Order (with coupon discount if applied), and clears the cart
    - Cannot increase quantity beyond available stock
    - Cannot submit an empty cart
    - Cannot submit without a valid shipping address
@@ -55,8 +57,16 @@ A minimal e-commerce web application demonstrating cross-aggregate operations. W
 
 ### Roles and Permissions
 
-- **Admin**: Can create/delete products, view all orders
-- **Customer**: Can manage their own cart, view their own orders
+- **Admin**: Can create/delete products, view all orders, create and list coupon codes
+- **Customer**: Can manage their own cart (including applying coupon codes), view their own orders
+
+### Coupon Rules
+
+- A coupon has a code string, a discount percentage (1–100), and an expiry datetime
+- A coupon is **invalid** if: (a) it does not exist, (b) it has expired, or (c) the requesting user has already used it (appears in a prior order)
+- Discount = `order_subtotal × (discount_percent / 100)`, rounded to 2 decimal places
+- Order records the coupon code and discount amount as an immutable snapshot
+- Each customer may use a given coupon **at most once**
 
 ## Non Functional requirements
 

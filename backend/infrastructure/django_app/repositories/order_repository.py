@@ -1,3 +1,4 @@
+from decimal import Decimal
 from typing import List
 from uuid import UUID
 
@@ -24,12 +25,22 @@ class DjangoOrderRepository(OrderRepository):
             .all()
         ]
 
+    def has_user_used_coupon(self, user_id: UUID, coupon_id: UUID) -> bool:
+        """Return True if the user has any prior order that used the given coupon."""
+        return OrderModel.objects.filter(
+            user_id=user_id,
+            coupon_id=coupon_id,
+        ).exists()
+
     def save(self, order: Order) -> Order:
         """Save an order and its items."""
         model = OrderModel.objects.create(
             id=order.id,
             user_id=order.user_id,
             shipping_address=order.shipping_address.to_dict(),
+            coupon_id=order.coupon_id,
+            coupon_code=order.coupon_code,
+            coupon_discount=order.coupon_discount,
         )
         for item in order.items:
             OrderItemModel.objects.create(
@@ -53,6 +64,9 @@ class DjangoOrderRepository(OrderRepository):
             items=items,
             shipping_address=shipping_address,
             submitted_at=model.submitted_at,
+            coupon_id=model.coupon_id,
+            coupon_code=model.coupon_code,
+            coupon_discount=model.coupon_discount or Decimal("0"),
         )
 
     @staticmethod

@@ -92,6 +92,11 @@ export function LandingPage() {
                   System (Admin)
                 </Button>
               </Link>
+              <Link to="/admin/coupons" style={{ width: '100%' }}>
+                <Button width="100%" size="lg" variant="outline">
+                  Coupons (Admin)
+                </Button>
+              </Link>
             </>
           )}
         </VStack>

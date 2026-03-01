@@ -1,3 +1,4 @@
+from decimal import Decimal
 from uuid import UUID, uuid4
 from typing import Optional, Tuple
 
@@ -9,6 +10,10 @@ from application.ports.address_verification import (
 from application.ports.metrics import MetricsPort, NoOpMetrics
 from application.ports.unit_of_work import UnitOfWork
 from domain.aggregates.cart.entities import Cart
+from domain.aggregates.coupon.exceptions import (
+    CouponAlreadyUsedError,
+    CouponNotFoundError,
+)
 from domain.aggregates.order.entities import Order, OrderItem
 from domain.aggregates.order.value_objects import UnverifiedAddress, VerifiedAddress
 from domain.exceptions import (
@@ -238,38 +243,76 @@ class CartService:
         self,
         user_context: UserContext,
         shipping_address: UnverifiedAddress,
+        coupon_code: Optional[str] = None,
     ) -> Order:
         """
         Submit the user's cart as an order.
 
         Orchestrates cross-aggregate operation:
         1. Verifies the shipping address
-        2. Submits the cart (clears items, returns them for order creation)
-        3. Creates an Order from the cart items (Order raises OrderCreated event)
-        4. Persists both aggregates
+        2. If coupon_code provided: loads coupon, checks per-user limit (cross-aggregate
+           check forced into this application layer by import-linter), validates and
+           calculates discount
+        3. Submits the cart (clears items, returns them for order creation)
+        4. Creates an Order from the cart items (Order raises OrderCreated event)
+        5. Persists both aggregates; collects CouponApplied event from coupon
 
         Stock remains decremented (was reserved when added to cart).
 
         Args:
             user_context: The authenticated user context
             shipping_address: The shipping address (will be verified)
+            coupon_code: Optional coupon code to apply
 
         Raises:
             EmptyCartError: If cart has no items
             AddressVerificationError: If address verification fails
+            CouponNotFoundError: If coupon code does not exist
+            CouponExpiredError: If coupon has expired
+            CouponAlreadyUsedError: If user has already used this coupon
         """
         with self.metrics.time_operation("cart_submit"):
             # Verify address first (fail fast before modifying cart)
             verified_address, _ = self.verify_address(shipping_address)
+
+            # Resolve coupon before modifying cart state
+            coupon = None
+            coupon_discount = Decimal("0")
+
+            if coupon_code:
+                coupon = self.uow.get_coupon_repository().get_by_code(coupon_code)
+                if coupon is None:
+                    raise CouponNotFoundError(coupon_code)
+
+                # Per-user limit check: STRUCTURALLY FORCED into application layer.
+                # Coupon aggregate cannot import Order — enforced by import-linter.
+                # Any new checkout path must go through this service to enforce the rule.
+                already_used = self.uow.get_order_repository().has_user_used_coupon(
+                    user_context.user_id, coupon.id
+                )
+                if already_used:
+                    raise CouponAlreadyUsedError(coupon_code)
 
             cart = self.uow.get_cart_repository().get_cart_for_user(user_context.user_id)
 
             # Submit cart - returns items for order creation and clears cart
             cart_items = cart.submit(actor_id=user_context.actor_id)
 
+            # Calculate subtotal for discount computation
+            subtotal = sum(item.unit_price * item.quantity for item in cart_items)
+
+            # Validate coupon and calculate discount (raises CouponExpiredError if expired)
+            if coupon is not None:
+                order_id = uuid4()
+                coupon_discount = coupon.validate_and_calculate_discount(
+                    order_total=subtotal,
+                    actor_id=user_context.actor_id,
+                    order_id=order_id,
+                )
+            else:
+                order_id = uuid4()
+
             # Application layer orchestrates Order creation from cart items
-            # Generate order_id first so OrderItems can reference it
-            order_id = uuid4()
             order_items = [
                 OrderItem.create(
                     order_id=order_id,
@@ -289,14 +332,19 @@ class CartService:
                 cart_id=cart.id,
                 actor_id=user_context.actor_id,
                 order_id=order_id,
+                coupon_id=coupon.id if coupon else None,
+                coupon_code=coupon.code if coupon else None,
+                coupon_discount=coupon_discount,
             )
 
             # Persist order and cleared cart
             saved_order = self.uow.get_order_repository().save(order)
             self.uow.get_cart_repository().save(cart)
 
-            # Collect events from both aggregates
+            # Collect events from aggregates (CouponApplied raised inside coupon aggregate)
             self.uow.collect_events_from(cart)
             self.uow.collect_events_from(order)
+            if coupon is not None:
+                self.uow.collect_events_from(coupon)
 
             return saved_order
