@@ -299,7 +299,7 @@ class CartService:
             cart_items = cart.submit(actor_id=user_context.actor_id)
 
             # Calculate subtotal for discount computation
-            subtotal = sum(item.unit_price * item.quantity for item in cart_items)
+            subtotal = sum((item.unit_price * item.quantity for item in cart_items), Decimal(0))
 
             # Validate coupon and calculate discount (raises CouponExpiredError if expired)
             if coupon is not None:

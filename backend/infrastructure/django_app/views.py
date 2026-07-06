@@ -27,6 +27,7 @@ from application.services.user_service import (
 from application.services.order_service import OrderService
 from application.services.product_report_service import ProductReportService
 from application.services.product_service import ProductService
+from domain.aggregates.coupon.entity import Coupon
 from domain.aggregates.coupon.exceptions import (
     CouponAlreadyUsedError,
     CouponExpiredError,
@@ -566,7 +567,7 @@ def cart_submit(request: Request, user_context: UserContext) -> Response:
 # --- Coupon Endpoints ---
 
 
-def _coupon_to_dict(coupon) -> Dict[str, Any]:
+def _coupon_to_dict(coupon: Coupon) -> Dict[str, Any]:
     """Convert a Coupon aggregate to a dictionary."""
     return {
         "id": str(coupon.id),
